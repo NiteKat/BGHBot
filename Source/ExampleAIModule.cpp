@@ -79,7 +79,7 @@ void ExampleAIModule::onStart()
 				else if (area.Minerals().size() > 0)
 					base_region = 1;
 				AIBase new_base(&area, base_region);
-				macro_manager.addAIBase(new_base);
+				game_state.addAIBase(new_base);
 			}
 		}
 		scouted = false;
@@ -127,16 +127,16 @@ void ExampleAIModule::onFrame()
 			return;
 
 		if (scouted == false &&
-			macro_manager.getSupplyUsed() == 10)
+			game_state.getSupplyUsed() == 10)
 		{
 			Broodwar << "Test" << std::endl;
-			military_manager.scout(worker_manager, *macro_manager.getBaseList());
+			military_manager.scout(worker_manager, game_state);
 			scouted = true;
 		}
 
-		worker_manager.manageWorkers();
-		macro_manager.checkMacro(&worker_manager);
-		military_manager.checkMilitary(*macro_manager.getBaseList(), worker_manager);
+		worker_manager.manageWorkers(game_state);
+		macro_manager.checkMacro(&worker_manager, game_state);
+		military_manager.checkMilitary(worker_manager, game_state);
 	}
 	catch (const std::exception & e)
 	{
@@ -223,30 +223,30 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
 	  if (unit->getType() == UnitTypes::Terran_SCV &&
 		  unit->getPlayer() == Broodwar->self())
 	  {
-		  Object new_worker(unit, macro_manager.getContainingBase(unit));
-		  worker_manager.addMineralWorker(new_worker);
-		  macro_manager.addSupplyUsed(1);
+		  Object new_worker(unit, game_state.getContainingBase(unit));
+		  game_state.addMineralWorker(new_worker);
+		  game_state.addSupplyUsed(1);
 	  }
 	  if (unit->getType() == UnitTypes::Terran_Marine &&
 		  unit->getPlayer() == Broodwar->self())
 	  {
 		  Object new_unit(unit);
-		  macro_manager.addSupplyUsed(1);
+		  game_state.addSupplyUsed(1);
 		  military_manager.addUnit(new_unit);
 	  }
 	  if (unit->getType() == UnitTypes::Terran_Supply_Depot &&
 		  unit->getPlayer() == Broodwar->self())
 	  {
-		  Object new_building(unit, macro_manager.getContainingBase(unit));
-		  macro_manager.addBuilding(new_building);
-		  macro_manager.addMineralsCommitted(-100);
+		  Object new_building(unit, game_state.getContainingBase(unit));
+		  game_state.addBuilding(new_building);
+		  game_state.addMineralsCommitted(-100);
 	  }
 	  else if (unit->getType() == UnitTypes::Terran_Barracks &&
 		  unit->getPlayer() == Broodwar->self())
 	  {
-		  Object new_building(unit, macro_manager.getContainingBase(unit));
-		  macro_manager.addBuilding(new_building);
-		  macro_manager.addMineralsCommitted(-150);
+		  Object new_building(unit, game_state.getContainingBase(unit));
+		  game_state.addBuilding(new_building);
+		  game_state.addMineralsCommitted(-150);
 	  }
   }
 }
@@ -268,14 +268,14 @@ void ExampleAIModule::onUnitDestroy(BWAPI::Unit unit)
 			unit->getType() == UnitTypes::Terran_Marine) &&
 			unit->getPlayer() == Broodwar->self())
 		{
-			macro_manager.addSupplyUsed(-1);
+			game_state.addSupplyUsed(-1);
 		}
 		else if (unit->getType() == UnitTypes::Terran_Supply_Depot &&
 			unit->getPlayer() == Broodwar->self())
 		{
 			if (unit->isCompleted())
-				macro_manager.addSupplyTotal(-8);
-			macro_manager.addSupplyExpected(-8);
+				game_state.addSupplyTotal(-8);
+			game_state.addSupplyExpected(-8);
 		}
 		else if (unit->getType() == UnitTypes::Terran_Barracks &&
 			unit->getPlayer() == Broodwar->self())
@@ -319,13 +319,13 @@ void ExampleAIModule::onUnitComplete(BWAPI::Unit unit)
 	if (unit->getType() == UnitTypes::Terran_Command_Center &&
 		unit->getPlayer() == Broodwar->self())
 	{
-		Object new_building(unit, macro_manager.getContainingBase(unit));
-		macro_manager.addBuilding(new_building);
-		macro_manager.addSupplyTotal(10);
+		Object new_building(unit, game_state.getContainingBase(unit));
+		game_state.addBuilding(new_building);
+		game_state.addSupplyTotal(10);
 	}
 	if (unit->getType() == UnitTypes::Terran_Supply_Depot &&
 		unit->getPlayer() == Broodwar->self())
 	{
-		macro_manager.addSupplyTotal(8);
+		game_state.addSupplyTotal(8);
 	}
 }

@@ -11,7 +11,7 @@ void MilitaryManager::addUnit(Object new_unit)
 	military.push_back(new_unit);
 }
 
-void MilitaryManager::checkMilitary(std::vector<AIBase> &base_list, WorkerManager &worker_manager)
+void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &game_state)
 {
 	if (global_strategy == 0 &&
 		military.size() > 50)
@@ -25,21 +25,21 @@ void MilitaryManager::checkMilitary(std::vector<AIBase> &base_list, WorkerManage
 	}
 	for (auto unit : BWAPI::Broodwar->enemies().getUnits())
 	{
-		if (enemy_units.find(unit->getID()) == enemy_units.end() &&
+		if (game_state.getEnemyUnits()->find(unit->getID()) == game_state.getEnemyUnits()->end() &&
 			unit->exists())
 		{
 			Object new_enemy(unit);
-			enemy_units.insert(std::pair<int, Object>(unit->getID(), new_enemy));
+			game_state.getEnemyUnits()->insert(std::pair<int, Object>(unit->getID(), new_enemy));
 		}
 		if (unit->getType().isBuilding())
 		{
-			auto base_list_iterator = base_list.begin();
-			while (base_list_iterator != base_list.end())
+			auto base_list_iterator = game_state.getBaseList()->begin();
+			while (base_list_iterator != game_state.getBaseList()->end())
 			{
 				if (base_list_iterator->getArea() == BWEM::Map::Instance().GetNearestArea(unit->getTilePosition()))
 				{
 					base_list_iterator->setBaseClass(2);
-					base_list_iterator = base_list.end();
+					base_list_iterator = game_state.getBaseList()->end();
 				}
 				else
 				{
@@ -66,15 +66,15 @@ void MilitaryManager::checkMilitary(std::vector<AIBase> &base_list, WorkerManage
 			if (global_strategy == 0 &&
 				military_iterator->getUnit()->isIdle())
 			{
-				auto enemy_iterator = enemy_units.begin();
-				while (enemy_iterator != enemy_units.end())
+				auto enemy_iterator = game_state.getEnemyUnits()->begin();
+				while (enemy_iterator != game_state.getEnemyUnits()->end())
 				{
 					if (enemy_iterator->second.getUnit()->exists())
 					{
-						if (getContainingBase(enemy_iterator->second.getUnit(), &base_list)->getBaseClass() == 3)
+						if (game_state.getContainingBase(enemy_iterator->second.getUnit())->getBaseClass() == 3)
 						{
 							military_iterator->getUnit()->attack(enemy_iterator->second.getUnit()->getPosition());
-							enemy_iterator = enemy_units.end();
+							enemy_iterator = game_state.getEnemyUnits()->end();
 						}
 						else
 						{
@@ -90,13 +90,13 @@ void MilitaryManager::checkMilitary(std::vector<AIBase> &base_list, WorkerManage
 			else if (global_strategy == 1 &&
 				military_iterator->getUnit()->isIdle())
 			{
-				auto base_list_iterator = base_list.begin();
-				while (base_list_iterator != base_list.end())
+				auto base_list_iterator = game_state.getBaseList()->begin();
+				while (base_list_iterator != game_state.getBaseList()->end())
 				{
 					if (base_list_iterator->getBaseClass() == 2)
 					{
 						military_iterator->getUnit()->attack((BWAPI::Position)base_list_iterator->getArea()->Top());
-						base_list_iterator = base_list.end();
+						base_list_iterator = game_state.getBaseList()->end();
 					}
 					else
 					{
@@ -118,13 +118,13 @@ void MilitaryManager::checkMilitary(std::vector<AIBase> &base_list, WorkerManage
 				{
 					if (unit->getPlayer() != BWAPI::Broodwar->self())
 					{
-						auto base_list_iterator = base_list.begin();
-						while (base_list_iterator != base_list.end())
+						auto base_list_iterator = game_state.getBaseList()->begin();
+						while (base_list_iterator != game_state.getBaseList()->end())
 						{
 							if (base_list_iterator->getArea() == BWEM::Map::Instance().GetNearestArea(scout_unit.getUnit()->getTilePosition()))
 							{
 								base_list_iterator->setBaseClass(2);
-								base_list_iterator = base_list.end();
+								base_list_iterator = game_state.getBaseList()->end();
 							}
 							else
 							{
@@ -133,14 +133,14 @@ void MilitaryManager::checkMilitary(std::vector<AIBase> &base_list, WorkerManage
 						}
 					}
 				}*/
-				auto base_list_iterator = base_list.begin();
-				while (base_list_iterator != base_list.end())
+				auto base_list_iterator = game_state.getBaseList()->begin();
+				while (base_list_iterator != game_state.getBaseList()->end())
 				{
 					if (base_list_iterator->getArea() == BWEM::Map::Instance().GetNearestArea(scout_unit.getUnit()->getTilePosition()) &&
 						base_list_iterator->getBaseClass() == 1)
 					{
 						base_list_iterator->setBaseClass(0);
-						base_list_iterator = base_list.end();
+						base_list_iterator = game_state.getBaseList()->end();
 					}
 					else
 					{
@@ -148,8 +148,8 @@ void MilitaryManager::checkMilitary(std::vector<AIBase> &base_list, WorkerManage
 					}
 				}
 				scout_target = BWAPI::Positions::Invalid;
-				auto base_iterator = base_list.begin();
-				while (base_iterator != base_list.end())
+				auto base_iterator = game_state.getBaseList()->begin();
+				while (base_iterator != game_state.getBaseList()->end())
 				{
 					if (base_iterator->getArea()->Bases().size() > 0)
 					{
@@ -158,7 +158,7 @@ void MilitaryManager::checkMilitary(std::vector<AIBase> &base_list, WorkerManage
 						{
 							scout_target = (BWAPI::Position)(*base_iterator->getArea()->Bases().begin()).Location();
 							scout_unit.getUnit()->move(scout_target);
-							base_iterator = base_list.end();
+							base_iterator = game_state.getBaseList()->end();
 						}
 						else
 						{
@@ -175,8 +175,8 @@ void MilitaryManager::checkMilitary(std::vector<AIBase> &base_list, WorkerManage
 		if (scout_unit.getUnit()->isIdle())
 		{
 			scout_target = BWAPI::Positions::Invalid;
-			auto base_iterator = base_list.begin();
-			while (base_iterator != base_list.end())
+			auto base_iterator = game_state.getBaseList()->begin();
+			while (base_iterator != game_state.getBaseList()->end())
 			{
 				if (base_iterator->getArea()->Bases().size() > 0)
 				{
@@ -185,7 +185,7 @@ void MilitaryManager::checkMilitary(std::vector<AIBase> &base_list, WorkerManage
 					{
 						scout_target = (BWAPI::Position)(*base_iterator->getArea()->Bases().begin()).Location();
 						scout_unit.getUnit()->move(scout_target);
-						base_iterator = base_list.end();
+						base_iterator = game_state.getBaseList()->end();
 					}
 					else
 					{
@@ -200,36 +200,36 @@ void MilitaryManager::checkMilitary(std::vector<AIBase> &base_list, WorkerManage
 		}
 		if (scout_target == BWAPI::Positions::Invalid)
 		{
-			worker_manager.addMineralWorker(scout_unit);
+			game_state.addMineralWorker(scout_unit);
 			scout_unit.clearObject();
 		}
 	}
 }
 
-void MilitaryManager::scout(WorkerManager &worker_manager, std::vector<AIBase> &base_list)
+void MilitaryManager::scout(WorkerManager &worker_manager, GameState &game_state)
 {
 	if (scout_unit.getUnit() == nullptr)
 	{
-		Object new_scout = worker_manager.getScout();
+		Object new_scout = game_state.getScout();
 		if (new_scout.getUnit() != nullptr)
 		{
 			scout_unit = new_scout;
 		}
-		auto base_iterator = base_list.begin();
-		while (base_iterator != base_list.end())
+		auto base_iterator = game_state.getBaseList()->begin();
+		while (base_iterator != game_state.getBaseList()->end())
 		{
 			if (base_iterator->getArea()->Bases().size() > 0)
 			{
 				if ((*base_iterator->getArea()->Bases().begin()).Starting())
 				{
-					BWAPI::Broodwar << "True";
+					BWAPI::Broodwar << "True" << std::endl;
 				}
 				if ((*base_iterator->getArea()->Bases().begin()).Starting() &&
 					base_iterator->getBaseClass() == 1)
 				{
 					scout_target = (BWAPI::Position)(*base_iterator->getArea()->Bases().begin()).Location();
 					scout_unit.getUnit()->move(scout_target);
-					base_iterator = base_list.end();
+					base_iterator = game_state.getBaseList()->end();
 				}
 				else
 				{
@@ -243,21 +243,4 @@ void MilitaryManager::scout(WorkerManager &worker_manager, std::vector<AIBase> &
 		}
 		scout_unit.getUnit()->move(scout_target);
 	}
-}
-
-AIBase* MilitaryManager::getContainingBase(BWAPI::Unit unit, std::vector<AIBase> *base_list)
-{
-	auto base_list_iterator = base_list->begin();
-	while (base_list_iterator != base_list->end())
-	{
-		if (base_list_iterator->getArea() == BWEM::Map::Instance().GetNearestArea(unit->getTilePosition()))
-		{
-			return &(*base_list_iterator);
-		}
-		else
-		{
-			base_list_iterator++;
-		}
-	}
-	return nullptr;
 }

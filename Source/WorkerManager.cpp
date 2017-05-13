@@ -1,20 +1,20 @@
 #include"WorkerManager.h"
 
-int WorkerManager::manageWorkers()
+int WorkerManager::manageWorkers(GameState &game_state)
 {
 	int minerals_committed_adjust = 0;
-	auto mineral_worker_iterator = mineral_workers.begin();
-	while (mineral_worker_iterator != mineral_workers.end())
+	auto mineral_worker_iterator = game_state.getMineralWorkers()->begin();
+	while (mineral_worker_iterator != game_state.getMineralWorkers()->end())
 	{
 		if (mineral_worker_iterator->getUnit() == nullptr)
 		{
 			auto erase_iterator = mineral_worker_iterator;
-			mineral_worker_iterator = mineral_workers.erase(erase_iterator);
+			mineral_worker_iterator = game_state.getMineralWorkers()->erase(erase_iterator);
 		}
 		else if (!mineral_worker_iterator->getUnit()->exists())
 		{
 			auto erase_iterator = mineral_worker_iterator;
-			mineral_worker_iterator = mineral_workers.erase(erase_iterator);
+			mineral_worker_iterator = game_state.getMineralWorkers()->erase(erase_iterator);
 		}
 		else
 		{
@@ -45,18 +45,18 @@ int WorkerManager::manageWorkers()
 		}
 	}
 
-	auto build_worker_iterator = build_workers.begin();
-	while (build_worker_iterator != build_workers.end())
+	auto build_worker_iterator = game_state.getBuildWorkers()->begin();
+	while (build_worker_iterator != game_state.getBuildWorkers()->end())
 	{
 		if (build_worker_iterator->getUnit() == nullptr)
 		{
 			auto erase_iterator = build_worker_iterator;
-			build_worker_iterator = build_workers.erase(erase_iterator);
+			build_worker_iterator = game_state.getBuildWorkers()->erase(erase_iterator);
 		}
 		else if (!build_worker_iterator->getUnit()->exists())
 		{
 			auto erase_iterator = build_worker_iterator;
-			build_worker_iterator = build_workers.erase(erase_iterator);
+			build_worker_iterator = game_state.getBuildWorkers()->erase(erase_iterator);
 		}
 		else if (build_worker_iterator->getUnit()->getOrder() != BWAPI::Orders::PlaceBuilding &&
 			build_worker_iterator->getUnit()->getOrder() != BWAPI::Orders::ConstructingBuilding)
@@ -71,9 +71,9 @@ int WorkerManager::manageWorkers()
 			Object new_mineral_worker(*build_worker_iterator);
 			new_mineral_worker.setBuildType(BWAPI::UnitTypes::Unknown);
 			new_mineral_worker.setBaseClass(0);
-			mineral_workers.push_back(new_mineral_worker);
+			game_state.getMineralWorkers()->push_back(new_mineral_worker);
 			auto erase_iterator = build_worker_iterator;
-			build_worker_iterator = build_workers.erase(erase_iterator);
+			build_worker_iterator = game_state.getBuildWorkers()->erase(erase_iterator);
 		}
 		else
 		{
@@ -84,15 +84,10 @@ int WorkerManager::manageWorkers()
 	return minerals_committed_adjust;
 }
 
-void WorkerManager::addMineralWorker(Object new_worker)
+bool WorkerManager::build(BWAPI::UnitType building_type, int base_class, GameState &game_state)
 {
-	mineral_workers.push_back(new_worker);
-}
-
-bool WorkerManager::build(BWAPI::UnitType building_type, int base_class)
-{
-	auto mineral_worker_iterator = mineral_workers.begin();
-	while (mineral_worker_iterator != mineral_workers.end())
+	auto mineral_worker_iterator = game_state.getMineralWorkers()->begin();
+	while (mineral_worker_iterator != game_state.getMineralWorkers()->end())
 	{
 		if (mineral_worker_iterator->getBase()->getBaseClass() == base_class &&
 			!mineral_worker_iterator->getUnit()->isCarryingMinerals() &&
@@ -107,8 +102,8 @@ bool WorkerManager::build(BWAPI::UnitType building_type, int base_class)
 				{
 					new_build_worker.setBuildType(building_type);
 					new_build_worker.setBaseClass(base_class);
-					build_workers.push_back(new_build_worker);
-					mineral_workers.erase(mineral_worker_iterator);
+					game_state.getBuildWorkers()->push_back(new_build_worker);
+					game_state.getMineralWorkers()->erase(mineral_worker_iterator);
 					return true;
 				}
 				else
@@ -169,30 +164,4 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 				too_close = false;
 		}
 	}
-}
-
-Object WorkerManager::getScout()
-{
-	auto mineral_worker_iterator = mineral_workers.begin();
-	while (mineral_worker_iterator != mineral_workers.end())
-	{
-		if (mineral_worker_iterator->getBase()->getBaseClass() == 3 &&
-			!mineral_worker_iterator->getUnit()->isCarryingMinerals())
-		{
-			Object new_scout(*mineral_worker_iterator);
-			mineral_workers.erase(mineral_worker_iterator);
-			return new_scout;
-		}
-		else
-		{
-			mineral_worker_iterator++;
-		}
-	}
-	Object new_scout;
-	return new_scout;
-}
-
-int WorkerManager::getMineralWorkerCount()
-{
-	return mineral_workers.size();
 }

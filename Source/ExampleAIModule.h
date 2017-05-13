@@ -6,6 +6,7 @@
 #include"AIBase.h"
 #include"MacroManager.h"
 #include"MilitaryManager.h"
+#include"GameState.h"
 
 // Remember not to use "Broodwar" in any global class constructor!
 
@@ -32,6 +33,7 @@ public:
   virtual void onUnitComplete(BWAPI::Unit unit);
   // Everything below this line is safe to modify.
 
+  GameState game_state;
   WorkerManager worker_manager;
   MacroManager macro_manager;
   MilitaryManager military_manager;
