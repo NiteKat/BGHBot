@@ -1,3 +1,6 @@
 Debug/
 Release/
 *.open*
+*.suo
+*.filters
+*.user
