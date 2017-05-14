@@ -18,8 +18,16 @@ public:
 	void toggleAcademy();
 	void addMineralWorker(Object new_worker);
 	void addBarracks(int new_barracks);
+	void addGas(int new_gas);
+	void initializeGasLocations();
+	void setGeyserUsed(BWAPI::TilePosition geyser_position);
+	void setGeyserOpen(BWAPI::TilePosition geyser_position);
+	void addGasCommitted(int new_gas);
+	void toggleComsatStation();
+	void setLastScan(int new_scan);
 
 	AIBase *getContainingBase(BWAPI::Unit);
+	AIBase *getContainingBase(BWAPI::TilePosition tile_position);
 	std::vector<AIBase> *getBaseList();
 	int getSupplyUsed();
 	Object getScout();
@@ -32,6 +40,13 @@ public:
 	std::map<int, Object> *getEnemyUnits();
 	std::vector<Object> *getMineralWorkers();
 	std::vector<Object> *getBuildWorkers();
+	int getGas();
+	BWAPI::TilePosition getGasBuildTileLocation();
+	bool checkValidGasBuildTileLocation();
+	int getGasCommitted();
+	bool checkAcademy();
+	bool checkComsatStation();
+	int getLastScan();
 	
 private:
 	std::vector<Object> building_list;
@@ -39,6 +54,7 @@ private:
 	std::map<int, Object> enemy_units;
 	std::vector<Object> mineral_workers;
 	std::vector<Object> build_workers;
+	std::vector<std::pair<bool, BWAPI::TilePosition>> gas_locations;
 	
 	int supply_used;
 	int supply_total;
@@ -46,6 +62,10 @@ private:
 	int minerals_committed;
 	int barracks;
 	bool academy;
+	int gas;
+	int gas_committed;
+	bool comsat_station;
+	int last_scan;
 };
 
 #endif

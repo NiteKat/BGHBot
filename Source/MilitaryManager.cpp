@@ -47,6 +47,38 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 				}
 			}
 		}
+		else
+		{
+			if ((unit->isBurrowed() ||
+				unit->isCloaked()) &&
+				!unit->isDetected() &&
+				game_state.checkComsatStation() &&
+				BWAPI::Broodwar->elapsedTime() - game_state.getLastScan() > 5)
+			{
+				for (auto unit_to_check : BWAPI::Broodwar->getUnitsInRadius(unit->getPosition(), BWAPI::UnitTypes::Zerg_Lurker.groundWeapon().maxRange()))
+				{
+					if (unit_to_check->getPlayer() == BWAPI::Broodwar->self())
+					{
+						auto building_list_iterator = game_state.getBuildingList()->begin();
+						while (building_list_iterator != game_state.getBuildingList()->end())
+						{
+							if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Comsat_Station &&
+								building_list_iterator->getUnit()->getEnergy() >= 50)
+							{
+								building_list_iterator->getUnit()->useTech(BWAPI::TechTypes::Scanner_Sweep, unit->getPosition());
+								building_list_iterator = game_state.getBuildingList()->end();
+								game_state.setLastScan(BWAPI::Broodwar->elapsedTime());
+							}
+							else
+							{
+								building_list_iterator++;
+							}
+						}
+						break;
+					}
+				}
+			}
+		}
 	}
 	auto military_iterator = military.begin();
 	while (military_iterator != military.end())

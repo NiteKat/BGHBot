@@ -83,6 +83,7 @@ void ExampleAIModule::onStart()
 			}
 		}
 		scouted = false;
+		game_state.initializeGasLocations();
 	}
 	catch (const std::exception & e)
 	{
@@ -142,7 +143,6 @@ void ExampleAIModule::onFrame()
 	{
 		Broodwar << "EXCEPTION: " << e.what() << std::endl;
 	}
-
 }
 
 void ExampleAIModule::onSendText(std::string text)
@@ -248,6 +248,30 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
 		  game_state.addBuilding(new_building);
 		  game_state.addMineralsCommitted(-150);
 	  }
+	  else if (unit->getType() == UnitTypes::Terran_Refinery &&
+		  unit->getPlayer() == Broodwar->self())
+	  {
+		  Object new_building(unit, game_state.getContainingBase(unit));
+		  game_state.addBuilding(new_building);
+		  game_state.addMineralsCommitted(-100);
+		  game_state.setGeyserUsed(unit->getTilePosition());
+	  }
+	  else if (unit->getType() == UnitTypes::Terran_Comsat_Station &&
+		  unit->getPlayer() == Broodwar->self())
+	  {
+		  Object new_building(unit, game_state.getContainingBase(unit));
+		  game_state.addBuilding(new_building);
+		  game_state.addMineralsCommitted(-50);
+		  game_state.addGasCommitted(-50);
+		  game_state.toggleComsatStation();
+	  }
+	  else if (unit->getType() == UnitTypes::Terran_Academy &&
+		  unit->getPlayer() == Broodwar->self())
+	  {
+		  Object new_building(unit, game_state.getContainingBase(unit));
+		  game_state.addBuilding(new_building);
+		  game_state.addMineralsCommitted(-150);
+	  }
   }
 }
 
@@ -280,7 +304,18 @@ void ExampleAIModule::onUnitDestroy(BWAPI::Unit unit)
 		else if (unit->getType() == UnitTypes::Terran_Barracks &&
 			unit->getPlayer() == Broodwar->self())
 		{
-			//Code to lower # of Barracks.
+			game_state.addBarracks(-1);
+		}
+		else if (unit->getType() == UnitTypes::Terran_Refinery &&
+			unit->getPlayer() == Broodwar->self())
+		{
+			game_state.setGeyserOpen(unit->getTilePosition());
+			game_state.addGas(-1);
+		}
+		else if (unit->getType() == UnitTypes::Terran_Academy &&
+			unit->getPlayer() == Broodwar->self())
+		{
+			game_state.toggleAcademy();
 		}
 
 	}

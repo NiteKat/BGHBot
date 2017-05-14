@@ -54,3 +54,30 @@ BWAPI::UnitType Object::getBuildType()
 {
 	return build_type;
 }
+
+void Object::addGasWorker(int new_unit_id)
+{
+	gas_worker_unit_id_list.push_back(new_unit_id);
+}
+
+void Object::removeGasWorker(int remove_unit_id)
+{
+	auto gas_worker_iterator = gas_worker_unit_id_list.begin();
+	while (gas_worker_iterator != gas_worker_unit_id_list.end())
+	{
+		if (*gas_worker_iterator == remove_unit_id)
+		{
+			gas_worker_unit_id_list.erase(gas_worker_iterator);
+			return;
+		}
+		else
+		{
+			gas_worker_iterator++;
+		}
+	}
+}
+
+int Object::getNumberGasWorkers()
+{
+	return gas_worker_unit_id_list.size();
+}

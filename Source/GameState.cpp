@@ -8,6 +8,10 @@ GameState::GameState()
 	minerals_committed = 0;
 	barracks = 0;
 	academy = false;
+	gas = 0;
+	gas_committed = 0;
+	comsat_station = false;
+	last_scan = 0;
 }
 
 void GameState::addAIBase(AIBase new_base)
@@ -54,6 +58,23 @@ AIBase* GameState::getContainingBase(BWAPI::Unit unit)
 	while (base_list_iterator != base_list.end())
 	{
 		if (base_list_iterator->getArea() == BWEM::Map::Instance().GetNearestArea(unit->getTilePosition()))
+		{
+			return &(*base_list_iterator);
+		}
+		else
+		{
+			base_list_iterator++;
+		}
+	}
+	return nullptr;
+}
+
+AIBase* GameState::getContainingBase(BWAPI::TilePosition tile_position)
+{
+	auto base_list_iterator = base_list.begin();
+	while (base_list_iterator != base_list.end())
+	{
+		if (base_list_iterator->getArea() == BWEM::Map::Instance().GetNearestArea(tile_position))
 		{
 			return &(*base_list_iterator);
 		}
@@ -151,4 +172,141 @@ std::vector<Object>* GameState::getMineralWorkers()
 std::vector<Object>* GameState::getBuildWorkers()
 {
 	return &build_workers;
+}
+
+void GameState::addGas(int new_gas)
+{
+	gas += new_gas;
+}
+
+int GameState::getGas()
+{
+	return gas;
+}
+
+void GameState::initializeGasLocations()
+{
+	BWAPI::Unitset geyser_list = BWAPI::Broodwar->getStaticGeysers();
+	auto geyser_list_iterator = geyser_list.begin();
+	while (geyser_list_iterator != geyser_list.end())
+	{
+		std::pair<bool, BWAPI::TilePosition> new_geyser;
+		new_geyser.first = false;
+		new_geyser.second = (*geyser_list_iterator)->getTilePosition();
+		gas_locations.push_back(new_geyser);
+		geyser_list_iterator++;
+	}
+}
+
+BWAPI::TilePosition GameState::getGasBuildTileLocation()
+{
+	auto gas_location_iterator = gas_locations.begin();
+	while (gas_location_iterator != gas_locations.end())
+	{
+		if (gas_location_iterator->first == false &&
+			getContainingBase(gas_location_iterator->second)->getBaseClass() == 3)
+		{
+			return gas_location_iterator->second;
+		}
+		else
+		{
+			gas_location_iterator++;
+		}
+	}
+	return BWAPI::TilePositions::Invalid;
+}
+bool GameState::checkValidGasBuildTileLocation()
+{
+	auto gas_location_iterator = gas_locations.begin();
+	while (gas_location_iterator != gas_locations.end())
+	{
+		if (gas_location_iterator->first == false &&
+			getContainingBase(gas_location_iterator->second)->getBaseClass() == 3)
+		{
+			return true;
+		}
+		else
+		{
+			gas_location_iterator++;
+		}
+	}
+	return false;
+}
+
+void GameState::setGeyserUsed(BWAPI::TilePosition geyser_position)
+{
+	auto gas_location_iterator = gas_locations.begin();
+	while (gas_location_iterator != gas_locations.end())
+	{
+		if (gas_location_iterator->first == false &&
+			gas_location_iterator->second == geyser_position)
+		{
+			gas_location_iterator->first = true;
+			return;
+		}
+		else
+		{
+			gas_location_iterator++;
+		}
+	}
+}
+
+void GameState::setGeyserOpen(BWAPI::TilePosition geyser_position)
+{
+	auto gas_location_iterator = gas_locations.begin();
+	while (gas_location_iterator != gas_locations.end())
+	{
+		if (gas_location_iterator->first == true &&
+			gas_location_iterator->second == geyser_position)
+		{
+			gas_location_iterator->first = false;
+			return;
+		}
+		else
+		{
+			gas_location_iterator++;
+		}
+	}
+}
+
+int GameState::getGasCommitted()
+{
+	return gas_committed;
+}
+
+void GameState::addGasCommitted(int new_gas)
+{
+	gas_committed += new_gas;
+	if (gas_committed < 0)
+		gas_committed = 0;
+}
+
+bool GameState::checkAcademy()
+{
+	return academy;
+}
+
+void GameState::toggleComsatStation()
+{
+	if (comsat_station == false)
+	{
+		comsat_station = true;
+	}
+	else
+		comsat_station = false;
+}
+
+bool GameState::checkComsatStation()
+{
+	return comsat_station;
+}
+
+void GameState::setLastScan(int new_scan)
+{
+	last_scan = new_scan;
+}
+
+int GameState::getLastScan()
+{
+	return last_scan;
 }
