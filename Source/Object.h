@@ -17,11 +17,15 @@ public:
 	void clearObject();
 	void addGasWorker(int new_unit_id);
 	void removeGasWorker(int remove_unit_id);
+	void setDiscoveredPosition(BWAPI::TilePosition new_position);
+	void setIsBuilding();
 
 	BWAPI::Unit getUnit();
 	AIBase *getBase();
 	BWAPI::UnitType getBuildType();
 	int getNumberGasWorkers();
+	BWAPI::TilePosition getDiscoveredPosition();
+	bool isBuilding();
 
 private:
 	BWAPI::Unit my_unit;
@@ -29,6 +33,8 @@ private:
 	BWAPI::UnitType build_type;
 	int base_class;
 	std::vector<int> gas_worker_unit_id_list;
+	BWAPI::TilePosition my_discovered_position;
+	bool is_building;
 };
 
 #endif

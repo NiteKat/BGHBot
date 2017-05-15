@@ -6,6 +6,8 @@ Object::Object(BWAPI::Unit new_unit, AIBase *new_base)
 	my_base = new_base;
 	build_type = BWAPI::UnitTypes::Unknown;
 	base_class = 0;
+	my_discovered_position = BWAPI::TilePositions::Invalid;
+	is_building = false;
 }
 
 Object::Object(BWAPI::Unit new_unit)
@@ -14,6 +16,8 @@ Object::Object(BWAPI::Unit new_unit)
 	my_base = nullptr;
 	build_type = BWAPI::UnitTypes::Unknown;
 	base_class = 0;
+	my_discovered_position = BWAPI::TilePositions::Invalid;
+	is_building = false;
 }
 
 Object::Object()
@@ -22,6 +26,8 @@ Object::Object()
 	my_base = nullptr;
 	build_type = BWAPI::UnitTypes::Unknown;
 	base_class = 0;
+	my_discovered_position = BWAPI::TilePositions::Invalid;
+	is_building = false;
 }
 
 void Object::setBuildType(BWAPI::UnitType new_build_type)
@@ -80,4 +86,24 @@ void Object::removeGasWorker(int remove_unit_id)
 int Object::getNumberGasWorkers()
 {
 	return gas_worker_unit_id_list.size();
+}
+
+void Object::setDiscoveredPosition(BWAPI::TilePosition new_position)
+{
+	my_discovered_position = new_position;
+}
+
+BWAPI::TilePosition Object::getDiscoveredPosition()
+{
+	return my_discovered_position;
+}
+
+void Object::setIsBuilding()
+{
+	is_building = true;
+}
+
+bool Object::isBuilding()
+{
+	return is_building;
 }

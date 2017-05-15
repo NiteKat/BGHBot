@@ -310,3 +310,111 @@ int GameState::getLastScan()
 {
 	return last_scan;
 }
+
+AIBase* GameState::getClosestEnemyBase()
+{
+	checkBaseOwnership();
+	auto base_list_iterator = base_list.begin();
+	auto main_base = base_list_iterator;
+	auto last_enemy_base_found = base_list_iterator;
+	bool found_main = false;
+	std::vector<AIBase*> enemy_base_list;
+	while (base_list_iterator != base_list.end())
+	{
+		if (base_list_iterator->getBaseClass() == 3)
+		{
+			main_base = base_list_iterator;
+			found_main = true;
+			base_list_iterator++;
+		}
+		else if (base_list_iterator->getBaseClass() == 2)
+		{
+			enemy_base_list.push_back(&(*base_list_iterator));
+			base_list_iterator++;
+		}
+		else
+		{
+			base_list_iterator++;
+		}
+	}
+	if (enemy_base_list.size() == 0)
+	{
+		return nullptr;
+	}
+	else if (enemy_base_list.size() == 1)
+	{
+		return (*enemy_base_list.begin());
+	}
+	else if (found_main == true)
+	{
+		auto enemy_base_iterator = enemy_base_list.begin();
+		auto closest_base = enemy_base_iterator;
+		BWEM::CPPath closest_path;
+		BWEM::CPPath path_to_check;
+		while (enemy_base_iterator != enemy_base_list.end())
+		{
+			path_to_check = BWEM::Map::Instance().GetPath(BWAPI::Position((*enemy_base_iterator)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
+			if (path_to_check.size() < closest_path.size())
+			{
+				closest_path = path_to_check;
+				closest_base = enemy_base_iterator;
+			}
+			enemy_base_iterator++;
+		}
+		return *closest_base;
+	}
+	else
+	{
+		return nullptr;
+	}
+}
+
+void GameState::checkBaseOwnership()
+{
+
+	auto base_list_iterator = base_list.begin();
+	while (base_list_iterator != base_list.end())
+	{
+		if (base_list_iterator->getBaseClass() != 3)
+		{
+			base_list_iterator->setBaseClass(1);
+			for (auto unit : building_list)
+			{
+				if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetNearestArea(unit.getUnit()->getTilePosition())->Id())
+				{
+					base_list_iterator->setBaseClass(4);
+					break;
+				}
+			}
+			if (base_list_iterator->getBaseClass() == 1)
+			{
+				for (auto unit : BWAPI::Broodwar->allies().getUnits())
+				{
+					if (unit->getType().isBuilding())
+					{
+						if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetNearestArea(unit->getTilePosition())->Id())
+						{
+							base_list_iterator->setBaseClass(5);
+							break;
+						}
+					}
+				}
+			}
+			if (base_list_iterator->getBaseClass() == 1)
+			{
+				for (auto unit : enemy_units)
+				{
+					if (unit.second.isBuilding())
+					{
+						if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetNearestArea(unit.second.getDiscoveredPosition())->Id())
+						{
+							base_list_iterator->setBaseClass(2);
+							break;
+						}
+					}
+				}
+			}
+		}
+		base_list_iterator++;
+	}
+}

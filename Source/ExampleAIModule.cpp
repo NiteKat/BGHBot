@@ -79,6 +79,8 @@ void ExampleAIModule::onStart()
 				else if (area.Minerals().size() > 0)
 					base_region = 1;
 				AIBase new_base(&area, base_region);
+				if (new_base.getBaseClass() == 3)
+					new_base.toggleScouted();
 				game_state.addAIBase(new_base);
 			}
 		}
@@ -279,6 +281,12 @@ void ExampleAIModule::onUnitDestroy(BWAPI::Unit unit)
 {
 	try
 	{
+		if (unit->getPlayer()->isEnemy(Broodwar->self()))
+		{
+			auto dead_enemy = game_state.getEnemyUnits()->find(unit->getID());
+			if (dead_enemy != game_state.getEnemyUnits()->end())
+				game_state.getEnemyUnits()->erase(dead_enemy);
+		}
 		if (unit->getType().isMineralField())
 		{
 			theMap.OnMineralDestroyed(unit);

@@ -25,6 +25,8 @@ public:
 	void addGasCommitted(int new_gas);
 	void toggleComsatStation();
 	void setLastScan(int new_scan);
+	void checkBaseOwnership();
+	
 
 	AIBase *getContainingBase(BWAPI::Unit);
 	AIBase *getContainingBase(BWAPI::TilePosition tile_position);
@@ -47,6 +49,7 @@ public:
 	bool checkAcademy();
 	bool checkComsatStation();
 	int getLastScan();
+	AIBase* getClosestEnemyBase();
 	
 private:
 	std::vector<Object> building_list;

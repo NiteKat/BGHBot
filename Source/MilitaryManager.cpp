@@ -13,6 +13,7 @@ void MilitaryManager::addUnit(Object new_unit)
 
 void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &game_state)
 {
+	AIBase* target_base;
 	if (global_strategy == 0 &&
 		military.size() > 50)
 	{
@@ -23,62 +24,51 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 	{
 		global_strategy = 0;
 	}
+	if (global_strategy == 1)
+	{
+		target_base = game_state.getClosestEnemyBase();
+	}
 	for (auto unit : BWAPI::Broodwar->enemies().getUnits())
 	{
 		if (game_state.getEnemyUnits()->find(unit->getID()) == game_state.getEnemyUnits()->end() &&
 			unit->exists())
 		{
 			Object new_enemy(unit);
+			new_enemy.setDiscoveredPosition(unit->getTilePosition());
+			if (unit->getType().isBuilding())
+				new_enemy.setIsBuilding();
 			game_state.getEnemyUnits()->insert(std::pair<int, Object>(unit->getID(), new_enemy));
 		}
-		if (unit->getType().isBuilding())
+		if ((unit->isBurrowed() ||
+			unit->isCloaked()) &&
+			!unit->isDetected() &&
+			game_state.checkComsatStation() &&
+			BWAPI::Broodwar->elapsedTime() - game_state.getLastScan() > 5)
 		{
-			auto base_list_iterator = game_state.getBaseList()->begin();
-			while (base_list_iterator != game_state.getBaseList()->end())
+			for (auto unit_to_check : BWAPI::Broodwar->getUnitsInRadius(unit->getPosition(), BWAPI::UnitTypes::Zerg_Lurker.groundWeapon().maxRange()))
 			{
-				if (base_list_iterator->getArea() == BWEM::Map::Instance().GetNearestArea(unit->getTilePosition()))
+				if (unit_to_check->getPlayer() == BWAPI::Broodwar->self())
 				{
-					base_list_iterator->setBaseClass(2);
-					base_list_iterator = game_state.getBaseList()->end();
-				}
-				else
-				{
-					base_list_iterator++;
-				}
-			}
-		}
-		else
-		{
-			if ((unit->isBurrowed() ||
-				unit->isCloaked()) &&
-				!unit->isDetected() &&
-				game_state.checkComsatStation() &&
-				BWAPI::Broodwar->elapsedTime() - game_state.getLastScan() > 5)
-			{
-				for (auto unit_to_check : BWAPI::Broodwar->getUnitsInRadius(unit->getPosition(), BWAPI::UnitTypes::Zerg_Lurker.groundWeapon().maxRange()))
-				{
-					if (unit_to_check->getPlayer() == BWAPI::Broodwar->self())
+					auto building_list_iterator = game_state.getBuildingList()->begin();
+					while (building_list_iterator != game_state.getBuildingList()->end())
 					{
-						auto building_list_iterator = game_state.getBuildingList()->begin();
-						while (building_list_iterator != game_state.getBuildingList()->end())
+						if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Comsat_Station &&
+							building_list_iterator->getUnit()->getEnergy() >= 50)
 						{
-							if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Comsat_Station &&
-								building_list_iterator->getUnit()->getEnergy() >= 50)
-							{
-								building_list_iterator->getUnit()->useTech(BWAPI::TechTypes::Scanner_Sweep, unit->getPosition());
-								building_list_iterator = game_state.getBuildingList()->end();
-								game_state.setLastScan(BWAPI::Broodwar->elapsedTime());
-							}
-							else
-							{
-								building_list_iterator++;
-							}
+							building_list_iterator->getUnit()->useTech(BWAPI::TechTypes::Scanner_Sweep, unit->getPosition());
+							building_list_iterator = game_state.getBuildingList()->end();
+							game_state.setLastScan(BWAPI::Broodwar->elapsedTime());
 						}
-						break;
+						else
+						{
+							building_list_iterator++;
+						}
 					}
+					break;
 				}
 			}
 		}
+		
 	}
 	auto military_iterator = military.begin();
 	while (military_iterator != military.end())
@@ -99,11 +89,14 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 				military_iterator->getUnit()->isIdle())
 			{
 				auto enemy_iterator = game_state.getEnemyUnits()->begin();
+				game_state.checkBaseOwnership();
 				while (enemy_iterator != game_state.getEnemyUnits()->end())
 				{
 					if (enemy_iterator->second.getUnit()->exists())
 					{
-						if (game_state.getContainingBase(enemy_iterator->second.getUnit())->getBaseClass() == 3)
+						if (game_state.getContainingBase(enemy_iterator->second.getUnit())->getBaseClass() == 3 ||
+							game_state.getContainingBase(enemy_iterator->second.getUnit())->getBaseClass() == 4 ||
+							game_state.getContainingBase(enemy_iterator->second.getUnit())->getBaseClass() == 5)
 						{
 							military_iterator->getUnit()->attack(enemy_iterator->second.getUnit()->getPosition());
 							enemy_iterator = game_state.getEnemyUnits()->end();
@@ -122,19 +115,24 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 			else if (global_strategy == 1 &&
 				military_iterator->getUnit()->isIdle())
 			{
-				auto base_list_iterator = game_state.getBaseList()->begin();
-				while (base_list_iterator != game_state.getBaseList()->end())
+				if (target_base != nullptr)
 				{
-					if (base_list_iterator->getBaseClass() == 2)
+					auto enemy_unit_iterator = game_state.getEnemyUnits()->begin();
+					while (enemy_unit_iterator != game_state.getEnemyUnits()->end())
 					{
-						military_iterator->getUnit()->attack((BWAPI::Position)base_list_iterator->getArea()->Top());
-						base_list_iterator = game_state.getBaseList()->end();
-					}
-					else
-					{
-						base_list_iterator++;
+						if (enemy_unit_iterator->second.isBuilding() &&
+							target_base->getArea()->Id() == BWEM::Map::Instance().GetNearestArea(enemy_unit_iterator->second.getDiscoveredPosition())->Id())
+						{
+							military_iterator->getUnit()->attack((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
+							enemy_unit_iterator = game_state.getEnemyUnits()->end();
+						}
+						else
+						{
+							enemy_unit_iterator++;
+						}
 					}
 				}
+					
 			}
 			military_iterator++;
 		}
@@ -145,33 +143,13 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 		{
 			if (scout_unit.getUnit()->getDistance(scout_target) < 100)
 			{
-				
-				/*for (auto unit : scout_unit.getUnit()->getUnitsInRadius(100))
-				{
-					if (unit->getPlayer() != BWAPI::Broodwar->self())
-					{
-						auto base_list_iterator = game_state.getBaseList()->begin();
-						while (base_list_iterator != game_state.getBaseList()->end())
-						{
-							if (base_list_iterator->getArea() == BWEM::Map::Instance().GetNearestArea(scout_unit.getUnit()->getTilePosition()))
-							{
-								base_list_iterator->setBaseClass(2);
-								base_list_iterator = game_state.getBaseList()->end();
-							}
-							else
-							{
-								base_list_iterator++;
-							}
-						}
-					}
-				}*/
 				auto base_list_iterator = game_state.getBaseList()->begin();
 				while (base_list_iterator != game_state.getBaseList()->end())
 				{
 					if (base_list_iterator->getArea() == BWEM::Map::Instance().GetNearestArea(scout_unit.getUnit()->getTilePosition()) &&
-						base_list_iterator->getBaseClass() == 1)
+						base_list_iterator->getScouted() == false)
 					{
-						base_list_iterator->setBaseClass(0);
+						base_list_iterator->toggleScouted();
 						base_list_iterator = game_state.getBaseList()->end();
 					}
 					else
@@ -186,7 +164,7 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 					if (base_iterator->getArea()->Bases().size() > 0)
 					{
 						if ((*base_iterator->getArea()->Bases().begin()).Starting() &&
-							base_iterator->getBaseClass() == 1)
+							base_iterator->getScouted() == false)
 						{
 							scout_target = (BWAPI::Position)(*base_iterator->getArea()->Bases().begin()).Location();
 							scout_unit.getUnit()->move(scout_target);
