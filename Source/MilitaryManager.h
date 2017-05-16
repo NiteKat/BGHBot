@@ -14,8 +14,6 @@ class MilitaryManager
 public:
 	MilitaryManager();
 
-
-
 	void checkMilitary(WorkerManager &worker_manager, GameState &game_state);
 	void scout(WorkerManager &worker_manager, GameState &game_state);
 

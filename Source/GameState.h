@@ -11,7 +11,7 @@ public:
 
 	void addAIBase(AIBase new_base);
 	void addBuilding(Object new_building);
-	void addSupplyUsed(int new_supply);
+	void addSupplyUsed(double new_supply);
 	void addSupplyTotal(int new_supply);
 	void addMineralsCommitted(int new_minerals);
 	void addSupplyExpected(int new_supply);
@@ -27,19 +27,19 @@ public:
 	void setLastScan(int new_scan);
 	void checkBaseOwnership();
 	void addUnit(Object new_unit);
-	
+	void addLarva(Object new_larva);
 
 	AIBase *getContainingBase(BWAPI::Unit);
 	AIBase *getContainingBase(BWAPI::TilePosition tile_position);
 	std::vector<AIBase> *getBaseList();
-	int getSupplyUsed();
+	double getSupplyUsed();
 	Object getScout();
 	int getMineralWorkerCount();
 	std::vector<Object> *getBuildingList();
 	int getMineralsCommitted();
-	int getSupplyTotal();
+	double getSupplyTotal();
 	int getBarracks();
-	int getSupplyExpected();
+	double getSupplyExpected();
 	std::map<int, Object> *getEnemyUnits();
 	std::vector<Object> *getMineralWorkers();
 	std::vector<Object> *getBuildWorkers();
@@ -53,6 +53,8 @@ public:
 	AIBase* getClosestEnemyBase();
 	int getUnitTypeCount(BWAPI::UnitType type_to_check);
 	std::vector<Object> *getMilitary();
+	std::vector<Object> *getLarva();
+	int getBuildingTypeCount(BWAPI::UnitType type_to_check);
 	
 private:
 	std::vector<Object> building_list;
@@ -62,10 +64,11 @@ private:
 	std::vector<Object> build_workers;
 	std::vector<std::pair<bool, BWAPI::TilePosition>> gas_locations;
 	std::vector<Object> military;
+	std::vector<Object> larva;
 	
-	int supply_used;
-	int supply_total;
-	int supply_expected;
+	double supply_used;
+	double supply_total;
+	double supply_expected;
 	int minerals_committed;
 	int barracks;
 	bool academy;
@@ -73,6 +76,7 @@ private:
 	int gas_committed;
 	bool comsat_station;
 	int last_scan;
+
 };
 
 #endif

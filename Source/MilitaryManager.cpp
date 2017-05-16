@@ -6,18 +6,42 @@ MilitaryManager::MilitaryManager()
 	global_strategy = 0;
 }
 
-
-
 void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &game_state)
 {
 	AIBase* target_base;
 	if (global_strategy == 0 &&
-		game_state.getMilitary()->size() > 50)
+		game_state.getMilitary()->size() > 50 &&
+		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
 	{
 		global_strategy = 1;
 	}
 	else if (global_strategy == 1 &&
-		game_state.getMilitary()->size() <= 50)
+		game_state.getMilitary()->size() <= 50 &&
+		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
+	{
+		global_strategy = 0;
+	}
+	if (global_strategy == 0 &&
+		game_state.getMilitary()->size() > 30 &&
+		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss)
+	{
+		global_strategy = 1;
+	}
+	else if (global_strategy == 1 &&
+		game_state.getMilitary()->size() <= 30 &&
+		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss)
+	{
+		global_strategy = 0;
+	}
+	else if (global_strategy == 0 &&
+		game_state.getSupplyUsed() > 180 &&
+		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Zerg)
+	{
+		global_strategy = 1;
+	}
+	else if (global_strategy == 1 &&
+		game_state.getSupplyUsed() <= 180 &&
+		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Zerg)
 	{
 		global_strategy = 0;
 	}
@@ -138,7 +162,7 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 	{
 		if (scout_target != BWAPI::Positions::Invalid)
 		{
-			if (scout_unit.getUnit()->getDistance(scout_target) < 100)
+			if (scout_unit.getUnit()->getDistance(scout_target) < 200)
 			{
 				auto base_list_iterator = game_state.getBaseList()->begin();
 				while (base_list_iterator != game_state.getBaseList()->end())

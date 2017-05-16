@@ -4,7 +4,10 @@ GameState::GameState()
 {
 	supply_total = 0;
 	supply_used = 0;
-	supply_expected = 10;
+	if (BWAPI::Broodwar->self()->getRace() != BWAPI::Races::Zerg)
+		supply_expected = 10;
+	else
+		supply_expected = 0;
 	minerals_committed = 0;
 	barracks = 0;
 	academy = false;
@@ -24,7 +27,7 @@ void GameState::addBuilding(Object new_building)
 	building_list.push_back(new_building);
 }
 
-void GameState::addSupplyUsed(int new_supply)
+void GameState::addSupplyUsed(double new_supply)
 {
 	supply_used += new_supply;
 }
@@ -91,7 +94,7 @@ std::vector<AIBase>* GameState::getBaseList()
 	return &base_list;
 }
 
-int GameState::getSupplyUsed()
+double GameState::getSupplyUsed()
 {
 	return supply_used;
 }
@@ -137,7 +140,7 @@ int GameState::getMineralsCommitted()
 	return minerals_committed;
 }
 
-int GameState::getSupplyTotal()
+double GameState::getSupplyTotal()
 {
 	return supply_total;
 }
@@ -147,7 +150,7 @@ int GameState::getBarracks()
 	return barracks;
 }
 
-int GameState::getSupplyExpected()
+double GameState::getSupplyExpected()
 {
 	return supply_expected;
 }
@@ -422,12 +425,12 @@ void GameState::checkBaseOwnership()
 int GameState::getUnitTypeCount(BWAPI::UnitType type_to_check)
 {
 	int count_of_type = 0;
-	auto military_list_iterator = military.begin();
-	while (military_list_iterator != military.end())
+	auto military_iterator = military.begin();
+	while (military_iterator != military.end())
 	{
-		if (military_list_iterator->getUnit()->getType() == type_to_check)
+		if (military_iterator->getUnit()->getType() == type_to_check)
 			count_of_type++;
-		military_list_iterator++;
+		military_iterator++;
 	}
 	return count_of_type;
 }
@@ -440,4 +443,27 @@ void GameState::addUnit(Object new_unit)
 std::vector<Object>* GameState::getMilitary()
 {
 	return &military;
+}
+
+void GameState::addLarva(Object new_larva)
+{
+	larva.push_back(new_larva);
+}
+
+std::vector<Object>* GameState::getLarva()
+{
+	return &larva;
+}
+
+int GameState::getBuildingTypeCount(BWAPI::UnitType type_to_check)
+{
+	int count_of_type = 0;
+	auto building_list_iterator = building_list.begin();
+	while (building_list_iterator != building_list.end())
+	{
+		if (building_list_iterator->getUnit()->getType() == type_to_check)
+			count_of_type++;
+		building_list_iterator++;
+	}
+	return count_of_type;
 }

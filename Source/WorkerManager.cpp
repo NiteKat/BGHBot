@@ -59,7 +59,12 @@ int WorkerManager::manageWorkers(GameState &game_state)
 			build_worker_iterator = game_state.getBuildWorkers()->erase(erase_iterator);
 		}
 		else if (build_worker_iterator->getUnit()->getOrder() != BWAPI::Orders::PlaceBuilding &&
-			build_worker_iterator->getUnit()->getOrder() != BWAPI::Orders::ConstructingBuilding)
+			((build_worker_iterator->getUnit()->getOrder() != BWAPI::Orders::ConstructingBuilding &&
+			BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran) || 
+			(build_worker_iterator->getUnit()->getOrder() != BWAPI::Orders::PlayerGuard &&
+			BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss) ||
+			(build_worker_iterator->getUnit()->getOrder() != BWAPI::Orders::IncompleteBuilding &&
+			BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Zerg)))
 		{
 			BWAPI::Broodwar << "DEBUG: Order = " << build_worker_iterator->getUnit()->getOrder().toString() << std::endl;
 			if (build_worker_iterator->getBuildType() != BWAPI::UnitTypes::Terran_Refinery)
@@ -75,7 +80,8 @@ int WorkerManager::manageWorkers(GameState &game_state)
 				build_worker_iterator++;
 			}
 		}
-		else if (build_worker_iterator->getUnit()->getOrder() == BWAPI::Orders::ConstructingBuilding)
+		else if (build_worker_iterator->getUnit()->getOrder() == BWAPI::Orders::ConstructingBuilding &&
+			BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
 		{
 			if (build_worker_iterator->getBuildType() != BWAPI::UnitTypes::Terran_Refinery)
 			{
@@ -96,6 +102,30 @@ int WorkerManager::manageWorkers(GameState &game_state)
 				auto erase_iterator = build_worker_iterator;
 				build_worker_iterator = game_state.getBuildWorkers()->erase(erase_iterator);				
 			}
+		}
+		else if (build_worker_iterator->getUnit()->getOrder() == BWAPI::Orders::PlayerGuard &&
+			BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss)
+		{
+			Object new_mineral_worker(*build_worker_iterator);
+			if (new_mineral_worker.getBuildType() == BWAPI::UnitTypes::Protoss_Pylon)
+			{
+				game_state.addMineralsCommitted(-100);
+			}
+			else if (new_mineral_worker.getBuildType() == BWAPI::UnitTypes::Protoss_Gateway)
+			{
+				game_state.addMineralsCommitted(-150);
+			}
+			new_mineral_worker.setBuildType(BWAPI::UnitTypes::Unknown);
+			new_mineral_worker.setBaseClass(0);
+			game_state.getMineralWorkers()->push_back(new_mineral_worker);
+			auto erase_iterator = build_worker_iterator;
+			build_worker_iterator = game_state.getBuildWorkers()->erase(erase_iterator);
+		}
+		else if (build_worker_iterator->getUnit()->getOrder() == BWAPI::Orders::IncompleteBuilding &&
+			BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Zerg)
+		{
+			auto erase_iterator = build_worker_iterator;
+			build_worker_iterator = game_state.getBuildWorkers()->erase(erase_iterator);
 		}
 		else
 		{
@@ -175,45 +205,52 @@ bool WorkerManager::build(BWAPI::UnitType building_type, int base_class, GameSta
 
 BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::UnitType building_type)
 {
-	BWAPI::TilePosition position_to_try = build_worker.getBase()->getArea()->Bases().begin()->Location();
-	bool too_close = false;
-	while (true)
+	if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
 	{
-		position_to_try.x += rand() % 6 - 3;
-		if (position_to_try.x < 0)
+		BWAPI::TilePosition position_to_try = build_worker.getBase()->getArea()->Bases().begin()->Location();
+		bool too_close = false;
+		while (true)
 		{
-			position_to_try.x = 0;
-		}
-		if (position_to_try.x > BWAPI::Broodwar->mapWidth())
-		{
-			position_to_try.x = BWAPI::Broodwar->mapWidth();
-		}
-		position_to_try.y += rand() % 6 - 3;
-		if (position_to_try.y < 0)
-		{
-			position_to_try.y = 0;
-		}
-		if (position_to_try.y > BWAPI::Broodwar->mapHeight())
-		{
-			position_to_try.y = BWAPI::Broodwar->mapHeight();
-		}
-		if (BWAPI::Broodwar->canBuildHere(position_to_try, building_type))
-		{
-			for (auto unit : BWAPI::Broodwar->getUnitsInRadius((BWAPI::Position)position_to_try, 128))
+			position_to_try.x += rand() % 6 - 3;
+			if (position_to_try.x < 0)
 			{
-				if ((unit->getType() == BWAPI::UnitTypes::Resource_Mineral_Field ||
-					unit->getType() == BWAPI::UnitTypes::Resource_Mineral_Field_Type_2 ||
-					unit->getType() == BWAPI::UnitTypes::Resource_Mineral_Field_Type_3 ||
-					unit->getType() == BWAPI::UnitTypes::Terran_Command_Center) &&
-					unit->getTilePosition().getDistance(position_to_try) <= 128)
-				{
-					too_close = true;
-				}
+				position_to_try.x = 0;
 			}
-			if (too_close == false)
-				return position_to_try;
-			else
-				too_close = false;
+			if (position_to_try.x > BWAPI::Broodwar->mapWidth())
+			{
+				position_to_try.x = BWAPI::Broodwar->mapWidth();
+			}
+			position_to_try.y += rand() % 6 - 3;
+			if (position_to_try.y < 0)
+			{
+				position_to_try.y = 0;
+			}
+			if (position_to_try.y > BWAPI::Broodwar->mapHeight())
+			{
+				position_to_try.y = BWAPI::Broodwar->mapHeight();
+			}
+			if (BWAPI::Broodwar->canBuildHere(position_to_try, building_type))
+			{
+				for (auto unit : BWAPI::Broodwar->getUnitsInRadius((BWAPI::Position)position_to_try, 128))
+				{
+					if ((unit->getType() == BWAPI::UnitTypes::Resource_Mineral_Field ||
+						unit->getType() == BWAPI::UnitTypes::Resource_Mineral_Field_Type_2 ||
+						unit->getType() == BWAPI::UnitTypes::Resource_Mineral_Field_Type_3 ||
+						unit->getType() == BWAPI::UnitTypes::Terran_Command_Center) &&
+						unit->getTilePosition().getDistance(position_to_try) <= 128)
+					{
+						too_close = true;
+					}
+				}
+				if (too_close == false)
+					return position_to_try;
+				else
+					too_close = false;
+			}
 		}
+	}
+	else
+	{
+		return BWAPI::Broodwar->getBuildLocation(building_type, build_worker.getUnit()->getTilePosition());
 	}
 }

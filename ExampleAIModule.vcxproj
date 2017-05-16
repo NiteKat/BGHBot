@@ -42,10 +42,10 @@
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>E:\Program Files (x86)\BWAPI\Brood War\bwapi-data\AI</OutDir>
+    <OutDir>C:\Program Files (x86)\Brood War\bwapi-data\AI</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>E:\Program Files (x86)\BWAPI\Brood War\bwapi-data\AI</OutDir>
+    <OutDir>C:\Program Files (x86)\Brood War\bwapi-data\AI</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
