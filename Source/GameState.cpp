@@ -418,3 +418,26 @@ void GameState::checkBaseOwnership()
 		base_list_iterator++;
 	}
 }
+
+int GameState::getUnitTypeCount(BWAPI::UnitType type_to_check)
+{
+	int count_of_type = 0;
+	auto military_list_iterator = military.begin();
+	while (military_list_iterator != military.end())
+	{
+		if (military_list_iterator->getUnit()->getType() == type_to_check)
+			count_of_type++;
+		military_list_iterator++;
+	}
+	return count_of_type;
+}
+
+void GameState::addUnit(Object new_unit)
+{
+	military.push_back(new_unit);
+}
+
+std::vector<Object>* GameState::getMilitary()
+{
+	return &military;
+}

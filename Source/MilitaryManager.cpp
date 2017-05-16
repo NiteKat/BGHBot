@@ -6,21 +6,18 @@ MilitaryManager::MilitaryManager()
 	global_strategy = 0;
 }
 
-void MilitaryManager::addUnit(Object new_unit)
-{
-	military.push_back(new_unit);
-}
+
 
 void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &game_state)
 {
 	AIBase* target_base;
 	if (global_strategy == 0 &&
-		military.size() > 50)
+		game_state.getMilitary()->size() > 50)
 	{
 		global_strategy = 1;
 	}
 	else if (global_strategy == 1 &&
-		military.size() <= 50)
+		game_state.getMilitary()->size() <= 50)
 	{
 		global_strategy = 0;
 	}
@@ -70,18 +67,18 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 		}
 		
 	}
-	auto military_iterator = military.begin();
-	while (military_iterator != military.end())
+	auto military_iterator = game_state.getMilitary()->begin();
+	while (military_iterator != game_state.getMilitary()->end())
 	{
 		if (military_iterator->getUnit() == nullptr)
 		{
 			auto erase_iterator = military_iterator;
-			military_iterator = military.erase(erase_iterator);
+			military_iterator = game_state.getMilitary()->erase(erase_iterator);
 		}
 		else if (!military_iterator->getUnit()->exists())
 		{
 			auto erase_iterator = military_iterator;
-			military_iterator = military.erase(erase_iterator);
+			military_iterator = game_state.getMilitary()->erase(erase_iterator);
 		}
 		else
 		{

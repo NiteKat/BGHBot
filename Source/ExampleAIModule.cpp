@@ -229,12 +229,13 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
 		  game_state.addMineralWorker(new_worker);
 		  game_state.addSupplyUsed(1);
 	  }
-	  if (unit->getType() == UnitTypes::Terran_Marine &&
+	  if ((unit->getType() == UnitTypes::Terran_Marine ||
+		  unit->getType() == UnitTypes::Terran_Medic ) &&
 		  unit->getPlayer() == Broodwar->self())
 	  {
 		  Object new_unit(unit);
 		  game_state.addSupplyUsed(1);
-		  military_manager.addUnit(new_unit);
+		  game_state.addUnit(new_unit);
 	  }
 	  if (unit->getType() == UnitTypes::Terran_Supply_Depot &&
 		  unit->getPlayer() == Broodwar->self())

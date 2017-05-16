@@ -26,6 +26,7 @@ public:
 	void toggleComsatStation();
 	void setLastScan(int new_scan);
 	void checkBaseOwnership();
+	void addUnit(Object new_unit);
 	
 
 	AIBase *getContainingBase(BWAPI::Unit);
@@ -50,6 +51,8 @@ public:
 	bool checkComsatStation();
 	int getLastScan();
 	AIBase* getClosestEnemyBase();
+	int getUnitTypeCount(BWAPI::UnitType type_to_check);
+	std::vector<Object> *getMilitary();
 	
 private:
 	std::vector<Object> building_list;
@@ -58,6 +61,7 @@ private:
 	std::vector<Object> mineral_workers;
 	std::vector<Object> build_workers;
 	std::vector<std::pair<bool, BWAPI::TilePosition>> gas_locations;
+	std::vector<Object> military;
 	
 	int supply_used;
 	int supply_total;
