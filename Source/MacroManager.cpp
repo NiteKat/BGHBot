@@ -158,6 +158,32 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 				auto erase_iterator = building_list_iterator;
 				building_list_iterator = game_state.getBuildingList()->erase(erase_iterator);
 			}
+			else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Zerg_Hatchery &&
+				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Zerg_Hydralisk_Den) > 0 &&
+				(game_state.getBuildingTypeCount(BWAPI::UnitTypes::Zerg_Lair) == 0 &&
+				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Zerg_Hive) == 0) &&
+				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 &&
+				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 100)
+			{
+				building_list_iterator->getUnit()->morph(BWAPI::UnitTypes::Zerg_Lair);
+				building_list_iterator++;
+			}
+			else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Zerg_Lair &&
+				BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Pneumatized_Carapace) == 0 &&
+				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 &&
+				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 150)
+			{
+				building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Pneumatized_Carapace);
+				building_list_iterator++;
+			}
+			else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Zerg_Hydralisk_Den &&
+				BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Muscular_Augments) == 0 &&
+				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 &&
+				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 150)
+			{
+				building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Muscular_Augments);
+				building_list_iterator++;
+			}
 			else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Zerg_Creep_Colony &&
 				BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Zerg_Sunken_Colony, 0) &&
 				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50)
@@ -198,7 +224,10 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 		auto larva_iterator = game_state.getLarva()->begin();
 		while (larva_iterator != game_state.getLarva()->end())
 		{
-			if (game_state.getSupplyUsed() > game_state.getSupplyExpected() - 2 &&
+			if (((game_state.getSupplyExpected() < 20 && 
+				game_state.getSupplyUsed() > game_state.getSupplyExpected() - 2) ||
+				(game_state.getSupplyExpected() >= 20 &&
+				game_state.getSupplyUsed() > game_state.getSupplyExpected() - 10)) &&
 				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100)
 			{
 				if (larva_iterator->getUnit()->morph(BWAPI::UnitTypes::Zerg_Overlord))
@@ -213,7 +242,7 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 				}
 			}
 			else if (game_state.getSupplyUsed() < game_state.getSupplyTotal() &&
-				game_state.getMineralWorkerCount() < 25 &&
+				game_state.getMineralWorkerCount() < 30 &&
 				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
 				!BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Zerg_Hydralisk, 0) &&
 				BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Zerg_Zergling, 0))
@@ -247,7 +276,7 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 				}
 			}
 			else if (game_state.getSupplyUsed() < game_state.getSupplyTotal() &&
-				game_state.getMineralWorkerCount() < 25 &&
+				game_state.getMineralWorkerCount() < 30 &&
 				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 75 &&
 				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 25 &&
 				BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Zerg_Hydralisk, 0))
@@ -284,7 +313,7 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 				}
 			}
 			else if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 75 &&
-				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 25 &&
+				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 30 &&
 				BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Zerg_Hydralisk))
 			{
 				if (game_state.getUnitTypeCount(BWAPI::UnitTypes::Zerg_Zergling) / game_state.getUnitTypeCount(BWAPI::UnitTypes::Zerg_Hydralisk) > 2)
@@ -315,7 +344,7 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 				}
 			}
 			else if (game_state.getSupplyUsed() < game_state.getSupplyTotal() &&
-				game_state.getMineralWorkerCount() < 25 &&
+				game_state.getMineralWorkerCount() < 30 &&
 				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50)
 			{
 				if (larva_iterator->getUnit()->morph(BWAPI::UnitTypes::Zerg_Drone))
@@ -422,7 +451,8 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 			}
 		}
 		if (game_state.getBuildingTypeCount(BWAPI::UnitTypes::Zerg_Spawning_Pool) >= 1 &&
-			game_state.getBuildingTypeCount(BWAPI::UnitTypes::Zerg_Creep_Colony) + game_state.getBuildingTypeCount(BWAPI::UnitTypes::Zerg_Sunken_Colony) < 8 &&
+			game_state.getBuildingTypeCount(BWAPI::UnitTypes::Zerg_Creep_Colony) + game_state.getBuildingTypeCount(BWAPI::UnitTypes::Zerg_Sunken_Colony) < 20 &&
+			game_state.getMineralWorkerCount() >= 15 &&
 			BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 75)
 		{
 			if (worker_manager->build(BWAPI::UnitTypes::Zerg_Creep_Colony, 3, game_state))

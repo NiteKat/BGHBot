@@ -28,6 +28,7 @@ public:
 	void checkBaseOwnership();
 	void addUnit(Object new_unit);
 	void addLarva(Object new_larva);
+	void addDetector(Object new_detector);
 
 	AIBase *getContainingBase(BWAPI::Unit);
 	AIBase *getContainingBase(BWAPI::TilePosition tile_position);
@@ -55,6 +56,7 @@ public:
 	std::vector<Object> *getMilitary();
 	std::vector<Object> *getLarva();
 	int getBuildingTypeCount(BWAPI::UnitType type_to_check);
+	Object* getAvailableDetector();
 	
 private:
 	std::vector<Object> building_list;
@@ -65,6 +67,7 @@ private:
 	std::vector<std::pair<bool, BWAPI::TilePosition>> gas_locations;
 	std::vector<Object> military;
 	std::vector<Object> larva;
+	std::vector<Object> detectors;
 	
 	double supply_used;
 	double supply_total;

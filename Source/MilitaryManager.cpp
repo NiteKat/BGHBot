@@ -40,7 +40,7 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 		global_strategy = 1;
 	}
 	else if (global_strategy == 1 &&
-		game_state.getSupplyUsed() <= 180 &&
+		game_state.getSupplyUsed() <= 60 &&
 		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Zerg)
 	{
 		global_strategy = 0;
@@ -87,6 +87,16 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 					}
 					break;
 				}
+			}
+		}
+		else if ((unit->isBurrowed() ||
+			unit->isCloaked()) &&
+			!unit->isDetected())
+		{
+			Object* detector = game_state.getAvailableDetector();
+			if (detector != nullptr)
+			{
+				detector->getUnit()->move(unit->getPosition());
 			}
 		}
 		

@@ -467,3 +467,63 @@ int GameState::getBuildingTypeCount(BWAPI::UnitType type_to_check)
 	}
 	return count_of_type;
 }
+
+void GameState::addDetector(Object new_detector)
+{
+	detectors.push_back(new_detector);
+}
+
+Object* GameState::getAvailableDetector()
+{
+	if (detectors.size() == 0)
+		return nullptr;
+	auto detector_iterator = detectors.begin();
+	while (detector_iterator != detectors.end())
+	{
+		if (!detector_iterator->getUnit()->exists())
+		{
+			auto erase_iterator = detector_iterator;
+			detector_iterator = detectors.erase(erase_iterator);
+		}
+		else if (detector_iterator->getUnit()->isIdle())
+			return &(*detector_iterator);
+		else
+		{
+			BWAPI::Unitset units_in_range_of_target = BWAPI::Broodwar->getUnitsInRadius(detector_iterator->getUnit()->getTargetPosition(), detector_iterator->getUnit()->getType().sightRange());
+			if (units_in_range_of_target.size() == 0)
+				return &(*detector_iterator);
+			auto unit_iterator = units_in_range_of_target.begin();
+			while (unit_iterator != units_in_range_of_target.end())
+			{
+				if ((*unit_iterator)->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
+					(*unit_iterator)->isCloaked())
+				{
+					unit_iterator = units_in_range_of_target.end();
+					detector_iterator++;
+				}
+				else
+				{
+					unit_iterator++;
+				}
+			}
+			BWAPI::Unitset units_in_range_of_detector = BWAPI::Broodwar->getUnitsInRadius(detector_iterator->getUnit()->getPosition(), detector_iterator->getUnit()->getType().sightRange());
+			if (units_in_range_of_detector.size() == 0)
+				return &(*detector_iterator);
+			unit_iterator = units_in_range_of_detector.begin();
+			while (unit_iterator != units_in_range_of_detector.end())
+			{
+				if ((*unit_iterator)->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
+					(*unit_iterator)->isCloaked())
+				{
+					unit_iterator = units_in_range_of_detector.end();
+					detector_iterator++;
+				}
+				else
+				{
+					unit_iterator++;
+				}
+			}
+			return &(*detector_iterator);
+		}
+	}
+}

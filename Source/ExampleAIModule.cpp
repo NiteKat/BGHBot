@@ -327,6 +327,8 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
 	  else if (unit->getType() == UnitTypes::Zerg_Overlord &&
 		  unit->getPlayer() == Broodwar->self())
 	  {
+		  Object new_detector(unit, game_state.getContainingBase(unit));
+		  game_state.addDetector(new_detector);
 		  game_state.addSupplyTotal(8);
 		  game_state.addSupplyExpected(8);
 	  }
@@ -446,6 +448,8 @@ void ExampleAIModule::onUnitMorph(BWAPI::Unit unit)
 		else if (unit->getType() == BWAPI::UnitTypes::Zerg_Overlord &&
 			unit->getPlayer() == Broodwar->self())
 		{
+			Object new_detector(unit, game_state.getContainingBase(unit));
+			game_state.addDetector(new_detector);
 			game_state.addSupplyTotal(8);
 		}
 		else if (unit->getType() == BWAPI::UnitTypes::Zerg_Hatchery &&
@@ -501,7 +505,7 @@ void ExampleAIModule::onUnitMorph(BWAPI::Unit unit)
 			unit->getPlayer() == Broodwar->self())
 		{
 			Object new_unit(unit, game_state.getContainingBase(unit));
-			game_state.addUnit(unit);
+			game_state.addUnit(new_unit);
 		}
 	}
 }

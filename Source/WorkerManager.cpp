@@ -249,6 +249,20 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 			}
 		}
 	}
+	/*else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Zerg)
+	{
+		if (building_type == BWAPI::UnitTypes::Zerg_Creep_Colony &&
+			)
+		{
+			BWAPI::TilePosition position_to_try;
+			position_to_try.x = (*BWEM::Map::Instance().GetNearestArea(build_worker.getUnit()->getTilePosition())->ChokePoints().begin())->Center().x;
+			position_to_try.y = (*BWEM::Map::Instance().GetNearestArea(build_worker.getUnit()->getTilePosition())->ChokePoints().begin())->Center().y;
+			while (true)
+			{
+
+			}
+		}
+	}*/
 	else
 	{
 		return BWAPI::Broodwar->getBuildLocation(building_type, build_worker.getUnit()->getTilePosition());
