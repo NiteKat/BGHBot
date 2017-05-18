@@ -115,6 +115,36 @@ int WorkerManager::manageWorkers(GameState &game_state)
 			{
 				game_state.addMineralsCommitted(-150);
 			}
+			else if (new_mineral_worker.getBuildType() == BWAPI::UnitTypes::Protoss_Forge)
+			{
+				game_state.addMineralsCommitted(-150);
+			}
+			else if (new_mineral_worker.getBuildType() == BWAPI::UnitTypes::Protoss_Assimilator)
+			{
+				for (auto unit : new_mineral_worker.getUnit()->getUnitsInRadius(100))
+				{
+					if (unit->getType() == BWAPI::UnitTypes::Protoss_Assimilator)
+					{
+						Object new_building(unit, game_state.getContainingBase(unit));
+						game_state.addBuilding(new_building);
+					}
+				}
+				
+			}
+			else if (new_mineral_worker.getBuildType() == BWAPI::UnitTypes::Protoss_Cybernetics_Core)
+			{
+				game_state.addMineralsCommitted(-200);
+			}
+			else if (new_mineral_worker.getBuildType() == BWAPI::UnitTypes::Protoss_Robotics_Facility)
+			{
+				game_state.addMineralsCommitted(-200);
+				game_state.addGasCommitted(-200);
+			}
+			else if (new_mineral_worker.getBuildType() == BWAPI::UnitTypes::Protoss_Observatory)
+			{
+				game_state.addMineralsCommitted(-50);
+				game_state.addGasCommitted(-100);
+			}
 			new_mineral_worker.setBuildType(BWAPI::UnitTypes::Unknown);
 			new_mineral_worker.setBaseClass(0);
 			game_state.getMineralWorkers()->push_back(new_mineral_worker);
@@ -211,7 +241,7 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 		bool too_close = false;
 		while (true)
 		{
-			position_to_try.x += rand() % 6 - 3;
+			position_to_try.x += rand() % 7 - 3;
 			if (position_to_try.x < 0)
 			{
 				position_to_try.x = 0;
@@ -220,7 +250,7 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 			{
 				position_to_try.x = BWAPI::Broodwar->mapWidth();
 			}
-			position_to_try.y += rand() % 6 - 3;
+			position_to_try.y += rand() % 7 - 3;
 			if (position_to_try.y < 0)
 			{
 				position_to_try.y = 0;

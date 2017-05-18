@@ -52,7 +52,8 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 	for (auto unit : BWAPI::Broodwar->enemies().getUnits())
 	{
 		if (game_state.getEnemyUnits()->find(unit->getID()) == game_state.getEnemyUnits()->end() &&
-			unit->exists())
+			unit->exists() &&
+			unit->getType() != BWAPI::UnitTypes::Resource_Vespene_Geyser)
 		{
 			Object new_enemy(unit);
 			new_enemy.setDiscoveredPosition(unit->getTilePosition());
@@ -116,6 +117,16 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 		}
 		else
 		{
+			if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
+			{
+				if (BWAPI::Broodwar->self()->hasResearched(BWAPI::TechTypes::Stim_Packs) &&
+					military_iterator->getUnit()->isAttacking() &&
+					!military_iterator->getUnit()->isStimmed() &&
+					military_iterator->getUnit()->getHitPoints() > 20)
+				{
+					military_iterator->getUnit()->useTech(BWAPI::TechTypes::Stim_Packs);
+				}
+			}
 			if (global_strategy == 0 &&
 				military_iterator->getUnit()->isIdle())
 			{
@@ -144,7 +155,8 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 				}
 			}
 			else if (global_strategy == 1 &&
-				military_iterator->getUnit()->isIdle())
+				(military_iterator->getUnit()->isIdle() ||
+				military_iterator->getUnit()->isPatrolling()))
 			{
 				if (target_base != nullptr)
 				{
@@ -154,8 +166,47 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 						if (enemy_unit_iterator->second.isBuilding() &&
 							target_base->getArea()->Id() == BWEM::Map::Instance().GetNearestArea(enemy_unit_iterator->second.getDiscoveredPosition())->Id())
 						{
-							military_iterator->getUnit()->attack((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
-							enemy_unit_iterator = game_state.getEnemyUnits()->end();
+							if (BWAPI::Broodwar->isVisible(enemy_unit_iterator->second.getDiscoveredPosition()))
+							{
+								BWAPI::Unitset scanned_units = BWAPI::Broodwar->getUnitsInRadius((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition(), 200);
+								auto scanned_iterator = scanned_units.begin();
+								if (scanned_units.size() == 0)
+								{
+									auto erase_iterator = enemy_unit_iterator;
+									enemy_unit_iterator = game_state.getEnemyUnits()->erase(erase_iterator);
+								}
+								else
+								{
+									bool enemy_found = false;
+									while (scanned_iterator != scanned_units.end())
+									{
+										if ((*scanned_iterator)->getPlayer()->isEnemy(BWAPI::Broodwar->self()))
+										{
+											enemy_found = true;
+											scanned_iterator = scanned_units.end();
+										}
+										else
+										{
+											scanned_iterator++;
+										}
+									}
+									if (enemy_found == false)
+									{
+										auto erase_iterator = enemy_unit_iterator;
+										enemy_unit_iterator = game_state.getEnemyUnits()->erase(erase_iterator);
+									}
+									else
+									{
+										military_iterator->getUnit()->attack((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
+										enemy_unit_iterator++;
+									}
+								}
+							}
+							else
+							{
+								military_iterator->getUnit()->attack((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
+								enemy_unit_iterator = game_state.getEnemyUnits()->end();
+							}
 						}
 						else
 						{
@@ -163,7 +214,10 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 						}
 					}
 				}
-					
+				else if (!military_iterator->getUnit()->isPatrolling())
+				{
+					military_iterator->getUnit()->patrol(game_state.getRandomUncontrolledPosition());
+				}
 			}
 			military_iterator++;
 		}

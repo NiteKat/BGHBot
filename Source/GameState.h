@@ -29,6 +29,8 @@ public:
 	void addUnit(Object new_unit);
 	void addLarva(Object new_larva);
 	void addDetector(Object new_detector);
+	void removeEnemyUnitsAtTilePosition(BWAPI::TilePosition target_position);
+
 
 	AIBase *getContainingBase(BWAPI::Unit);
 	AIBase *getContainingBase(BWAPI::TilePosition tile_position);
@@ -57,6 +59,8 @@ public:
 	std::vector<Object> *getLarva();
 	int getBuildingTypeCount(BWAPI::UnitType type_to_check);
 	Object* getAvailableDetector();
+	BWAPI::Position getRandomUncontrolledPosition();
+	int getDetectorCount();
 	
 private:
 	std::vector<Object> building_list;

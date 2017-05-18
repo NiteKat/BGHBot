@@ -261,7 +261,8 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
 		  game_state.addSupplyUsed(1);
 		  game_state.addUnit(new_unit);
 	  }
-	  else if (unit->getType() == UnitTypes::Protoss_Zealot &&
+	  else if ((unit->getType() == UnitTypes::Protoss_Zealot ||
+		  unit->getType() == UnitTypes::Protoss_Dragoon) &&
 		  unit->getPlayer() == Broodwar->self())
 	  {
 		  Object new_unit(unit);
@@ -344,6 +345,21 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
 		  Object new_unit(unit, game_state.getContainingBase(unit));
 		  game_state.addUnit(new_unit);
 	  }
+	  else if ((unit->getType() == BWAPI::UnitTypes::Protoss_Forge ||
+		  unit->getType() == BWAPI::UnitTypes::Protoss_Cybernetics_Core ||
+		  unit->getType() == BWAPI::UnitTypes::Protoss_Robotics_Facility ||
+		  unit->getType() == BWAPI::UnitTypes::Protoss_Observatory) &&
+		  unit->getPlayer() == Broodwar->self())
+	  {
+		  Object new_building(unit, game_state.getContainingBase(unit));
+		  game_state.addBuilding(new_building);
+	  }
+	  else if (unit->getType() == BWAPI::UnitTypes::Protoss_Observer &&
+		  unit->getPlayer() == Broodwar->self())
+	  {
+		  Object new_detector(unit, game_state.getContainingBase(unit));
+		  game_state.addDetector(new_detector);
+	  }
   }
 }
 
@@ -370,12 +386,14 @@ void ExampleAIModule::onUnitDestroy(BWAPI::Unit unit)
 			unit->getType() == UnitTypes::Terran_Marine ||
 			unit->getType() == UnitTypes::Terran_Medic ||
 			unit->getType() == UnitTypes::Protoss_Probe ||
-			unit->getType() == UnitTypes::Zerg_Drone) &&
+			unit->getType() == UnitTypes::Zerg_Drone ||
+			unit->getType() == UnitTypes::Protoss_Observer) &&
 			unit->getPlayer() == Broodwar->self())
 		{
 			game_state.addSupplyUsed(-1);
 		}
-		else if (unit->getType() == UnitTypes::Protoss_Zealot &&
+		else if ((unit->getType() == UnitTypes::Protoss_Zealot ||
+			unit->getType() == UnitTypes::Protoss_Dragoon) &&
 			unit->getPlayer() == Broodwar->self())
 		{
 			game_state.addSupplyUsed(-2);
@@ -396,7 +414,8 @@ void ExampleAIModule::onUnitDestroy(BWAPI::Unit unit)
 			game_state.addBarracks(-1);
 		}
 		else if ((unit->getType() == UnitTypes::Terran_Refinery ||
-			unit->getType() == UnitTypes::Zerg_Extractor ) &&
+			unit->getType() == UnitTypes::Zerg_Extractor ||
+			unit->getType() == UnitTypes::Protoss_Assimilator) &&
 			unit->getPlayer() == Broodwar->self())
 		{
 			game_state.setGeyserOpen(unit->getTilePosition());

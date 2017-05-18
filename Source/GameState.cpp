@@ -352,7 +352,7 @@ AIBase* GameState::getClosestEnemyBase()
 	{
 		auto enemy_base_iterator = enemy_base_list.begin();
 		auto closest_base = enemy_base_iterator;
-		BWEM::CPPath closest_path;
+		BWEM::CPPath closest_path = BWEM::Map::Instance().GetPath(BWAPI::Position((*closest_base)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
 		BWEM::CPPath path_to_check;
 		while (enemy_base_iterator != enemy_base_list.end())
 		{
@@ -526,4 +526,48 @@ Object* GameState::getAvailableDetector()
 			return &(*detector_iterator);
 		}
 	}
+}
+
+BWAPI::Position GameState::getRandomUncontrolledPosition()
+{
+	checkBaseOwnership();
+	BWAPI::Position random_position;
+	while (true)
+	{
+		random_position.x = rand() % BWAPI::Broodwar->mapWidth() * 32;
+		random_position.y = rand() % BWAPI::Broodwar->mapHeight() * 32;
+		auto base_list_iterator = base_list.begin();
+		while (base_list_iterator != base_list.end())
+		{
+			if (BWEM::Map::Instance().GetNearestArea((BWAPI::TilePosition)random_position)->Id() == base_list_iterator->getArea()->Id() &&
+				base_list_iterator->getBaseClass() != 3 &&
+				base_list_iterator->getBaseClass() != 4 &&
+				base_list_iterator->getBaseClass() != 5)
+				return random_position;
+			else
+				base_list_iterator++;
+		}
+	}
+}
+
+void GameState::removeEnemyUnitsAtTilePosition(BWAPI::TilePosition target_position)
+{
+	auto enemy_iterator = enemy_units.begin();
+	while (enemy_iterator != enemy_units.end())
+	{
+		if (enemy_iterator->second.getDiscoveredPosition() == target_position)
+		{
+			enemy_units.erase(enemy_iterator);
+			enemy_iterator = enemy_units.end();
+		}
+		else
+		{
+			enemy_iterator++;
+		}
+	}
+}
+
+int GameState::getDetectorCount()
+{
+	return detectors.size();
 }
