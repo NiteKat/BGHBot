@@ -118,6 +118,8 @@ void ExampleAIModule::onFrame()
 		{
 			Broodwar->drawTextScreen(0, 20, "Nothing selected.");
 		}
+		Broodwar->drawTextScreen(0, 40, "Minerals Committed: %i", game_state.getMineralsCommitted());
+		Broodwar->drawTextScreen(0, 60, "Gas Committed: %i", game_state.getGasCommitted());
 		//Broodwar->drawTextScreen(0, 20, "Minerals: %i \n Minerals Committed: %i");
 
 		/*for (const auto &area : theMap.Areas())
@@ -348,7 +350,9 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
 	  else if ((unit->getType() == BWAPI::UnitTypes::Protoss_Forge ||
 		  unit->getType() == BWAPI::UnitTypes::Protoss_Cybernetics_Core ||
 		  unit->getType() == BWAPI::UnitTypes::Protoss_Robotics_Facility ||
-		  unit->getType() == BWAPI::UnitTypes::Protoss_Observatory) &&
+		  unit->getType() == BWAPI::UnitTypes::Protoss_Observatory ||
+		  unit->getType() == BWAPI::UnitTypes::Protoss_Citadel_of_Adun || 
+		  unit->getType() == BWAPI::UnitTypes::Protoss_Templar_Archives) &&
 		  unit->getPlayer() == Broodwar->self())
 	  {
 		  Object new_building(unit, game_state.getContainingBase(unit));
@@ -486,6 +490,14 @@ void ExampleAIModule::onUnitMorph(BWAPI::Unit unit)
 			Object new_building(unit, game_state.getContainingBase(unit));
 			game_state.addBuilding(new_building);
 			game_state.addMineralsCommitted(-200);
+			game_state.addSupplyUsed(-1);
+		}
+		else if (unit->getType() == BWAPI::UnitTypes::Zerg_Evolution_Chamber &&
+			unit->getPlayer() == Broodwar->self())
+		{
+			Object new_building(unit, game_state.getContainingBase(unit));
+			game_state.addBuilding(new_building);
+			game_state.addMineralsCommitted(-75);
 			game_state.addSupplyUsed(-1);
 		}
 		else if (unit->getType() == BWAPI::UnitTypes::Zerg_Zergling &&

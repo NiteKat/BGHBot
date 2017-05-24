@@ -30,6 +30,7 @@ public:
 	void addLarva(Object new_larva);
 	void addDetector(Object new_detector);
 	void removeEnemyUnitsAtTilePosition(BWAPI::TilePosition target_position);
+	void addEvolutionChambers(int new_evolution_chambers);
 
 
 	AIBase *getContainingBase(BWAPI::Unit);
@@ -61,6 +62,7 @@ public:
 	Object* getAvailableDetector();
 	BWAPI::Position getRandomUncontrolledPosition();
 	int getDetectorCount();
+	int getEvolutionChambers();
 	
 private:
 	std::vector<Object> building_list;
@@ -83,6 +85,7 @@ private:
 	int gas_committed;
 	bool comsat_station;
 	int last_scan;
+	int evolution_chambers;
 
 };
 

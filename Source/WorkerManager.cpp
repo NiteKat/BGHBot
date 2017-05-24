@@ -66,10 +66,9 @@ int WorkerManager::manageWorkers(GameState &game_state)
 			(build_worker_iterator->getUnit()->getOrder() != BWAPI::Orders::IncompleteBuilding &&
 			BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Zerg)))
 		{
-			BWAPI::Broodwar << "DEBUG: Order = " << build_worker_iterator->getUnit()->getOrder().toString() << std::endl;
 			if (build_worker_iterator->getBuildType() != BWAPI::UnitTypes::Terran_Refinery)
 			{
-				BWAPI::TilePosition build_position = getBuildLocation(*build_worker_iterator, build_worker_iterator->getBuildType());//BWAPI::Broodwar->getBuildLocation(build_worker_iterator->getBuildType(), (BWAPI::TilePosition)(*build_worker_iterator->getBase()->getArea()->Bases().begin()).Center());
+				BWAPI::TilePosition build_position = getBuildLocation(*build_worker_iterator, build_worker_iterator->getBuildType());
 				build_worker_iterator->getUnit()->build(build_worker_iterator->getBuildType(), build_position);
 				build_worker_iterator++;
 			}
@@ -127,8 +126,10 @@ int WorkerManager::manageWorkers(GameState &game_state)
 					{
 						Object new_building(unit, game_state.getContainingBase(unit));
 						game_state.addBuilding(new_building);
+						game_state.setGeyserUsed(new_building.getUnit()->getTilePosition());
 					}
 				}
+				game_state.addMineralsCommitted(-100);
 				
 			}
 			else if (new_mineral_worker.getBuildType() == BWAPI::UnitTypes::Protoss_Cybernetics_Core)
@@ -144,6 +145,16 @@ int WorkerManager::manageWorkers(GameState &game_state)
 			{
 				game_state.addMineralsCommitted(-50);
 				game_state.addGasCommitted(-100);
+			}
+			else if (new_mineral_worker.getBuildType() == BWAPI::UnitTypes::Protoss_Citadel_of_Adun)
+			{
+				game_state.addMineralsCommitted(-150);
+				game_state.addGasCommitted(-100);
+			}
+			else if (new_mineral_worker.getBuildType() == BWAPI::UnitTypes::Protoss_Templar_Archives)
+			{
+				game_state.addMineralsCommitted(-150);
+				game_state.addGasCommitted(-200);
 			}
 			new_mineral_worker.setBuildType(BWAPI::UnitTypes::Unknown);
 			new_mineral_worker.setBaseClass(0);
@@ -176,7 +187,9 @@ bool WorkerManager::build(BWAPI::UnitType building_type, int base_class, GameSta
 			BWAPI::Broodwar->canMake(building_type, mineral_worker_iterator->getUnit()))
 		{
 			Object new_build_worker(*mineral_worker_iterator);
-			if (building_type != BWAPI::UnitTypes::Terran_Refinery)
+			if (building_type != BWAPI::UnitTypes::Terran_Refinery &&
+				building_type != BWAPI::UnitTypes::Protoss_Assimilator &&
+				building_type != BWAPI::UnitTypes::Zerg_Extractor)
 			{
 				BWAPI::TilePosition build_position = this->getBuildLocation(*mineral_worker_iterator, building_type);
 				//BWAPI::TilePosition build_position = BWAPI::Broodwar->getBuildLocation(building_type, (BWAPI::TilePosition)(*new_build_worker.getBase()->getArea()->Bases().begin()).Center());
@@ -293,6 +306,65 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 			}
 		}
 	}*/
+	else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss)
+	{
+		BWAPI::TilePosition position_to_try = BWAPI::Broodwar->getBuildLocation(building_type, build_worker.getUnit()->getTilePosition());
+		while (true)
+		{
+			if (building_type == BWAPI::UnitTypes::Protoss_Pylon)
+			{
+				BWAPI::Unitset too_close_units = BWAPI::Broodwar->getUnitsInRadius((BWAPI::Position)position_to_try, 32);
+				if (too_close_units.size() > 0)
+				{
+					position_to_try.x += rand() % 4;
+					position_to_try.y += rand() % 4;
+					position_to_try.makeValid();
+				}
+				else
+				{
+					BWAPI::Position position_to_check;
+					position_to_check.x = ((BWAPI::Position)position_to_try).x + 33;
+					position_to_check.y = ((BWAPI::Position)position_to_try).y;
+					too_close_units = BWAPI::Broodwar->getUnitsInRadius(position_to_check, 32);
+					if (too_close_units.size() > 0)
+					{
+						position_to_try.x -= rand() % 4;
+						position_to_try.y += rand() % 4;
+						position_to_try.makeValid();
+					}
+					else
+					{
+						position_to_check.x = ((BWAPI::Position)position_to_try).x + 33;
+						position_to_check.y = ((BWAPI::Position)position_to_try).y + 33;
+						too_close_units = BWAPI::Broodwar->getUnitsInRadius(position_to_check, 32);
+						if (too_close_units.size() > 0)
+						{
+							position_to_try.x -= rand() % 4;
+							position_to_try.y -= rand() % 4;
+							position_to_try.makeValid();
+						}
+						else
+						{
+							position_to_check.x = ((BWAPI::Position)position_to_try).x;
+							position_to_check.y = ((BWAPI::Position)position_to_try).y + 33;
+							too_close_units = BWAPI::Broodwar->getUnitsInRadius(position_to_check, 32);
+							if (too_close_units.size() > 0)
+							{
+								position_to_try.x += rand() % 4;
+								position_to_try.y -= rand() % 4;
+								position_to_try.makeValid();
+							}
+							else return position_to_try;
+						}
+					}
+				}
+			}
+			else
+			{
+				return position_to_try;
+			}
+		}
+	}
 	else
 	{
 		return BWAPI::Broodwar->getBuildLocation(building_type, build_worker.getUnit()->getTilePosition());

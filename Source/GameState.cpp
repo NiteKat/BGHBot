@@ -15,6 +15,7 @@ GameState::GameState()
 	gas_committed = 0;
 	comsat_station = false;
 	last_scan = 0;
+	evolution_chambers = 0;
 }
 
 void GameState::addAIBase(AIBase new_base)
@@ -362,6 +363,14 @@ AIBase* GameState::getClosestEnemyBase()
 				closest_path = path_to_check;
 				closest_base = enemy_base_iterator;
 			}
+			else if (path_to_check.size() == closest_path.size())
+			{
+				if ((*enemy_base_iterator)->getArea()->Top().getApproxDistance(main_base->getArea()->Top()) < (*closest_base)->getArea()->Top().getApproxDistance(main_base->getArea()->Top()))
+				{
+					closest_path = path_to_check;
+					closest_base = enemy_base_iterator;
+				}
+			}
 			enemy_base_iterator++;
 		}
 		return *closest_base;
@@ -570,4 +579,14 @@ void GameState::removeEnemyUnitsAtTilePosition(BWAPI::TilePosition target_positi
 int GameState::getDetectorCount()
 {
 	return detectors.size();
+}
+
+void GameState::addEvolutionChambers(int new_evolution_chambers)
+{
+	evolution_chambers += new_evolution_chambers;
+}
+
+int GameState::getEvolutionChambers()
+{
+	return evolution_chambers;
 }
