@@ -140,8 +140,19 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 							game_state.getContainingBase(enemy_iterator->second.getUnit())->getBaseClass() == 4 ||
 							game_state.getContainingBase(enemy_iterator->second.getUnit())->getBaseClass() == 5)
 						{
-							military_iterator->getUnit()->attack(enemy_iterator->second.getUnit()->getPosition());
-							enemy_iterator = game_state.getEnemyUnits()->end();
+							if (enemy_iterator->second.getUnit()->getType().isFlyer() &&
+								military_iterator->getUnit()->getType().airWeapon() != BWAPI::WeaponTypes::None)
+							{
+								military_iterator->getUnit()->attack(enemy_iterator->second.getUnit()->getPosition());
+								enemy_iterator = game_state.getEnemyUnits()->end();
+							}
+							else if (!enemy_iterator->second.getUnit()->getType().isFlyer())
+							{
+								military_iterator->getUnit()->attack(enemy_iterator->second.getUnit()->getPosition());
+								enemy_iterator = game_state.getEnemyUnits()->end();
+							}
+							else
+								enemy_iterator++;
 						}
 						else
 						{
