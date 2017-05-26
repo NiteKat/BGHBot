@@ -112,22 +112,23 @@ void ExampleAIModule::onFrame()
 		BWEM::utils::drawMap(theMap);
 		if (Broodwar->getSelectedUnits().size() == 1)
 		{
-			Broodwar->drawTextScreen(0, 20, "%s", (*Broodwar->getSelectedUnits().begin())->getType().c_str());
+			Broodwar->drawTextScreen(0, 20, "x=%i y=%i", (*Broodwar->getSelectedUnits().begin())->getTilePosition().x, (*Broodwar->getSelectedUnits().begin())->getTilePosition().y);
 		}
 		else
 		{
 			Broodwar->drawTextScreen(0, 20, "Nothing selected.");
 		}
+		
 		Broodwar->drawTextScreen(0, 40, "Minerals Committed: %i", game_state.getMineralsCommitted());
 		Broodwar->drawTextScreen(0, 60, "Gas Committed: %i", game_state.getGasCommitted());
-		//Broodwar->drawTextScreen(0, 20, "Minerals: %i \n Minerals Committed: %i");
-
+		
 		/*for (const auto &area : theMap.Areas())
 		{
 			Broodwar->drawTextMap((Position)area.BottomRight(), "%i", area.Id());
 		}*/
 
 		// Display the game frame rate as text in the upper left area of the screen
+		
 		Broodwar->drawTextScreen(200, 0, "FPS: %d", Broodwar->getFPS());
 		Broodwar->drawTextScreen(200, 20, "Average FPS: %f", Broodwar->getAverageFPS());
 
