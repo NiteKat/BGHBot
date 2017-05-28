@@ -16,6 +16,8 @@ GameState::GameState()
 	comsat_station = false;
 	last_scan = 0;
 	evolution_chambers = 0;
+	build_order = "default";
+	build_tanks = false;
 }
 
 void GameState::addAIBase(AIBase new_base)
@@ -589,4 +591,27 @@ void GameState::addEvolutionChambers(int new_evolution_chambers)
 int GameState::getEvolutionChambers()
 {
 	return evolution_chambers;
+}
+
+void GameState::setBuildOrder(std::string new_build_order)
+{
+	build_order = new_build_order;
+}
+
+std::string GameState::getBuildOrder()
+{
+	return build_order;
+}
+
+bool GameState::getBuildTanks()
+{
+	return build_tanks;
+}
+
+void GameState::toggleBuildTanks()
+{
+	if (build_tanks == true)
+		build_tanks = false;
+	else
+		build_tanks = true;
 }

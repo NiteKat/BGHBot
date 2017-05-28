@@ -11,17 +11,45 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 	AIBase* target_base;
 	if (global_strategy == 0 &&
 		game_state.getMilitary()->size() > 50 &&
-		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
+		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran &&
+		game_state.getBuildOrder() == "default")
 	{
 		global_strategy = 1;
 	}
 	else if (global_strategy == 1 &&
 		game_state.getMilitary()->size() <= 50 &&
-		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
+		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran &&
+		game_state.getBuildOrder() == "default")
 	{
 		global_strategy = 0;
 	}
-	if (global_strategy == 0 &&
+	else if (global_strategy == 0 &&
+		game_state.getMilitary()->size() > 24 &&
+		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran &&
+		game_state.getBuildOrder() == "build2")
+	{
+		global_strategy = 1;
+		auto building_list_iterator = game_state.getBuildingList()->begin();
+		while (building_list_iterator != game_state.getBuildingList()->end())
+		{
+			if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Barracks &&
+				!building_list_iterator->getUnit()->isFlying())
+			{
+				building_list_iterator->getUnit()->lift();
+				building_list_iterator = game_state.getBuildingList()->end();
+			}
+			else
+				building_list_iterator++;
+		}
+	}
+	else if (global_strategy == 1 &&
+		game_state.getMilitary()->size() <= 12 &&
+		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran &&
+		game_state.getBuildOrder() == "build2")
+	{
+		global_strategy = 0;
+	}
+	else if (global_strategy == 0 &&
 		game_state.getMilitary()->size() > 30 &&
 		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss)
 	{
@@ -128,8 +156,98 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 				}
 			}
 			if (global_strategy == 0 &&
+				military_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode)
+			{
+				auto building_list_iterator = game_state.getBuildingList()->begin();
+				while (building_list_iterator != game_state.getBuildingList()->end())
+				{
+					if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Barracks)
+					{
+						if (military_iterator->getUnit()->getDistance(building_list_iterator->getUnit()->getPosition()) < 150 &&
+							BWAPI::Broodwar->self()->hasResearched(BWAPI::TechTypes::Tank_Siege_Mode))
+						{
+							military_iterator->getUnit()->useTech(BWAPI::TechTypes::Tank_Siege_Mode);
+						}
+						else if (military_iterator->getUnit()->getDistance(building_list_iterator->getUnit()->getPosition()) < 150 &&
+							!BWAPI::Broodwar->self()->hasResearched(BWAPI::TechTypes::Tank_Siege_Mode))
+						{
+							military_iterator->getUnit()->holdPosition();
+						}
+						else
+						{
+							military_iterator->getUnit()->move(building_list_iterator->getUnit()->getPosition());
+						}
+						building_list_iterator = game_state.getBuildingList()->end();
+					}
+					else
+						building_list_iterator++;
+				}
+			}
+			else if (global_strategy == 1 &&
+				military_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode &&
+				BWAPI::Broodwar->self()->hasResearched(BWAPI::TechTypes::Tank_Siege_Mode))
+			{
+				auto scanned_units = military_iterator->getUnit()->getUnitsInRadius(BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode.groundWeapon().maxRange());
+				for (auto check_unit : scanned_units)
+				{
+					if (check_unit->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
+						!check_unit->isFlying())
+					{
+						military_iterator->getUnit()->useTech(BWAPI::TechTypes::Tank_Siege_Mode);
+						break;
+					}
+				}
+			}
+			else if (global_strategy == 1 &&
+				military_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode)
+			{
+				bool nearby_enemy = false;
+				auto scanned_units = military_iterator->getUnit()->getUnitsInRadius(BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode.groundWeapon().maxRange());
+				for (auto check_unit : scanned_units)
+				{
+					if (check_unit->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
+						!check_unit->isFlying())
+					{
+						nearby_enemy = true;
+						break;
+					}
+				}
+				if (nearby_enemy == false)
+				{
+					military_iterator->getUnit()->useTech(BWAPI::TechTypes::Tank_Siege_Mode);
+				}
+			}
+			if (global_strategy == 0 &&
 				military_iterator->getUnit()->isIdle())
 			{
+				if (game_state.getBuildOrder() == "build2")
+				{
+					if (military_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Marine)
+					{
+						auto base_list_iterator = game_state.getBaseList()->begin();
+						while (base_list_iterator != game_state.getBaseList()->end())
+						{
+							if (base_list_iterator->getBaseClass() == 3)
+							{
+								if (base_list_iterator->getArea()->Id() == game_state.getContainingBase(military_iterator->getUnit())->getArea()->Id())
+								{
+									military_iterator->getUnit()->holdPosition();
+								}
+								else
+								{
+									BWEM::CPPath path_to_check = BWEM::Map::Instance().GetPath((BWAPI::Position)game_state.getContainingBase(military_iterator->getUnit())->getArea()->Top(), (BWAPI::Position)base_list_iterator->getArea()->Top());
+									if (path_to_check.size() <= 0)
+									{
+										military_iterator->getUnit()->move((BWAPI::Position)base_list_iterator->getArea()->Top());
+									}
+								}
+								base_list_iterator = game_state.getBaseList()->end();
+							}
+							else
+								base_list_iterator++;
+						} 
+					}
+				}
 				auto enemy_iterator = game_state.getEnemyUnits()->begin();
 				game_state.checkBaseOwnership();
 				while (enemy_iterator != game_state.getEnemyUnits()->end())

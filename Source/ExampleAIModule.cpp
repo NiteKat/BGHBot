@@ -85,6 +85,19 @@ void ExampleAIModule::onStart()
 				game_state.addAIBase(new_base);
 			}
 		}
+		if (Broodwar->self()->getRace() == Races::Terran)
+		{
+			if (Broodwar->enemies().size() > 1 + Broodwar->allies().size())
+				game_state.setBuildOrder("build2");
+			else
+			{
+				int build_order_decider = rand() % 2 + 1;
+				if (build_order_decider == 2)
+				{
+					game_state.setBuildOrder("build2");
+				}
+			}
+		}
 		scouted = false;
 		game_state.initializeGasLocations();
 		Broodwar << game_state.getEnemyUnits()->size() << std::endl;
@@ -365,6 +378,37 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
 		  Object new_detector(unit, game_state.getContainingBase(unit));
 		  game_state.addDetector(new_detector);
 	  }
+	  else if (unit->getType() == BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode)
+	  {
+		  Object new_unit(unit, game_state.getContainingBase(unit));
+		  game_state.addUnit(new_unit);
+		  game_state.addSupplyUsed(2);
+	  }
+	  else if (unit->getType() == BWAPI::UnitTypes::Terran_Goliath)
+	  {
+		  Object new_unit(unit, game_state.getContainingBase(unit));
+		  game_state.addUnit(new_unit);
+		  game_state.addSupplyUsed(2);
+	  }
+	  else if (unit->getType() == BWAPI::UnitTypes::Terran_Factory)
+	  {
+		  Object new_building(unit, game_state.getContainingBase(unit));
+		  game_state.addBuilding(new_building);
+		  game_state.addMineralsCommitted(-200);
+		  game_state.addGasCommitted(-150);
+	  }
+	  else if (unit->getType() == BWAPI::UnitTypes::Terran_Machine_Shop)
+	  {
+		  Object new_building(unit, game_state.getContainingBase(unit));
+		  game_state.addBuilding(new_building);
+	  }
+	  else if (unit->getType() == BWAPI::UnitTypes::Terran_Armory)
+	  {
+		  Object new_building(unit, game_state.getContainingBase(unit));
+		  game_state.addBuilding(new_building);
+		  game_state.addMineralsCommitted(-100);
+		  game_state.addGasCommitted(-50);
+	  }
   }
 }
 
@@ -398,7 +442,10 @@ void ExampleAIModule::onUnitDestroy(BWAPI::Unit unit)
 			game_state.addSupplyUsed(-1);
 		}
 		else if ((unit->getType() == UnitTypes::Protoss_Zealot ||
-			unit->getType() == UnitTypes::Protoss_Dragoon) &&
+			unit->getType() == UnitTypes::Protoss_Dragoon ||
+			unit->getType() == UnitTypes::Terran_Siege_Tank_Siege_Mode ||
+			unit->getType() == UnitTypes::Terran_Siege_Tank_Tank_Mode ||
+			unit->getType() == UnitTypes::Terran_Goliath) &&
 			unit->getPlayer() == Broodwar->self())
 		{
 			game_state.addSupplyUsed(-2);

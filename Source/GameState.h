@@ -31,6 +31,8 @@ public:
 	void addDetector(Object new_detector);
 	void removeEnemyUnitsAtTilePosition(BWAPI::TilePosition target_position);
 	void addEvolutionChambers(int new_evolution_chambers);
+	void setBuildOrder(std::string new_build_order);
+	void toggleBuildTanks();
 
 
 	AIBase *getContainingBase(BWAPI::Unit);
@@ -63,6 +65,8 @@ public:
 	BWAPI::Position getRandomUncontrolledPosition();
 	int getDetectorCount();
 	int getEvolutionChambers();
+	std::string getBuildOrder();
+	bool getBuildTanks();
 	
 private:
 	std::vector<Object> building_list;
@@ -86,6 +90,8 @@ private:
 	bool comsat_station;
 	int last_scan;
 	int evolution_chambers;
+	std::string build_order;
+	bool build_tanks;
 
 };
 
