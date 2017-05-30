@@ -8,6 +8,7 @@ Object::Object(BWAPI::Unit new_unit, AIBase *new_base)
 	base_class = 0;
 	my_discovered_position = BWAPI::TilePositions::Invalid;
 	is_building = false;
+	elapsed_time_order_given = 0;
 }
 
 Object::Object(BWAPI::Unit new_unit)
@@ -18,6 +19,7 @@ Object::Object(BWAPI::Unit new_unit)
 	base_class = 0;
 	my_discovered_position = BWAPI::TilePositions::Invalid;
 	is_building = false;
+	elapsed_time_order_given = 0;
 }
 
 Object::Object()
@@ -28,6 +30,7 @@ Object::Object()
 	base_class = 0;
 	my_discovered_position = BWAPI::TilePositions::Invalid;
 	is_building = false;
+	elapsed_time_order_given = 0;
 }
 
 void Object::setBuildType(BWAPI::UnitType new_build_type)
@@ -106,4 +109,14 @@ void Object::setIsBuilding()
 bool Object::isBuilding()
 {
 	return is_building;
+}
+
+void Object::setElapsedTimeOrderGiven(int new_elapsed_time)
+{
+	elapsed_time_order_given = new_elapsed_time;
+}
+
+int Object::getElapsedTimeOrderGiven()
+{
+	return elapsed_time_order_given;
 }

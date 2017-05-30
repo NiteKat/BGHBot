@@ -19,6 +19,7 @@ public:
 	void removeGasWorker(int remove_unit_id);
 	void setDiscoveredPosition(BWAPI::TilePosition new_position);
 	void setIsBuilding();
+	void setElapsedTimeOrderGiven(int new_elapsed_time);
 
 	BWAPI::Unit getUnit();
 	AIBase *getBase();
@@ -26,6 +27,7 @@ public:
 	int getNumberGasWorkers();
 	BWAPI::TilePosition getDiscoveredPosition();
 	bool isBuilding();
+	int getElapsedTimeOrderGiven();
 
 private:
 	BWAPI::Unit my_unit;
@@ -35,6 +37,7 @@ private:
 	std::vector<int> gas_worker_unit_id_list;
 	BWAPI::TilePosition my_discovered_position;
 	bool is_building;
+	int elapsed_time_order_given;
 };
 
 #endif

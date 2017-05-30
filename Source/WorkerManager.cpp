@@ -174,6 +174,90 @@ int WorkerManager::manageWorkers(GameState &game_state)
 			auto erase_iterator = build_worker_iterator;
 			build_worker_iterator = game_state.getBuildWorkers()->erase(erase_iterator);
 		}
+		else if (build_worker_iterator->getElapsedTimeOrderGiven() + 30 < BWAPI::Broodwar->elapsedTime())
+		{
+
+			if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Terran_Supply_Depot)
+			{
+				game_state.addSupplyExpected(-8);
+				game_state.addMineralsCommitted(-100);
+			}
+			else if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Protoss_Pylon)
+			{
+				game_state.addSupplyExpected(-8);
+				game_state.addMineralsCommitted(-100);
+			}
+			else if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Terran_Barracks)
+			{
+				game_state.addMineralsCommitted(-150);
+			}
+			else if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Protoss_Gateway)
+			{
+				game_state.addMineralsCommitted(-150);
+			}
+			else if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Terran_Refinery)
+			{
+				game_state.addGas(-1);
+				game_state.addMineralsCommitted(-100);
+
+			}
+			else if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Terran_Academy)
+			{
+				if (game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Academy) == 0)
+					game_state.toggleAcademy();
+				game_state.addMineralsCommitted(-150);
+			}
+			else if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Zerg_Hatchery)
+			{
+				game_state.addSupplyExpected(-1);
+				game_state.addMineralsCommitted(-300);
+			}
+			else if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Protoss_Forge)
+			{
+				game_state.addMineralsCommitted(-150);
+			}
+			else if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Protoss_Cybernetics_Core)
+			{
+				game_state.addMineralsCommitted(-200);
+			}
+			else if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Protoss_Robotics_Facility)
+			{
+				game_state.addMineralsCommitted(-200);
+				game_state.addGasCommitted(-200);
+			}
+			else if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Protoss_Observatory)
+			{
+				game_state.addMineralsCommitted(-50);
+				game_state.addGasCommitted(-100);
+			}
+			else if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Protoss_Citadel_of_Adun)
+			{
+				game_state.addMineralsCommitted(-150);
+				game_state.addGasCommitted(-100);
+			}
+			else if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Protoss_Templar_Archives)
+			{
+				game_state.addMineralsCommitted(-150);
+				game_state.addGasCommitted(-200);
+			}
+			else if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Terran_Factory)
+			{
+				game_state.addMineralsCommitted(-200);
+				game_state.addGasCommitted(-150);
+			}
+			else if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Terran_Armory)
+			{
+				game_state.addMineralsCommitted(-100);
+				game_state.addGasCommitted(-50);
+			}
+			build_worker_iterator->getUnit()->stop();
+			Object new_mineral_worker(*build_worker_iterator);
+			new_mineral_worker.setBuildType(BWAPI::UnitTypes::Unknown);
+			new_mineral_worker.setBaseClass(0);
+			game_state.getMineralWorkers()->push_back(new_mineral_worker);
+			auto erase_iterator = build_worker_iterator;
+			build_worker_iterator = game_state.getBuildWorkers()->erase(erase_iterator);
+		}
 		else
 		{
 			build_worker_iterator++;
@@ -205,6 +289,7 @@ bool WorkerManager::build(BWAPI::UnitType building_type, int base_class, GameSta
 					{
 						new_build_worker.setBuildType(building_type);
 						new_build_worker.setBaseClass(base_class);
+						new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
 						game_state.getBuildWorkers()->push_back(new_build_worker);
 						game_state.getMineralWorkers()->erase(mineral_worker_iterator);
 						return true;
@@ -228,12 +313,21 @@ bool WorkerManager::build(BWAPI::UnitType building_type, int base_class, GameSta
 						{
 							new_build_worker.setBuildType(building_type);
 							new_build_worker.setBaseClass(base_class);
+							new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
 							game_state.getBuildWorkers()->push_back(new_build_worker);
 							game_state.getMineralWorkers()->erase(mineral_worker_iterator);
 							return true;
 						}
 						else
-							return false;
+						{
+							new_build_worker.getUnit()->move((BWAPI::Position)build_position);
+							new_build_worker.setBuildType(building_type);
+							new_build_worker.setBaseClass(base_class);
+							new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
+							game_state.getBuildWorkers()->push_back(new_build_worker);
+							game_state.getMineralWorkers()->erase(mineral_worker_iterator);
+							return true;
+						}
 					}
 					else
 						return false;
@@ -367,7 +461,8 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 				return position_to_build;
 			}
 		}
-		BWAPI::TilePosition position_to_try = build_worker.getBase()->getArea()->Bases().begin()->Location();
+		BWAPI::TilePosition position_to_try = BWAPI::Broodwar->getBuildLocation(building_type, build_worker.getUnit()->getTilePosition());
+		//BWAPI::TilePosition position_to_try = build_worker.getBase()->getArea()->Bases().begin()->Location();
 		bool too_close = false;
 		while (true)
 		{
@@ -414,7 +509,18 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 								position_to_try.y -= rand() % 2;
 								position_to_try.makeValid();
 							}
-							else return position_to_try;
+							else
+							{
+								BWEM::CPPath choke_point_path = BWEM::Map::Instance().GetPath((BWAPI::Position)position_to_try, build_worker.getUnit()->getPosition());
+								if (choke_point_path.size() <= 1)
+									return position_to_try;
+								else
+								{
+									position_to_try.x = rand() % BWAPI::Broodwar->mapWidth() + 1;
+									position_to_try.y = rand() % BWAPI::Broodwar->mapHeight() + 1;
+									position_to_try.makeValid();
+								}
+							}
 						}
 					}
 				}
