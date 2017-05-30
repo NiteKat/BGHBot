@@ -1,8 +1,14 @@
-BGH Bot Version 1.02
-
+BGH Bot Version 1.03
 This is a Broodwar AI developed in C++ using Visual Studio Community 2013, BWAPI, and the BWEM library. This bot is designed for play on the Big Game Hunters map, and can play all three races in the game.
 
 Version History:
+1.03
+Changes:
+-Added High Templar to Protoss army compisition.
+
+Bug fixes:
+-Fixed crash related to detectors.
+
 1.02
 Changes:
 -Added a 30 second timeout for build orders to workers. If the requested structure is not placed after 30 seconds, the assigned worker will give up.

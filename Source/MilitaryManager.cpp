@@ -155,6 +155,24 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 					military_iterator->getUnit()->useTech(BWAPI::TechTypes::Stim_Packs);
 				}
 			}
+			if (military_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_High_Templar &&
+				military_iterator->getUnit()->getEnergy() >= 75)
+			{
+				BWAPI::Unitset scanned_units = military_iterator->getUnit()->getUnitsInRadius(288);
+				for (auto checked_unit : scanned_units)
+				{
+					if (checked_unit->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
+						!checked_unit->getType().isBuilding())
+					{
+						BWAPI::Unitset scanned_units_2 = checked_unit->getUnitsInRadius(48, BWAPI::Filter::IsEnemy);
+						if (scanned_units_2.size() >= 3)
+						{
+							military_iterator->getUnit()->useTech(BWAPI::TechTypes::Psionic_Storm, checked_unit->getPosition());
+							break;
+						}
+					}
+				}
+			}
 			if (global_strategy == 0 &&
 				military_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode)
 			{
@@ -218,7 +236,8 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 				}
 			}
 			if (global_strategy == 0 &&
-				military_iterator->getUnit()->isIdle())
+				(military_iterator->getUnit()->isIdle() ||
+				military_iterator->getUnit()->getOrder() == BWAPI::Orders::Stop))
 			{
 				if (game_state.getBuildOrder() == "build2")
 				{
@@ -258,19 +277,27 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 							game_state.getContainingBase(enemy_iterator->second.getUnit())->getBaseClass() == 4 ||
 							game_state.getContainingBase(enemy_iterator->second.getUnit())->getBaseClass() == 5)
 						{
-							if (enemy_iterator->second.getUnit()->getType().isFlyer() &&
-								military_iterator->getUnit()->getType().airWeapon() != BWAPI::WeaponTypes::None)
+							if (military_iterator->getUnit()->getType() != BWAPI::UnitTypes::Protoss_High_Templar)
 							{
-								military_iterator->getUnit()->attack(enemy_iterator->second.getUnit()->getPosition());
-								enemy_iterator = game_state.getEnemyUnits()->end();
-							}
-							else if (!enemy_iterator->second.getUnit()->getType().isFlyer())
-							{
-								military_iterator->getUnit()->attack(enemy_iterator->second.getUnit()->getPosition());
-								enemy_iterator = game_state.getEnemyUnits()->end();
+								if (enemy_iterator->second.getUnit()->getType().isFlyer() &&
+									military_iterator->getUnit()->getType().airWeapon() != BWAPI::WeaponTypes::None)
+								{
+									military_iterator->getUnit()->attack(enemy_iterator->second.getUnit()->getPosition());
+									enemy_iterator = game_state.getEnemyUnits()->end();
+								}
+								else if (!enemy_iterator->second.getUnit()->getType().isFlyer())
+								{
+									military_iterator->getUnit()->attack(enemy_iterator->second.getUnit()->getPosition());
+									enemy_iterator = game_state.getEnemyUnits()->end();
+								}
+								else
+									enemy_iterator++;
 							}
 							else
-								enemy_iterator++;
+							{
+								military_iterator->getUnit()->move(enemy_iterator->second.getUnit()->getPosition());
+								enemy_iterator = game_state.getEnemyUnits()->end();
+							}
 						}
 						else
 						{
@@ -285,7 +312,8 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 			}
 			else if (global_strategy == 1 &&
 				(military_iterator->getUnit()->isIdle() ||
-				military_iterator->getUnit()->isPatrolling()))
+				military_iterator->getUnit()->isPatrolling() ||
+				military_iterator->getUnit()->getOrder() == BWAPI::Orders::Stop))
 			{
 				if (target_base != nullptr)
 				{
@@ -326,14 +354,20 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 									}
 									else
 									{
-										military_iterator->getUnit()->attack((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
+										if (military_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_High_Templar)
+											military_iterator->getUnit()->move((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
+										else
+											military_iterator->getUnit()->attack((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
 										enemy_unit_iterator++;
 									}
 								}
 							}
 							else
 							{
-								military_iterator->getUnit()->attack((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
+								if (military_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_High_Templar)
+									military_iterator->getUnit()->move((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
+								else
+									military_iterator->getUnit()->attack((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
 								enemy_unit_iterator = game_state.getEnemyUnits()->end();
 							}
 						}

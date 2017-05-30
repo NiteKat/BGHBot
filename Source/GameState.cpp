@@ -517,21 +517,24 @@ Object* GameState::getAvailableDetector()
 					unit_iterator++;
 				}
 			}
-			BWAPI::Unitset units_in_range_of_detector = BWAPI::Broodwar->getUnitsInRadius(detector_iterator->getUnit()->getPosition(), detector_iterator->getUnit()->getType().sightRange());
-			if (units_in_range_of_detector.size() == 0)
-				return &(*detector_iterator);
-			unit_iterator = units_in_range_of_detector.begin();
-			while (unit_iterator != units_in_range_of_detector.end())
+			if (detector_iterator->getUnit()->getPosition() != BWAPI::Positions::Invalid)
 			{
-				if ((*unit_iterator)->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
-					(*unit_iterator)->isCloaked())
+				BWAPI::Unitset units_in_range_of_detector = BWAPI::Broodwar->getUnitsInRadius(detector_iterator->getUnit()->getPosition(), detector_iterator->getUnit()->getType().sightRange());
+				if (units_in_range_of_detector.size() == 0)
+					return &(*detector_iterator);
+				unit_iterator = units_in_range_of_detector.begin();
+				while (unit_iterator != units_in_range_of_detector.end())
 				{
-					unit_iterator = units_in_range_of_detector.end();
-					detector_iterator++;
-				}
-				else
-				{
-					unit_iterator++;
+					if ((*unit_iterator)->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
+						(*unit_iterator)->isCloaked())
+					{
+						unit_iterator = units_in_range_of_detector.end();
+						detector_iterator++;
+					}
+					else
+					{
+						unit_iterator++;
+					}
 				}
 			}
 			return &(*detector_iterator);

@@ -378,6 +378,19 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 				building_list_iterator++;
 			}
 			else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Gateway &&
+				BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Protoss_High_Templar, 0) &&
+				BWAPI::Broodwar->self()->hasResearched(BWAPI::TechTypes::Psionic_Storm) &&
+				building_list_iterator->getUnit()->isIdle() &&
+				!building_list_iterator->getUnit()->isTraining() &&
+				(double)game_state.getUnitTypeCount(BWAPI::UnitTypes::Protoss_High_Templar) / (double)game_state.getMilitary()->size() < 0.1 &&
+				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
+				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 150 &&
+				game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
+			{
+				building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_High_Templar);
+				building_list_iterator++;
+			}
+			else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Gateway &&
 				BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Protoss_Dragoon, 0) &&
 				building_list_iterator->getUnit()->isIdle() &&
 				!building_list_iterator->getUnit()->isTraining() &&
@@ -418,6 +431,15 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 				game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
 			{
 				building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Zealot);
+				building_list_iterator++;
+			}
+			else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Templar_Archives &&
+				building_list_iterator->getUnit()->isIdle() &&
+				!building_list_iterator->getUnit()->isResearching() &&
+				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 200 &&
+				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 200)
+			{
+				building_list_iterator->getUnit()->research(BWAPI::TechTypes::Psionic_Storm);
 				building_list_iterator++;
 			}
 			else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Forge &&

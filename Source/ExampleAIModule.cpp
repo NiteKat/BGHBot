@@ -278,7 +278,8 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
 		  game_state.addUnit(new_unit);
 	  }
 	  else if ((unit->getType() == UnitTypes::Protoss_Zealot ||
-		  unit->getType() == UnitTypes::Protoss_Dragoon) &&
+		  unit->getType() == UnitTypes::Protoss_Dragoon ||
+		  unit->getType() == UnitTypes::Protoss_High_Templar) &&
 		  unit->getPlayer() == Broodwar->self())
 	  {
 		  Object new_unit(unit);
@@ -445,7 +446,8 @@ void ExampleAIModule::onUnitDestroy(BWAPI::Unit unit)
 			unit->getType() == UnitTypes::Protoss_Dragoon ||
 			unit->getType() == UnitTypes::Terran_Siege_Tank_Siege_Mode ||
 			unit->getType() == UnitTypes::Terran_Siege_Tank_Tank_Mode ||
-			unit->getType() == UnitTypes::Terran_Goliath) &&
+			unit->getType() == UnitTypes::Terran_Goliath ||
+			unit->getType() == UnitTypes::Protoss_High_Templar) &&
 			unit->getPlayer() == Broodwar->self())
 		{
 			game_state.addSupplyUsed(-2);
