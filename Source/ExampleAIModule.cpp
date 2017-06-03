@@ -85,6 +85,9 @@ void ExampleAIModule::onStart()
 				game_state.addAIBase(new_base);
 			}
 		}
+		Objective new_objective;
+		new_objective.setObjective(ObjectiveTypes::Defend);
+		game_state.addObjective(new_objective);
 		if (Broodwar->self()->getRace() == Races::Terran)
 		{
 			if (Broodwar->enemies().size() > 1 + Broodwar->allies().size())
@@ -119,8 +122,8 @@ void ExampleAIModule::onEnd(bool isWinner)
 
 void ExampleAIModule::onFrame()
 {
-	try
-	{
+	//try
+	//{
 		// Called once every game frame
 		BWEM::utils::drawMap(theMap);
 		if (Broodwar->getSelectedUnits().size() == 1)
@@ -162,15 +165,15 @@ void ExampleAIModule::onFrame()
 			military_manager.scout(worker_manager, game_state);
 			scouted = true;
 		}
-
+		game_state.assessGame();
 		worker_manager.manageWorkers(game_state);
 		macro_manager.checkMacro(&worker_manager, game_state);
 		military_manager.checkMilitary(worker_manager, game_state);
-	}
-	catch (const std::exception & e)
-	{
-		Broodwar << "EXCEPTION: " << e.what() << std::endl;
-	}
+	//}
+	//catch (const std::exception & e)
+	//{
+		//Broodwar << "EXCEPTION: " << e.what() << std::endl;
+	//}
 }
 
 void ExampleAIModule::onSendText(std::string text)

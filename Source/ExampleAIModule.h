@@ -7,6 +7,7 @@
 #include"MacroManager.h"
 #include"MilitaryManager.h"
 #include"GameState.h"
+#include"Objective.h"
 
 // Remember not to use "Broodwar" in any global class constructor!
 

@@ -449,6 +449,7 @@ int GameState::getUnitTypeCount(BWAPI::UnitType type_to_check)
 void GameState::addUnit(Object new_unit)
 {
 	military.push_back(new_unit);
+	objective_list.begin()->addUnit(new_unit);
 }
 
 std::vector<Object>* GameState::getMilitary()
@@ -491,45 +492,27 @@ Object* GameState::getAvailableDetector()
 	auto detector_iterator = detectors.begin();
 	while (detector_iterator != detectors.end())
 	{
+		bool detector_free = true;
 		if (!detector_iterator->getUnit()->exists())
 		{
 			auto erase_iterator = detector_iterator;
 			detector_iterator = detectors.erase(erase_iterator);
 		}
-		else if (detector_iterator->getUnit()->isIdle())
-			return &(*detector_iterator);
+		else if (!detector_iterator->getUnit()->isCompleted())
+			detector_iterator++;
 		else
 		{
-			BWAPI::Unitset units_in_range_of_target = BWAPI::Broodwar->getUnitsInRadius(detector_iterator->getUnit()->getTargetPosition(), detector_iterator->getUnit()->getType().sightRange());
-			if (units_in_range_of_target.size() == 0)
-				return &(*detector_iterator);
-			auto unit_iterator = units_in_range_of_target.begin();
-			while (unit_iterator != units_in_range_of_target.end())
+			if (!detector_iterator->getUnit()->isIdle())
 			{
-				if ((*unit_iterator)->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
-					(*unit_iterator)->isCloaked())
-				{
-					unit_iterator = units_in_range_of_target.end();
-					detector_iterator++;
-				}
-				else
-				{
-					unit_iterator++;
-				}
-			}
-			if (detector_iterator->getUnit()->getPosition() != BWAPI::Positions::Invalid)
-			{
-				BWAPI::Unitset units_in_range_of_detector = BWAPI::Broodwar->getUnitsInRadius(detector_iterator->getUnit()->getPosition(), detector_iterator->getUnit()->getType().sightRange());
-				if (units_in_range_of_detector.size() == 0)
-					return &(*detector_iterator);
-				unit_iterator = units_in_range_of_detector.begin();
-				while (unit_iterator != units_in_range_of_detector.end())
+				BWAPI::Unitset units_in_range_of_target = BWAPI::Broodwar->getUnitsInRadius(detector_iterator->getUnit()->getTargetPosition(), detector_iterator->getUnit()->getType().sightRange());
+				auto unit_iterator = units_in_range_of_target.begin();
+				while (unit_iterator != units_in_range_of_target.end())
 				{
 					if ((*unit_iterator)->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
 						(*unit_iterator)->isCloaked())
 					{
-						unit_iterator = units_in_range_of_detector.end();
-						detector_iterator++;
+						unit_iterator = units_in_range_of_target.end();
+						detector_free = false;
 					}
 					else
 					{
@@ -537,9 +520,34 @@ Object* GameState::getAvailableDetector()
 					}
 				}
 			}
-			return &(*detector_iterator);
+			if (detector_free == true &&
+				detector_iterator->getUnit()->getPosition() != BWAPI::Positions::Invalid)
+			{
+				BWAPI::Unitset units_in_range_of_detector = BWAPI::Broodwar->getUnitsInRadius(detector_iterator->getUnit()->getPosition(), detector_iterator->getUnit()->getType().sightRange());
+				if (units_in_range_of_detector.size() == 0)
+					return &(*detector_iterator);
+				auto unit_iterator = units_in_range_of_detector.begin();
+				while (unit_iterator != units_in_range_of_detector.end())
+				{
+					if ((*unit_iterator)->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
+						(*unit_iterator)->isCloaked())
+					{
+						unit_iterator = units_in_range_of_detector.end();
+						detector_free = false;
+					}
+					else
+					{
+						unit_iterator++;
+					}
+				}
+			}
+			if (detector_free)
+				return &(*detector_iterator);
+			else
+				detector_iterator++;
 		}
 	}
+	return nullptr;
 }
 
 BWAPI::Position GameState::getRandomUncontrolledPosition()
@@ -617,4 +625,190 @@ void GameState::toggleBuildTanks()
 		build_tanks = false;
 	else
 		build_tanks = true;
+}
+
+std::vector<Objective>* GameState::getObjectiveList()
+{
+	return &objective_list;
+}
+
+void GameState::addObjective(Objective new_objective)
+{
+	objective_list.push_back(new_objective);
+}
+
+void GameState::assessGame()
+{
+	if (objective_list.size() >= 1)
+	{
+		if (objective_list.size() > 1 &&
+			BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran &&
+			build_order == "build2" &&
+			barracks >= 1)
+		{
+			bool lift_barracks = false;
+			auto current_objective = objective_list.begin();
+			current_objective++;
+			while (current_objective != objective_list.end())
+			{
+				auto current_unit = current_objective->getUnits()->begin();
+				while (current_unit != current_objective->getUnits()->end())
+				{
+					if (current_unit->getUnit()->exists())
+					{
+						if (getContainingBase(current_unit->getUnit()->getTilePosition())->getBaseClass() == 3)
+						{
+							current_unit = current_objective->getUnits()->end();
+							lift_barracks = true;
+						}
+						else
+						{
+							current_unit++;
+						}
+					}
+					else
+						current_unit++;
+				}
+				if (lift_barracks)
+					current_objective = objective_list.end();
+				else
+					current_objective++;
+			}
+			auto current_building = building_list.begin();
+			while (current_building != building_list.end())
+			{
+				if (current_building->getUnit()->getType() == BWAPI::UnitTypes::Terran_Barracks &&
+					!current_building->getUnit()->isFlying() &&
+					lift_barracks == true)
+				{
+					current_building->getUnit()->lift();
+					current_building = building_list.end();
+				}
+				else if (current_building->getUnit()->getType() == BWAPI::UnitTypes::Terran_Barracks &&
+					current_building->getUnit()->isFlying() &&
+					lift_barracks == false)
+				{
+					BWAPI::TilePosition position_to_land;
+					if (BWAPI::Broodwar->self()->getStartLocation().x == 114 &&
+						BWAPI::Broodwar->self()->getStartLocation().y == 116)
+					{
+						position_to_land.x = 90;
+						position_to_land.y = 97;
+					}
+					else if (BWAPI::Broodwar->self()->getStartLocation().x == 114 &&
+						BWAPI::Broodwar->self()->getStartLocation().y == 80)
+					{
+						position_to_land.x = 101;
+						position_to_land.y = 63;
+					}
+					else if (BWAPI::Broodwar->self()->getStartLocation().x == 113 &&
+						BWAPI::Broodwar->self()->getStartLocation().y == 8)
+					{
+						position_to_land.x = 96;
+						position_to_land.y = 24;
+					}
+					else if (BWAPI::Broodwar->self()->getStartLocation().x == 72 &&
+						BWAPI::Broodwar->self()->getStartLocation().y == 8)
+					{
+						position_to_land.x = 54;
+						position_to_land.y = 25;
+					}
+					else if (BWAPI::Broodwar->self()->getStartLocation().x == 10 &&
+						BWAPI::Broodwar->self()->getStartLocation().y == 6)
+					{
+						position_to_land.x = 30;
+						position_to_land.y = 23;
+					}
+					else if (BWAPI::Broodwar->self()->getStartLocation().x == 8 &&
+						BWAPI::Broodwar->self()->getStartLocation().y == 47)
+					{
+						position_to_land.x = 22;
+						position_to_land.y = 57;
+					}
+					else if (BWAPI::Broodwar->self()->getStartLocation().x == 10 &&
+						BWAPI::Broodwar->self()->getStartLocation().y == 114)
+					{
+						position_to_land.x = 17;
+						position_to_land.y = 95;
+					}
+					else if (BWAPI::Broodwar->self()->getStartLocation().x == 63 &&
+						BWAPI::Broodwar->self()->getStartLocation().y == 117)
+					{
+						position_to_land.x = 52;
+						position_to_land.y = 96;
+					}
+
+					current_building->getUnit()->land(position_to_land);
+					current_building = building_list.end();
+				}
+				else
+					current_building++;
+			}
+		}
+		if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
+		{
+			if (build_order == "default" &&
+				objective_list.begin()->getUnits()->size() > 50)
+			{
+				Objective new_objective;
+				new_objective.setObjective(ObjectiveTypes::Attack);
+				auto current_unit = objective_list.begin()->getUnits()->begin();
+				while (current_unit != objective_list.begin()->getUnits()->end())
+				{
+					new_objective.addUnit(*current_unit);
+					current_unit++;
+				}
+				objective_list.begin()->getUnits()->clear();
+				objective_list.push_back(new_objective);
+			}
+			else if (build_order == "build2" &&
+				objective_list.begin()->getUnits()->size() > 24)
+			{
+				Objective new_objective;
+				new_objective.setObjective(ObjectiveTypes::Attack);
+				auto current_unit = objective_list.begin()->getUnits()->begin();
+				while (current_unit != objective_list.begin()->getUnits()->end())
+				{
+					new_objective.addUnit(*current_unit);
+					current_unit++;
+				}
+				objective_list.begin()->getUnits()->clear();
+				objective_list.push_back(new_objective);
+			}
+		}
+		else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss)
+		{
+			if (build_order == "default" &&
+				objective_list.begin()->getUnits()->size() > 30)
+			{
+				Objective new_objective;
+				new_objective.setObjective(ObjectiveTypes::Attack);
+				auto current_unit = objective_list.begin()->getUnits()->begin();
+				while (current_unit != objective_list.begin()->getUnits()->end())
+				{
+					new_objective.addUnit(*current_unit);
+					current_unit++;
+				}
+				objective_list.begin()->getUnits()->clear();
+				objective_list.push_back(new_objective);
+			}
+		}
+		else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Zerg)
+		{
+			if (build_order == "default" &&
+				objective_list.begin()->getUnits()->size() > 100)
+			{
+				Objective new_objective;
+				new_objective.setObjective(ObjectiveTypes::Attack);
+				auto current_unit = objective_list.begin()->getUnits()->begin();
+				while (current_unit != objective_list.begin()->getUnits()->end())
+				{
+					new_objective.addUnit(*current_unit);
+					current_unit++;
+				}
+				objective_list.begin()->getUnits()->clear();
+				objective_list.push_back(new_objective);
+			}
+		}
+	}
 }

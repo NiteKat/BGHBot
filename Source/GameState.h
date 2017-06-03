@@ -3,6 +3,7 @@
 #include<vector>
 #include"Object.h"
 #include"AIBase.h"
+#include"Objective.h"
 
 class GameState
 {
@@ -33,6 +34,8 @@ public:
 	void addEvolutionChambers(int new_evolution_chambers);
 	void setBuildOrder(std::string new_build_order);
 	void toggleBuildTanks();
+	void addObjective(Objective new_objective);
+	void assessGame();
 
 
 	AIBase *getContainingBase(BWAPI::Unit);
@@ -67,6 +70,7 @@ public:
 	int getEvolutionChambers();
 	std::string getBuildOrder();
 	bool getBuildTanks();
+	std::vector<Objective> *getObjectiveList();
 	
 private:
 	std::vector<Object> building_list;
@@ -78,6 +82,7 @@ private:
 	std::vector<Object> military;
 	std::vector<Object> larva;
 	std::vector<Object> detectors;
+	std::vector<Objective> objective_list;
 	
 	double supply_used;
 	double supply_total;
