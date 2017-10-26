@@ -311,9 +311,13 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 						{
 							if (enemy_iterator->second.getUnit()->exists())
 							{
-								if (game_state.getContainingBase(enemy_iterator->second.getUnit())->getBaseClass() == 3 ||
-									game_state.getContainingBase(enemy_iterator->second.getUnit())->getBaseClass() == 4 ||
-									game_state.getContainingBase(enemy_iterator->second.getUnit())->getBaseClass() == 5)
+								AIBase* base_to_check = game_state.getContainingBase(enemy_iterator->second.getUnit());
+								int base_class = -1;
+								if (base_to_check != nullptr)
+									base_class = base_to_check->getBaseClass();
+								if (base_class == 3 ||
+									base_class == 4 ||
+									base_class == 5)
 								{
 									if (unit_iterator->getUnit()->getType() != BWAPI::UnitTypes::Protoss_High_Templar)
 									{
@@ -420,7 +424,7 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 							while (enemy_unit_iterator != game_state.getEnemyUnits()->end())
 							{
 								if (enemy_unit_iterator->second.isBuilding() &&
-									target_base->getArea()->Id() == BWEM::Map::Instance().GetNearestArea(enemy_unit_iterator->second.getDiscoveredPosition())->Id())
+									target_base->getArea()->Id() == BWEM::Map::Instance().GetArea(enemy_unit_iterator->second.getDiscoveredPosition())->Id())
 								{
 									if (BWAPI::Broodwar->isVisible(enemy_unit_iterator->second.getDiscoveredPosition()))
 									{
@@ -500,7 +504,7 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 				auto base_list_iterator = game_state.getBaseList()->begin();
 				while (base_list_iterator != game_state.getBaseList()->end())
 				{
-					if (base_list_iterator->getArea() == BWEM::Map::Instance().GetNearestArea(scout_unit.getUnit()->getTilePosition()) &&
+					if (base_list_iterator->getArea() == BWEM::Map::Instance().GetArea(scout_unit.getUnit()->getTilePosition()) &&
 						base_list_iterator->getScouted() == false)
 					{
 						base_list_iterator->toggleScouted();

@@ -63,7 +63,7 @@ AIBase* GameState::getContainingBase(BWAPI::Unit unit)
 	auto base_list_iterator = base_list.begin();
 	while (base_list_iterator != base_list.end())
 	{
-		if (base_list_iterator->getArea() == BWEM::Map::Instance().GetNearestArea(unit->getTilePosition()))
+		if (base_list_iterator->getArea() == BWEM::Map::Instance().GetArea(unit->getTilePosition()))
 		{
 			return &(*base_list_iterator);
 		}
@@ -80,7 +80,7 @@ AIBase* GameState::getContainingBase(BWAPI::TilePosition tile_position)
 	auto base_list_iterator = base_list.begin();
 	while (base_list_iterator != base_list.end())
 	{
-		if (base_list_iterator->getArea() == BWEM::Map::Instance().GetNearestArea(tile_position))
+		if (base_list_iterator->getArea() == BWEM::Map::Instance().GetArea(tile_position))
 		{
 			return &(*base_list_iterator);
 		}
@@ -394,7 +394,7 @@ void GameState::checkBaseOwnership()
 			base_list_iterator->setBaseClass(1);
 			for (auto unit : building_list)
 			{
-				if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetNearestArea(unit.getUnit()->getTilePosition())->Id())
+				if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetArea(unit.getUnit()->getTilePosition())->Id())
 				{
 					base_list_iterator->setBaseClass(4);
 					break;
@@ -406,7 +406,7 @@ void GameState::checkBaseOwnership()
 				{
 					if (unit->getType().isBuilding())
 					{
-						if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetNearestArea(unit->getTilePosition())->Id())
+						if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetArea(unit->getTilePosition())->Id())
 						{
 							base_list_iterator->setBaseClass(5);
 							break;
@@ -420,7 +420,7 @@ void GameState::checkBaseOwnership()
 				{
 					if (unit.second.isBuilding())
 					{
-						if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetNearestArea(unit.second.getDiscoveredPosition())->Id())
+						if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetArea(unit.second.getDiscoveredPosition())->Id())
 						{
 							base_list_iterator->setBaseClass(2);
 							break;
@@ -535,15 +535,19 @@ BWAPI::Position GameState::getRandomUncontrolledPosition()
 		random_position.x = rand() % BWAPI::Broodwar->mapWidth() * 32;
 		random_position.y = rand() % BWAPI::Broodwar->mapHeight() * 32;
 		auto base_list_iterator = base_list.begin();
-		while (base_list_iterator != base_list.end())
+		const BWEM::Area* area_to_check = BWEM::Map::Instance().GetArea((BWAPI::TilePosition)random_position);
+		if (area_to_check != nullptr)
 		{
-			if (BWEM::Map::Instance().GetNearestArea((BWAPI::TilePosition)random_position)->Id() == base_list_iterator->getArea()->Id() &&
-				base_list_iterator->getBaseClass() != 3 &&
-				base_list_iterator->getBaseClass() != 4 &&
-				base_list_iterator->getBaseClass() != 5)
-				return random_position;
-			else
-				base_list_iterator++;
+			while (base_list_iterator != base_list.end())
+			{
+				if (BWEM::Map::Instance().GetArea((BWAPI::TilePosition)random_position)->Id() == base_list_iterator->getArea()->Id() &&
+					base_list_iterator->getBaseClass() != 3 &&
+					base_list_iterator->getBaseClass() != 4 &&
+					base_list_iterator->getBaseClass() != 5)
+					return random_position;
+				else
+					base_list_iterator++;
+			}
 		}
 	}
 }
@@ -805,7 +809,10 @@ void GameState::initializeBuildMap()
 				new_coordinate.first.pylon_power_2x2 = false;
 				new_coordinate.first.pylon_power_3x2 = false;
 				new_coordinate.first.pylon_power_4x3 = false;
-				new_coordinate.second = BWEM::Map::Instance().GetNearestArea(position_to_check)->Id();
+				if (BWEM::Map::Instance().GetArea(position_to_check) != nullptr)
+					new_coordinate.second = BWEM::Map::Instance().GetArea(position_to_check)->Id();
+				else
+					new_coordinate.second = -1;
 				build_position_map.push_back(new_coordinate);
 			}
 			else
@@ -815,7 +822,10 @@ void GameState::initializeBuildMap()
 				new_coordinate.first.pylon_power_2x2 = false;
 				new_coordinate.first.pylon_power_3x2 = false;
 				new_coordinate.first.pylon_power_4x3 = false;
-				new_coordinate.second = BWEM::Map::Instance().GetNearestArea(position_to_check)->Id();
+				if (BWEM::Map::Instance().GetArea(position_to_check) != nullptr)
+					new_coordinate.second = BWEM::Map::Instance().GetArea(position_to_check)->Id();
+				else
+					new_coordinate.second = -1;
 				build_position_map.push_back(new_coordinate);
 			}
 		}

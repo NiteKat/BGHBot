@@ -462,7 +462,7 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 				return position_to_build;
 			}
 		}
-		BWAPI::TilePosition position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetNearestArea(build_worker.getUnit()->getTilePosition())->Top();
+		BWAPI::TilePosition position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
 		BWAPI::TilePosition building_size = building_type.tileSize();
 		bool can_build = false;
 		bool try_new_position = false;
@@ -501,10 +501,16 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 					position_to_build.x += rand() % 5 - 2;
 					position_to_build.y += rand() % 5 - 2;
 					position_to_build.makeValid();
-					if (BWEM::Map::Instance().GetNearestArea(position_to_build)->Id() == build_worker.getBase()->getArea()->Id())
-						in_base = true;
+					const BWEM::Area* area_to_check = BWEM::Map::Instance().GetArea(position_to_build);
+					if (area_to_check != nullptr)
+					{
+						if (BWEM::Map::Instance().GetArea(position_to_build)->Id() == build_worker.getBase()->getArea()->Id())
+							in_base = true;
+						else
+							position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
+					}
 					else
-						position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetNearestArea(build_worker.getUnit()->getTilePosition())->Top();
+						position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
 				}
 			}
 			if ((std::clock() - build_location_start) * 1000 > 350)
@@ -521,8 +527,8 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 			)
 		{
 			BWAPI::TilePosition position_to_try;
-			position_to_try.x = (*BWEM::Map::Instance().GetNearestArea(build_worker.getUnit()->getTilePosition())->ChokePoints().begin())->Center().x;
-			position_to_try.y = (*BWEM::Map::Instance().GetNearestArea(build_worker.getUnit()->getTilePosition())->ChokePoints().begin())->Center().y;
+			position_to_try.x = (*BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->ChokePoints().begin())->Center().x;
+			position_to_try.y = (*BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->ChokePoints().begin())->Center().y;
 			while (true)
 			{
 
@@ -533,7 +539,7 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 	{
 		if (building_type == BWAPI::UnitTypes::Protoss_Pylon)
 		{
-			BWAPI::TilePosition position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetNearestArea(build_worker.getUnit()->getTilePosition())->Top();
+			BWAPI::TilePosition position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
 			BWAPI::TilePosition building_size = building_type.tileSize();
 			bool can_build = false;
 			bool try_new_position = false;
@@ -572,10 +578,10 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 						position_to_build.x += rand() % 5 - 2;
 						position_to_build.y += rand() % 5 - 2;
 						position_to_build.makeValid();
-						if (BWEM::Map::Instance().GetNearestArea(position_to_build)->Id() == build_worker.getBase()->getArea()->Id())
+						if (BWEM::Map::Instance().GetArea(position_to_build)->Id() == build_worker.getBase()->getArea()->Id())
 							in_base = true;
 						else
-							position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetNearestArea(build_worker.getUnit()->getTilePosition())->Top();
+							position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
 					}
 				}
 				if ((std::clock() - build_location_start) * 1000 > 350)
@@ -588,7 +594,7 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 		}
 		else
 		{
-			BWAPI::TilePosition position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetNearestArea(build_worker.getUnit()->getTilePosition())->Top();
+			BWAPI::TilePosition position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
 			BWAPI::TilePosition building_size = building_type.tileSize();
 			bool can_build = false;
 			bool try_new_position = false;
@@ -632,10 +638,10 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 						position_to_build.x += rand() % 5 - 2;
 						position_to_build.y += rand() % 5 - 2;
 						position_to_build.makeValid();
-						if (BWEM::Map::Instance().GetNearestArea(position_to_build)->Id() == build_worker.getBase()->getArea()->Id())
+						if (BWEM::Map::Instance().GetArea(position_to_build)->Id() == build_worker.getBase()->getArea()->Id())
 							in_base = true;
 						else
-							position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetNearestArea(build_worker.getUnit()->getTilePosition())->Top();
+							position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
 					}
 				}
 				if ((std::clock() - build_location_start) * 1000 > 350)

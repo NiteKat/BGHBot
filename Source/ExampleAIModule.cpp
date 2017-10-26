@@ -72,7 +72,7 @@ void ExampleAIModule::onStart()
 			for (const auto &area : theMap.Areas())
 			{
 				int base_region = 0;
-				if (theMap.GetNearestArea(Broodwar->self()->getStartLocation())->BottomRight() == area.BottomRight())
+				if (theMap.GetArea(Broodwar->self()->getStartLocation())->BottomRight() == area.BottomRight())
 					base_region = 3;
 				else if (area.Minerals().size() > 0)
 					base_region = 1;
@@ -86,7 +86,7 @@ void ExampleAIModule::onStart()
 		new_objective.setObjective(ObjectiveTypes::Defend);
 		game_state.addObjective(new_objective);
 		game_state.initializeBuildMap();
-		if (Broodwar->self()->getRace() == Races::Terran)
+		/*if (Broodwar->self()->getRace() == Races::Terran)
 		{
 			if (Broodwar->enemies().size() > 1 + Broodwar->allies().size())
 				game_state.setBuildOrder(BuildOrder::BGHMech);
@@ -98,7 +98,7 @@ void ExampleAIModule::onStart()
 					game_state.setBuildOrder(BuildOrder::BGHMech);
 				}
 			}
-		}
+		}*/
 		scouted = false;
 		game_state.initializeGasLocations();
 		Broodwar << game_state.getEnemyUnits()->size() << std::endl;
