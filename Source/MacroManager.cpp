@@ -22,7 +22,7 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 				auto erase_iterator = building_list_iterator;
 				building_list_iterator = game_state.getBuildingList()->erase(erase_iterator);
 			}
-			else  if (game_state.getBuildOrder() == "build2")
+			else  if (game_state.getBuildOrder() == BuildOrder::BGHMech)
 			{ 
 				if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Command_Center &&
 					building_list_iterator->getUnit()->isCompleted() &&
@@ -870,7 +870,7 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 
 	if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
 	{
-		if (game_state.getBuildOrder() == "build2")
+		if (game_state.getBuildOrder() == BuildOrder::BGHMech)
 		{
 			if (game_state.getUnitTypeCount(BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode) + game_state.getUnitTypeCount(BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode) >= 2 &&
 				!game_state.checkAcademy() &&

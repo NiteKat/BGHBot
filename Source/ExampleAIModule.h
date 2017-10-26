@@ -39,6 +39,10 @@ public:
   MacroManager macro_manager;
   MilitaryManager military_manager;
   bool scouted;
+  double assess_game_time;
+  double manage_workers_time;
+  double check_macro_time;
+  double check_military_time;
 };
 
 

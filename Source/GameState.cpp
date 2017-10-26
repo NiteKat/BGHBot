@@ -16,7 +16,7 @@ GameState::GameState()
 	comsat_station = false;
 	last_scan = 0;
 	evolution_chambers = 0;
-	build_order = "default";
+	build_order = BuildOrder::Default;
 	build_tanks = false;
 }
 
@@ -504,42 +504,18 @@ Object* GameState::getAvailableDetector()
 		{
 			if (!detector_iterator->getUnit()->isIdle())
 			{
-				BWAPI::Unitset units_in_range_of_target = BWAPI::Broodwar->getUnitsInRadius(detector_iterator->getUnit()->getTargetPosition(), detector_iterator->getUnit()->getType().sightRange());
-				auto unit_iterator = units_in_range_of_target.begin();
-				while (unit_iterator != units_in_range_of_target.end())
-				{
-					if ((*unit_iterator)->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
-						(*unit_iterator)->isCloaked())
-					{
-						unit_iterator = units_in_range_of_target.end();
-						detector_free = false;
-					}
-					else
-					{
-						unit_iterator++;
-					}
-				}
+				BWAPI::Unitset units_in_range_of_target = BWAPI::Broodwar->getUnitsInRadius(detector_iterator->getUnit()->getTargetPosition(), detector_iterator->getUnit()->getType().sightRange(), (BWAPI::Filter::IsEnemy && BWAPI::Filter::IsCloaked) || (BWAPI::Filter::IsEnemy && BWAPI::Filter::IsBurrowed));
+				if (units_in_range_of_target.size() > 0)
+					detector_free = false;
 			}
 			if (detector_free == true &&
 				detector_iterator->getUnit()->getPosition() != BWAPI::Positions::Invalid)
 			{
-				BWAPI::Unitset units_in_range_of_detector = BWAPI::Broodwar->getUnitsInRadius(detector_iterator->getUnit()->getPosition(), detector_iterator->getUnit()->getType().sightRange());
+				BWAPI::Unitset units_in_range_of_detector = BWAPI::Broodwar->getUnitsInRadius(detector_iterator->getUnit()->getPosition(), detector_iterator->getUnit()->getType().sightRange(), (BWAPI::Filter::IsEnemy && BWAPI::Filter::IsCloaked) || (BWAPI::Filter::IsEnemy && BWAPI::Filter::IsBurrowed));
 				if (units_in_range_of_detector.size() == 0)
 					return &(*detector_iterator);
-				auto unit_iterator = units_in_range_of_detector.begin();
-				while (unit_iterator != units_in_range_of_detector.end())
-				{
-					if ((*unit_iterator)->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
-						(*unit_iterator)->isCloaked())
-					{
-						unit_iterator = units_in_range_of_detector.end();
+				else
 						detector_free = false;
-					}
-					else
-					{
-						unit_iterator++;
-					}
-				}
 			}
 			if (detector_free)
 				return &(*detector_iterator);
@@ -604,12 +580,12 @@ int GameState::getEvolutionChambers()
 	return evolution_chambers;
 }
 
-void GameState::setBuildOrder(std::string new_build_order)
+void GameState::setBuildOrder(BuildOrder new_build_order)
 {
 	build_order = new_build_order;
 }
 
-std::string GameState::getBuildOrder()
+BuildOrder GameState::getBuildOrder()
 {
 	return build_order;
 }
@@ -643,7 +619,7 @@ void GameState::assessGame()
 	{
 		if (objective_list.size() > 1 &&
 			BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran &&
-			build_order == "build2" &&
+			build_order == BuildOrder::BGHMech &&
 			barracks >= 1)
 		{
 			bool lift_barracks = false;
@@ -747,7 +723,7 @@ void GameState::assessGame()
 		}
 		if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
 		{
-			if (build_order == "default" &&
+			if (build_order == BuildOrder::Default &&
 				objective_list.begin()->getUnits()->size() > 50)
 			{
 				Objective new_objective;
@@ -761,7 +737,7 @@ void GameState::assessGame()
 				objective_list.begin()->getUnits()->clear();
 				objective_list.push_back(new_objective);
 			}
-			else if (build_order == "build2" &&
+			else if (build_order == BuildOrder::BGHMech &&
 				objective_list.begin()->getUnits()->size() > 24)
 			{
 				Objective new_objective;
@@ -778,7 +754,7 @@ void GameState::assessGame()
 		}
 		else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss)
 		{
-			if (build_order == "default" &&
+			if (build_order == BuildOrder::Default &&
 				objective_list.begin()->getUnits()->size() > 30)
 			{
 				Objective new_objective;
@@ -795,7 +771,7 @@ void GameState::assessGame()
 		}
 		else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Zerg)
 		{
-			if (build_order == "default" &&
+			if (build_order == BuildOrder::Default &&
 				objective_list.begin()->getUnits()->size() > 100)
 			{
 				Objective new_objective;
@@ -811,4 +787,225 @@ void GameState::assessGame()
 			}
 		}
 	}
+}
+
+void GameState::initializeBuildMap()
+{
+	for (int y = 0; y < BWAPI::Broodwar->mapHeight(); y++)
+	{
+		for (int x = 0; x < BWAPI::Broodwar->mapWidth(); x++)
+		{
+			BWAPI::TilePosition position_to_check;
+			position_to_check.x = x;
+			position_to_check.y = y;
+			if (BWAPI::Broodwar->isBuildable(position_to_check))
+			{
+				std::pair<TileFlags, int> new_coordinate;
+				new_coordinate.first.unobstructed = true;
+				new_coordinate.first.pylon_power_2x2 = false;
+				new_coordinate.first.pylon_power_3x2 = false;
+				new_coordinate.first.pylon_power_4x3 = false;
+				new_coordinate.second = BWEM::Map::Instance().GetNearestArea(position_to_check)->Id();
+				build_position_map.push_back(new_coordinate);
+			}
+			else
+			{
+				std::pair<TileFlags, int> new_coordinate;
+				new_coordinate.first.unobstructed = false;
+				new_coordinate.first.pylon_power_2x2 = false;
+				new_coordinate.first.pylon_power_3x2 = false;
+				new_coordinate.first.pylon_power_4x3 = false;
+				new_coordinate.second = BWEM::Map::Instance().GetNearestArea(position_to_check)->Id();
+				build_position_map.push_back(new_coordinate);
+			}
+		}
+	}
+}
+
+void GameState::updateBuildMap(int x, int y, BWAPI::UnitType building_type, bool build_or_remove)
+{
+	//2x1
+	if (building_type.isMineralField())
+	{
+		if (build_or_remove)
+		{
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
+		}
+		else
+		{
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
+		}
+	}
+	//2x2
+	if (building_type == BWAPI::UnitTypes::Terran_Missile_Turret ||
+		building_type == BWAPI::UnitTypes::Protoss_Photon_Cannon ||
+		building_type == BWAPI::UnitTypes::Protoss_Pylon)
+	{
+		if (build_or_remove)
+		{
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
+		}
+		else
+		{
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
+		}
+	}
+	//3x2
+	if (building_type == BWAPI::UnitTypes::Terran_Academy ||
+		building_type == BWAPI::UnitTypes::Terran_Armory ||
+		building_type == BWAPI::UnitTypes::Terran_Bunker ||
+		building_type == BWAPI::UnitTypes::Terran_Supply_Depot ||
+		building_type == BWAPI::UnitTypes::Protoss_Arbiter_Tribunal ||
+		building_type == BWAPI::UnitTypes::Protoss_Citadel_of_Adun ||
+		building_type == BWAPI::UnitTypes::Protoss_Cybernetics_Core ||
+		building_type == BWAPI::UnitTypes::Protoss_Fleet_Beacon ||
+		building_type == BWAPI::UnitTypes::Protoss_Forge ||
+		building_type == BWAPI::UnitTypes::Protoss_Observatory ||
+		building_type == BWAPI::UnitTypes::Protoss_Robotics_Facility ||
+		building_type == BWAPI::UnitTypes::Protoss_Robotics_Support_Bay ||
+		building_type == BWAPI::UnitTypes::Protoss_Shield_Battery ||
+		building_type == BWAPI::UnitTypes::Protoss_Templar_Archives)
+	{
+		if (build_or_remove)
+		{
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = false;
+		}
+		else
+		{
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = true;
+		}
+	}
+	//4x2
+	else if (building_type == BWAPI::UnitTypes::Resource_Vespene_Geyser)
+	{
+		if (build_or_remove)
+		{
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = false;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = false;
+		}
+		else
+		{
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = true;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = true;
+		}
+	}
+	//4x3
+	else if (building_type == BWAPI::UnitTypes::Terran_Barracks ||
+		building_type == BWAPI::UnitTypes::Terran_Engineering_Bay ||
+		building_type == BWAPI::UnitTypes::Protoss_Gateway ||
+		building_type == BWAPI::UnitTypes::Protoss_Nexus ||
+		building_type == BWAPI::UnitTypes::Protoss_Stargate)
+	{
+		if (build_or_remove)
+		{
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = false;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = false;
+			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = false;
+			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = false;
+		}
+		else
+		{
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = true;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = true;
+			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = true;
+			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = true;
+		}
+	}
+	//4x3 with addon.
+	else if (building_type == BWAPI::UnitTypes::Terran_Command_Center ||
+		building_type == BWAPI::UnitTypes::Terran_Factory ||
+		building_type == BWAPI::UnitTypes::Terran_Science_Facility ||
+		building_type == BWAPI::UnitTypes::Terran_Starport)
+	{
+		if (build_or_remove)
+		{
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = false;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 4].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 5].first.unobstructed = false;
+			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = false;
+			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = false;
+			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 4].first.unobstructed = false;
+			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 5].first.unobstructed = false;
+		}
+		else
+		{
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = true;
+			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 4].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 5].first.unobstructed = true;
+			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = true;
+			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = true;
+			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 4].first.unobstructed = true;
+			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 5].first.unobstructed = true;
+		}
+	}
+	
+}
+
+std::vector<std::pair<TileFlags, int>>* GameState::getBuildPositionMap()
+{
+	return &build_position_map;
 }

@@ -5,6 +5,8 @@ VisualStudioVersion = 12.0.40629.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ExampleAIModule", "ExampleAIModule.vcxproj", "{2E63AE74-758A-4607-9DE4-D28E814A6E13}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NiteKat", "..\NiteKat\NiteKat.vcxproj", "{34589D92-74F4-4E14-AA5C-4F98873C7915}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -15,6 +17,10 @@ Global
 		{2E63AE74-758A-4607-9DE4-D28E814A6E13}.Debug|Win32.Build.0 = Debug|Win32
 		{2E63AE74-758A-4607-9DE4-D28E814A6E13}.Release|Win32.ActiveCfg = Release|Win32
 		{2E63AE74-758A-4607-9DE4-D28E814A6E13}.Release|Win32.Build.0 = Release|Win32
+		{34589D92-74F4-4E14-AA5C-4F98873C7915}.Debug|Win32.ActiveCfg = Debug|Win32
+		{34589D92-74F4-4E14-AA5C-4F98873C7915}.Debug|Win32.Build.0 = Debug|Win32
+		{34589D92-74F4-4E14-AA5C-4F98873C7915}.Release|Win32.ActiveCfg = Release|Win32
+		{34589D92-74F4-4E14-AA5C-4F98873C7915}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

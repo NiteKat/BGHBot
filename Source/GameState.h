@@ -5,6 +5,20 @@
 #include"AIBase.h"
 #include"Objective.h"
 
+struct TileFlags
+{
+	bool unobstructed;
+	bool pylon_power_2x2;
+	bool pylon_power_3x2;
+	bool pylon_power_4x3;
+};
+
+enum class BuildOrder
+{
+	Default,
+	BGHMech
+};
+
 class GameState
 {
 public:
@@ -32,10 +46,12 @@ public:
 	void addDetector(Object new_detector);
 	void removeEnemyUnitsAtTilePosition(BWAPI::TilePosition target_position);
 	void addEvolutionChambers(int new_evolution_chambers);
-	void setBuildOrder(std::string new_build_order);
+	void setBuildOrder(BuildOrder new_build_order);
 	void toggleBuildTanks();
 	void addObjective(Objective new_objective);
 	void assessGame();
+	void initializeBuildMap();
+	void updateBuildMap(int x, int y, BWAPI::UnitType building_type, bool build_or_remove);
 
 
 	AIBase *getContainingBase(BWAPI::Unit);
@@ -68,9 +84,10 @@ public:
 	BWAPI::Position getRandomUncontrolledPosition();
 	int getDetectorCount();
 	int getEvolutionChambers();
-	std::string getBuildOrder();
+	BuildOrder getBuildOrder();
 	bool getBuildTanks();
 	std::vector<Objective> *getObjectiveList();
+	std::vector<std::pair<TileFlags, int>> *getBuildPositionMap();
 	
 private:
 	std::vector<Object> building_list;
@@ -83,6 +100,7 @@ private:
 	std::vector<Object> larva;
 	std::vector<Object> detectors;
 	std::vector<Objective> objective_list;
+	std::vector<std::pair<TileFlags, int>> build_position_map;
 	
 	double supply_used;
 	double supply_total;
@@ -95,7 +113,7 @@ private:
 	bool comsat_station;
 	int last_scan;
 	int evolution_chambers;
-	std::string build_order;
+	BuildOrder build_order;
 	bool build_tanks;
 
 };

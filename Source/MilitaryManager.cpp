@@ -26,7 +26,7 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 	else if (global_strategy == 0 &&
 		game_state.getMilitary()->size() > 24 &&
 		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran &&
-		game_state.getBuildOrder() == "build2")
+		game_state.getBuildOrder() == BuildOrder::BGHMech)
 	{
 		global_strategy = 1;
 		auto building_list_iterator = game_state.getBuildingList()->begin();
@@ -45,7 +45,7 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 	else if (global_strategy == 1 &&
 		game_state.getMilitary()->size() <= 12 &&
 		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran &&
-		game_state.getBuildOrder() == "build2")
+		game_state.getBuildOrder() == BuildOrder::BGHMech)
 	{
 		global_strategy = 0;
 	}
@@ -167,7 +167,10 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 			unit->isCloaked()) &&
 			!unit->isDetected())
 		{
+			std::time_t start_detector_search = std::clock();
 			Object* detector = game_state.getAvailableDetector();
+			if ((std::clock() - start_detector_search) * 1000 > 35)
+				BWAPI::Broodwar << "Detector search took " << (std::clock() - start_detector_search) * 1000 << " ms." << std::endl;
 			if (detector != nullptr)
 			{
 				detector->getUnit()->move(unit->getPosition());
@@ -219,6 +222,14 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 				}
 				else if (current_objective->getObjective() == ObjectiveTypes::Defend)
 				{
+					if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Marine &&
+						BWAPI::Broodwar->self()->hasResearched(BWAPI::TechTypes::Stim_Packs) &&
+						unit_iterator->getUnit()->isAttacking() &&
+						!unit_iterator->getUnit()->isStimmed() &&
+						unit_iterator->getUnit()->getHitPoints() > 20)
+					{
+						unit_iterator->getUnit()->useTech(BWAPI::TechTypes::Stim_Packs);
+					}
 					if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode)
 					{
 						auto building_list_iterator = game_state.getBuildingList()->begin();
@@ -266,7 +277,7 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 					}
 					if (unit_iterator->getUnit()->isIdle())
 					{
-						if (game_state.getBuildOrder() == "build2")
+						if (game_state.getBuildOrder() == BuildOrder::BGHMech)
 						{
 							if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Marine)
 							{
@@ -341,6 +352,14 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 				}
 				else if (current_objective->getObjective() == ObjectiveTypes::Attack)
 				{
+					if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Marine &&
+						BWAPI::Broodwar->self()->hasResearched(BWAPI::TechTypes::Stim_Packs) &&
+						unit_iterator->getUnit()->isAttacking() &&
+						!unit_iterator->getUnit()->isStimmed() &&
+						unit_iterator->getUnit()->getHitPoints() > 20)
+					{
+						unit_iterator->getUnit()->useTech(BWAPI::TechTypes::Stim_Packs);
+					}
 					if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_High_Templar &&
 						unit_iterator->getUnit()->getEnergy() >= 75)
 					{
@@ -394,7 +413,8 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 					target_base = game_state.getClosestEnemyBase();
 					if (target_base != nullptr)
 					{
-						if (unit_iterator->getUnit()->isIdle())
+						if (unit_iterator->getUnit()->isIdle() ||
+							unit_iterator->getUnit()->isPatrolling())
 						{
 							auto enemy_unit_iterator = game_state.getEnemyUnits()->begin();
 							while (enemy_unit_iterator != game_state.getEnemyUnits()->end())

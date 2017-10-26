@@ -6,6 +6,7 @@
 #include"Object.h"
 #include"BWEM 1.3.1/src/bwem.h"
 #include"GameState.h"
+#include<ctime>
 
 class WorkerManager
 {

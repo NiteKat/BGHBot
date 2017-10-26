@@ -348,9 +348,10 @@ bool WorkerManager::build(BWAPI::UnitType building_type, int base_class, GameSta
 
 BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::UnitType building_type, GameState &game_state)
 {
+	std::time_t build_location_start = std::clock();
 	if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
 	{
-		if (game_state.getBuildOrder() == "build2")
+		if (game_state.getBuildOrder() == BuildOrder::BGHMech)
 		{
 			if (building_type == BWAPI::UnitTypes::Terran_Supply_Depot &&
 				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Supply_Depot) == 0)
@@ -461,147 +462,58 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 				return position_to_build;
 			}
 		}
-		BWAPI::TilePosition position_to_try = BWAPI::Broodwar->getBuildLocation(building_type, build_worker.getUnit()->getTilePosition());
-		//BWAPI::TilePosition position_to_try = build_worker.getBase()->getArea()->Bases().begin()->Location();
-		bool too_close = false;
-		while (true)
+		BWAPI::TilePosition position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetNearestArea(build_worker.getUnit()->getTilePosition())->Top();
+		BWAPI::TilePosition building_size = building_type.tileSize();
+		bool can_build = false;
+		bool try_new_position = false;
+		while (!can_build)
 		{
-			if (building_type == BWAPI::UnitTypes::Terran_Supply_Depot)
+			try_new_position = false;
+			if (position_to_build.x != 0 && position_to_build.y != 0)
 			{
-				BWAPI::Unitset too_close_units = BWAPI::Broodwar->getUnitsInRadius((BWAPI::Position)position_to_try, 32);
-				if (too_close_units.size() > 0)
+				for (int x = position_to_build.x - 1; x < position_to_build.x + building_size.x + 1; x++)
 				{
-					position_to_try.x += rand() % 4;
-					position_to_try.y += rand() % 4;
-					position_to_try.makeValid();
-				}
-				else
-				{
-					BWAPI::Position position_to_check;
-					position_to_check.x = ((BWAPI::Position)position_to_try).x + 33;
-					position_to_check.y = ((BWAPI::Position)position_to_try).y;
-					too_close_units = BWAPI::Broodwar->getUnitsInRadius(position_to_check, 32);
-					if (too_close_units.size() > 0)
+					for (int y = position_to_build.y - 1; y < position_to_build.y + building_size.y + 1; y++)
 					{
-						position_to_try.x -= rand() % 4;
-						position_to_try.y += rand() % 4;
-						position_to_try.makeValid();
-					}
-					else
-					{
-						position_to_check.x = ((BWAPI::Position)position_to_try).x + 33;
-						position_to_check.y = ((BWAPI::Position)position_to_try).y + 33;
-						too_close_units = BWAPI::Broodwar->getUnitsInRadius(position_to_check, 32);
-						if (too_close_units.size() > 0)
-						{
-							position_to_try.x -= rand() % 3;
-							position_to_try.y -= rand() % 2;
-							position_to_try.makeValid();
-						}
-						else
-						{
-							position_to_check.x = ((BWAPI::Position)position_to_try).x;
-							position_to_check.y = ((BWAPI::Position)position_to_try).y + 33;
-							too_close_units = BWAPI::Broodwar->getUnitsInRadius(position_to_check, 32);
-							if (too_close_units.size() > 0)
-							{
-								position_to_try.x += rand() % 3;
-								position_to_try.y -= rand() % 2;
-								position_to_try.makeValid();
-							}
-							else
-							{
-								BWEM::CPPath choke_point_path = BWEM::Map::Instance().GetPath((BWAPI::Position)position_to_try, build_worker.getUnit()->getPosition());
-								if (choke_point_path.size() <= 1)
-									return position_to_try;
-								else
-								{
-									position_to_try.x = rand() % BWAPI::Broodwar->mapWidth() + 1;
-									position_to_try.y = rand() % BWAPI::Broodwar->mapHeight() + 1;
-									position_to_try.makeValid();
-								}
-							}
-						}
+						if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
+							try_new_position = true;
 					}
 				}
 			}
-			/*else if (building_type == BWAPI::UnitTypes::Terran_Factory)
-			{
-				BWAPI::Unitset too_close_units = BWAPI::Broodwar->getUnitsInRadius((BWAPI::Position)position_to_try, 32);
-				if (too_close_units.size() > 0)
-				{
-					position_to_try.x += rand() % 4;
-					position_to_try.y += rand() % 4;
-					position_to_try.makeValid();
-				}
-				else
-				{
-					BWAPI::Position position_to_check;
-					position_to_check.x = ((BWAPI::Position)position_to_try).x + 113;
-					position_to_check.y = ((BWAPI::Position)position_to_try).y + 81;
-					too_close_units = BWAPI::Broodwar->getUnitsInRadius(position_to_check, 32);
-					if (too_close_units.size() > 0)
-					{
-						position_to_try.x -= rand() % 2;
-						position_to_try.y -= rand() % 2;
-						position_to_try.makeValid();
-					}
-					else
-					{
-						position_to_check.x = ((BWAPI::Position)position_to_try).x;
-						position_to_check.y = ((BWAPI::Position)position_to_try).y + 33;
-						too_close_units = BWAPI::Broodwar->getUnitsInRadius(position_to_check, 32);
-						if (too_close_units.size() > 0)
-						{
-							position_to_try.x += rand() % 3;
-							position_to_try.y -= rand() % 2;
-							position_to_try.makeValid();
-						}
-						else return position_to_try;
-					}
-				}
-				
-			}*/
 			else
 			{
-				position_to_try.x += rand() % 7 - 3;
-				if (position_to_try.x < 0)
+				for (int x = position_to_build.x ; x < position_to_build.x + building_size.x; x++)
 				{
-					position_to_try.x = 0;
-				}
-				if (position_to_try.x > BWAPI::Broodwar->mapWidth())
-				{
-					position_to_try.x = BWAPI::Broodwar->mapWidth();
-				}
-				position_to_try.y += rand() % 7 - 3;
-				if (position_to_try.y < 0)
-				{
-					position_to_try.y = 0;
-				}
-				if (position_to_try.y > BWAPI::Broodwar->mapHeight())
-				{
-					position_to_try.y = BWAPI::Broodwar->mapHeight();
-				}
-				if (BWAPI::Broodwar->canBuildHere(position_to_try, building_type))
-				{
-					for (auto unit : BWAPI::Broodwar->getUnitsInRadius((BWAPI::Position)position_to_try, 128))
+					for (int y = position_to_build.y; y < position_to_build.y + building_size.y; y++)
 					{
-						if ((unit->getType() == BWAPI::UnitTypes::Resource_Mineral_Field ||
-							unit->getType() == BWAPI::UnitTypes::Resource_Mineral_Field_Type_2 ||
-							unit->getType() == BWAPI::UnitTypes::Resource_Mineral_Field_Type_3 ||
-							unit->getType() == BWAPI::UnitTypes::Terran_Command_Center) &&
-							unit->getTilePosition().getDistance(position_to_try) <= 128)
-						{
-							too_close = true;
-						}
+						if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
+							try_new_position = true;
 					}
-					if (too_close == false)
-						return position_to_try;
-					else
-						too_close = false;
 				}
 			}
+			if (!try_new_position)
+				can_build = true;
+			else
+			{
+				bool in_base = false;
+				while (!in_base)
+				{
+					position_to_build.x += rand() % 5 - 2;
+					position_to_build.y += rand() % 5 - 2;
+					position_to_build.makeValid();
+					if (BWEM::Map::Instance().GetNearestArea(position_to_build)->Id() == build_worker.getBase()->getArea()->Id())
+						in_base = true;
+					else
+						position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetNearestArea(build_worker.getUnit()->getTilePosition())->Top();
+				}
+			}
+			if ((std::clock() - build_location_start) * 1000 > 350)
+			{
+				BWAPI::Broodwar << "Building search timeout." << std::endl;
+				return BWAPI::TilePositions::Invalid;
+			}
 		}
+		return position_to_build;
 	}
 	/*else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Zerg)
 	{
@@ -619,61 +531,120 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 	}*/
 	else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss)
 	{
-		BWAPI::TilePosition position_to_try = BWAPI::Broodwar->getBuildLocation(building_type, build_worker.getUnit()->getTilePosition());
-		while (true)
+		if (building_type == BWAPI::UnitTypes::Protoss_Pylon)
 		{
-			if (building_type == BWAPI::UnitTypes::Protoss_Pylon)
+			BWAPI::TilePosition position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetNearestArea(build_worker.getUnit()->getTilePosition())->Top();
+			BWAPI::TilePosition building_size = building_type.tileSize();
+			bool can_build = false;
+			bool try_new_position = false;
+			while (!can_build)
 			{
-				BWAPI::Unitset too_close_units = BWAPI::Broodwar->getUnitsInRadius((BWAPI::Position)position_to_try, 32);
-				if (too_close_units.size() > 0)
+				try_new_position = false;
+				if (position_to_build.x != 0 && position_to_build.y != 0)
 				{
-					position_to_try.x += rand() % 4;
-					position_to_try.y += rand() % 4;
-					position_to_try.makeValid();
+					for (int x = position_to_build.x - 1; x < position_to_build.x + building_size.x + 1; x++)
+					{
+						for (int y = position_to_build.y - 1; y < position_to_build.y + building_size.y + 1; y++)
+						{
+							if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
+								try_new_position = true;
+						}
+					}
 				}
 				else
 				{
-					BWAPI::Position position_to_check;
-					position_to_check.x = ((BWAPI::Position)position_to_try).x + 33;
-					position_to_check.y = ((BWAPI::Position)position_to_try).y;
-					too_close_units = BWAPI::Broodwar->getUnitsInRadius(position_to_check, 32);
-					if (too_close_units.size() > 0)
+					for (int x = position_to_build.x; x < position_to_build.x + building_size.x; x++)
 					{
-						position_to_try.x -= rand() % 4;
-						position_to_try.y += rand() % 4;
-						position_to_try.makeValid();
-					}
-					else
-					{
-						position_to_check.x = ((BWAPI::Position)position_to_try).x + 33;
-						position_to_check.y = ((BWAPI::Position)position_to_try).y + 33;
-						too_close_units = BWAPI::Broodwar->getUnitsInRadius(position_to_check, 32);
-						if (too_close_units.size() > 0)
+						for (int y = position_to_build.y; y < position_to_build.y + building_size.y; y++)
 						{
-							position_to_try.x -= rand() % 4;
-							position_to_try.y -= rand() % 4;
-							position_to_try.makeValid();
-						}
-						else
-						{
-							position_to_check.x = ((BWAPI::Position)position_to_try).x;
-							position_to_check.y = ((BWAPI::Position)position_to_try).y + 33;
-							too_close_units = BWAPI::Broodwar->getUnitsInRadius(position_to_check, 32);
-							if (too_close_units.size() > 0)
-							{
-								position_to_try.x += rand() % 4;
-								position_to_try.y -= rand() % 4;
-								position_to_try.makeValid();
-							}
-							else return position_to_try;
+							if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
+								try_new_position = true;
 						}
 					}
 				}
+				if (!try_new_position)
+					can_build = true;
+				else
+				{
+					bool in_base = false;
+					while (!in_base)
+					{
+						position_to_build.x += rand() % 5 - 2;
+						position_to_build.y += rand() % 5 - 2;
+						position_to_build.makeValid();
+						if (BWEM::Map::Instance().GetNearestArea(position_to_build)->Id() == build_worker.getBase()->getArea()->Id())
+							in_base = true;
+						else
+							position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetNearestArea(build_worker.getUnit()->getTilePosition())->Top();
+					}
+				}
+				if ((std::clock() - build_location_start) * 1000 > 350)
+				{
+					BWAPI::Broodwar << "Building search timeout." << std::endl;
+					return BWAPI::TilePositions::Invalid;
+				}
 			}
-			else
+			return position_to_build;
+		}
+		else
+		{
+			BWAPI::TilePosition position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetNearestArea(build_worker.getUnit()->getTilePosition())->Top();
+			BWAPI::TilePosition building_size = building_type.tileSize();
+			bool can_build = false;
+			bool try_new_position = false;
+			while (!can_build)
 			{
-				return position_to_try;
+				try_new_position = false;
+				if (!BWAPI::Broodwar->hasPower(position_to_build, building_type))
+					try_new_position = true;
+				if (!try_new_position)
+				{
+					if (position_to_build.x != 0 && position_to_build.y != 0)
+					{
+						for (int x = position_to_build.x - 1; x < position_to_build.x + building_size.x + 1; x++)
+						{
+							for (int y = position_to_build.y - 1; y < position_to_build.y + building_size.y + 1; y++)
+							{
+								if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
+									try_new_position = true;
+							}
+						}
+					}
+					else
+					{
+						for (int x = position_to_build.x; x < position_to_build.x + building_size.x; x++)
+						{
+							for (int y = position_to_build.y; y < position_to_build.y + building_size.y; y++)
+							{
+								if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
+									try_new_position = true;
+							}
+						}
+					}
+				}
+				if (!try_new_position)
+					can_build = true;
+				else
+				{
+					bool in_base = false;
+					while (!in_base)
+					{
+						position_to_build.x += rand() % 5 - 2;
+						position_to_build.y += rand() % 5 - 2;
+						position_to_build.makeValid();
+						if (BWEM::Map::Instance().GetNearestArea(position_to_build)->Id() == build_worker.getBase()->getArea()->Id())
+							in_base = true;
+						else
+							position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetNearestArea(build_worker.getUnit()->getTilePosition())->Top();
+					}
+				}
+				if ((std::clock() - build_location_start) * 1000 > 350)
+				{
+					BWAPI::Broodwar << "Building search timeout." << std::endl;
+					return BWAPI::TilePositions::Invalid;
+				}
 			}
+			return position_to_build;
 		}
 	}
 	else

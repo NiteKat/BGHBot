@@ -19,15 +19,12 @@ void ExampleAIModule::onStart()
 	try
 	{
 		srand(time(NULL));
-		// Hello World!
-		Broodwar->sendText("Hello world!");
-
 		// Print the map name.
 		// BWAPI returns std::string when retrieving a string, don't forget to add .c_str() when printing!
 		Broodwar << "The map is " << Broodwar->mapName() << "!" << std::endl;
 
 		// Enable the UserInput flag, which allows us to control the bot and type messages.
-		Broodwar->enableFlag(Flag::UserInput);
+		//Broodwar->enableFlag(Flag::UserInput);
 
 		// Uncomment the following line and the bot will know about everything through the fog of war (cheat).
 		//Broodwar->enableFlag(Flag::CompleteMapInformation);
@@ -88,22 +85,27 @@ void ExampleAIModule::onStart()
 		Objective new_objective;
 		new_objective.setObjective(ObjectiveTypes::Defend);
 		game_state.addObjective(new_objective);
+		game_state.initializeBuildMap();
 		if (Broodwar->self()->getRace() == Races::Terran)
 		{
 			if (Broodwar->enemies().size() > 1 + Broodwar->allies().size())
-				game_state.setBuildOrder("build2");
+				game_state.setBuildOrder(BuildOrder::BGHMech);
 			else
 			{
 				int build_order_decider = rand() % 2 + 1;
 				if (build_order_decider == 2)
 				{
-					game_state.setBuildOrder("build2");
+					game_state.setBuildOrder(BuildOrder::BGHMech);
 				}
 			}
 		}
 		scouted = false;
 		game_state.initializeGasLocations();
 		Broodwar << game_state.getEnemyUnits()->size() << std::endl;
+		assess_game_time = 0;
+		manage_workers_time = 0;
+		check_macro_time = 0;
+		check_military_time = 0;
 	}
 	catch (const std::exception & e)
 	{
@@ -122,10 +124,11 @@ void ExampleAIModule::onEnd(bool isWinner)
 
 void ExampleAIModule::onFrame()
 {
-	//try
-	//{
+	try
+	{
+		std::clock_t start_clock;
 		// Called once every game frame
-		BWEM::utils::drawMap(theMap);
+		//BWEM::utils::drawMap(theMap);
 		if (Broodwar->getSelectedUnits().size() == 1)
 		{
 			Broodwar->drawTextScreen(0, 20, "x=%i y=%i", (*Broodwar->getSelectedUnits().begin())->getTilePosition().x, (*Broodwar->getSelectedUnits().begin())->getTilePosition().y);
@@ -134,10 +137,22 @@ void ExampleAIModule::onFrame()
 		{
 			Broodwar->drawTextScreen(0, 20, "Nothing selected.");
 		}
+		/*for (int index = 0; index < game_state.getBuildPositionMap()->size(); index++)
+		{
+			if (game_state.getBuildPositionMap()->at(index).first.unobstructed)
+				Broodwar->drawTextMap((index - Broodwar->mapWidth() * (index / Broodwar->mapWidth())) * 32, (index / Broodwar->mapWidth()) * 32, "T");
+			else
+				Broodwar->drawTextMap((index - Broodwar->mapWidth() * (index / Broodwar->mapWidth())) * 32, (index / Broodwar->mapWidth()) * 32, "F");
+		}*/
 		
 		Broodwar->drawTextScreen(0, 40, "Minerals Committed: %i", game_state.getMineralsCommitted());
 		Broodwar->drawTextScreen(0, 60, "Gas Committed: %i", game_state.getGasCommitted());
+		Broodwar->drawTextScreen(0, 70, "Assess Game Time: %f", assess_game_time);
+		Broodwar->drawTextScreen(0, 80, "Manage Worker Time: %f", manage_workers_time);
+		Broodwar->drawTextScreen(0, 90, "Check Macro Time: %f", check_macro_time);
+		Broodwar->drawTextScreen(0, 100, "Check Military Time: %f", check_military_time);
 		
+
 		/*for (const auto &area : theMap.Areas())
 		{
 			Broodwar->drawTextMap((Position)area.BottomRight(), "%i", area.Id());
@@ -161,19 +176,26 @@ void ExampleAIModule::onFrame()
 		if (scouted == false &&
 			game_state.getSupplyUsed() >= 10)
 		{
-			Broodwar << "Test" << std::endl;
 			military_manager.scout(worker_manager, game_state);
 			scouted = true;
 		}
+		start_clock = std::clock();
 		game_state.assessGame();
+		assess_game_time = (double)((std::clock() - start_clock) / (double)CLOCKS_PER_SEC) * 1000;
+		start_clock = std::clock();
 		worker_manager.manageWorkers(game_state);
+		manage_workers_time = (double)((std::clock() - start_clock) / (double)CLOCKS_PER_SEC) * 1000;
+		start_clock = std::clock();
 		macro_manager.checkMacro(&worker_manager, game_state);
+		check_macro_time = (double)((std::clock() - start_clock) / (double)CLOCKS_PER_SEC) * 1000;
+		start_clock = std::clock();
 		military_manager.checkMilitary(worker_manager, game_state);
-	//}
-	//catch (const std::exception & e)
-	//{
-		//Broodwar << "EXCEPTION: " << e.what() << std::endl;
-	//}
+		check_military_time = (double)((std::clock() - start_clock) / (double)CLOCKS_PER_SEC) * 1000;
+	}
+	catch (const std::exception & e)
+	{
+		Broodwar << "EXCEPTION: " << e.what() << std::endl;
+	}
 }
 
 void ExampleAIModule::onSendText(std::string text)
@@ -251,6 +273,12 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
   }
   else
   {
+	  if ((unit->getType().isBuilding() &&
+		  unit->getPlayer() == Broodwar->self()) ||
+		   unit->getType().isResourceContainer())
+	  {
+		  game_state.updateBuildMap(unit->getTilePosition().x, unit->getTilePosition().y, unit->getType(), true);
+	  }
 	  if (unit->getType() == UnitTypes::Terran_SCV &&
 		  unit->getPlayer() == Broodwar->self())
 	  {
@@ -420,6 +448,11 @@ void ExampleAIModule::onUnitDestroy(BWAPI::Unit unit)
 {
 	try
 	{
+		if (unit->getType().isBuilding() &&
+			unit->getPlayer() == Broodwar->self())
+		{
+			game_state.updateBuildMap(unit->getTilePosition().x, unit->getTilePosition().y, unit->getType(), false);
+		}
 		if (unit->getPlayer()->isEnemy(Broodwar->self()))
 		{
 			auto dead_enemy = game_state.getEnemyUnits()->find(unit->getID());
