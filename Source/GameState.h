@@ -52,6 +52,9 @@ public:
 	void assessGame();
 	void initializeBuildMap();
 	void updateBuildMap(int x, int y, BWAPI::UnitType building_type, bool build_or_remove);
+	void setWorkerDefense(bool new_worker_defense);
+	void toggleExpanding();
+	void setTargetExpansion(AIBase* new_target_expansion);
 
 
 	AIBase *getContainingBase(BWAPI::Unit);
@@ -88,6 +91,11 @@ public:
 	bool getBuildTanks();
 	std::vector<Objective> *getObjectiveList();
 	std::vector<std::pair<TileFlags, int>> *getBuildPositionMap();
+	bool getWorkerDefense();
+	AIBase* getClosestEmptyBase();
+	bool getExpanding();
+	AIBase* getTargetExpansion();
+	
 	
 private:
 	std::vector<Object> building_list;
@@ -115,6 +123,9 @@ private:
 	int evolution_chambers;
 	BuildOrder build_order;
 	bool build_tanks;
+	bool worker_defense;
+	bool expanding;
+	AIBase* target_expansion;
 
 };
 

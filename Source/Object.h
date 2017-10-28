@@ -20,6 +20,8 @@ public:
 	void setDiscoveredPosition(BWAPI::TilePosition new_position);
 	void setIsBuilding();
 	void setElapsedTimeOrderGiven(int new_elapsed_time);
+	void setTargetBase(AIBase *new_target_base);
+	void setBase(AIBase *new_base);
 
 	BWAPI::Unit getUnit();
 	AIBase *getBase();
@@ -28,6 +30,7 @@ public:
 	BWAPI::TilePosition getDiscoveredPosition();
 	bool isBuilding();
 	int getElapsedTimeOrderGiven();
+	AIBase *getTargetBase();
 
 private:
 	BWAPI::Unit my_unit;
@@ -38,6 +41,7 @@ private:
 	BWAPI::TilePosition my_discovered_position;
 	bool is_building;
 	int elapsed_time_order_given;
+	AIBase *target_base;
 };
 
 #endif

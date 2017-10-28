@@ -261,10 +261,18 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 					building_list_iterator->getUnit()->isIdle() &&
 					!building_list_iterator->getUnit()->isTraining() &&
 					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
-					game_state.getMineralWorkerCount() < 25 &&
 					game_state.getSupplyUsed() < game_state.getSupplyTotal())
 				{
-					building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_SCV);
+					int worker_count = 0;
+					auto mineral_worker_iterator = game_state.getMineralWorkers()->begin();
+					while (mineral_worker_iterator != game_state.getMineralWorkers()->end())
+					{
+						if (mineral_worker_iterator->getBase()->getArea()->Id() == building_list_iterator->getBase()->getArea()->Id())
+							worker_count++;
+						mineral_worker_iterator++;
+					}
+					if (worker_count < building_list_iterator->getBase()->getArea()->Minerals().size() * 2)
+						building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_SCV);
 					building_list_iterator++;
 				}
 				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Barracks &&
@@ -944,6 +952,15 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 		}
 		else
 		{
+			if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 400 &&// + 50 * (game_state.getBarracks()) &&
+				!game_state.getExpanding())
+			{
+				if (worker_manager->build(BWAPI::UnitTypes::Terran_Command_Center, 1, game_state))
+				{
+					game_state.addMineralsCommitted(400);
+					game_state.toggleExpanding();
+				}
+			}
 			if (game_state.getBarracks() > 0 &&
 				game_state.getGas() > 0 &&
 				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 &&
@@ -968,7 +985,7 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 			if ((game_state.getBarracks() < 2 &&
 				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150) ||
 				(game_state.getBarracks() >= 2 &&
-				game_state.getBarracks() < 8 &&
+				game_state.getBarracks() < 3 * game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Command_Center) &&
 				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 + 50 * game_state.getBarracks()))
 			{
 				if (worker_manager->build(BWAPI::UnitTypes::Terran_Barracks, 3, game_state))

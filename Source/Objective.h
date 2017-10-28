@@ -9,7 +9,8 @@ enum class ObjectiveTypes
 {
 	None,
 	Attack,
-	Defend
+	Defend,
+	DefendExpansion
 };
 
 class Objective

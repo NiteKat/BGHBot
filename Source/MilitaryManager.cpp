@@ -423,69 +423,99 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 							auto enemy_unit_iterator = game_state.getEnemyUnits()->begin();
 							while (enemy_unit_iterator != game_state.getEnemyUnits()->end())
 							{
-								if (enemy_unit_iterator->second.isBuilding() &&
-									target_base->getArea()->Id() == BWEM::Map::Instance().GetArea(enemy_unit_iterator->second.getDiscoveredPosition())->Id())
+								if (BWEM::Map::Instance().GetArea(enemy_unit_iterator->second.getDiscoveredPosition()) != nullptr)
 								{
-									if (BWAPI::Broodwar->isVisible(enemy_unit_iterator->second.getDiscoveredPosition()))
+									if (enemy_unit_iterator->second.isBuilding() &&
+										target_base->getArea()->Id() == BWEM::Map::Instance().GetArea(enemy_unit_iterator->second.getDiscoveredPosition())->Id())
 									{
-										BWAPI::Unitset scanned_units = BWAPI::Broodwar->getUnitsInRadius((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition(), 200);
-										auto scanned_iterator = scanned_units.begin();
-										if (scanned_units.size() == 0)
+										if (BWAPI::Broodwar->isVisible(enemy_unit_iterator->second.getDiscoveredPosition()))
 										{
-											auto erase_iterator = enemy_unit_iterator;
-											enemy_unit_iterator = game_state.getEnemyUnits()->erase(erase_iterator);
-										}
-										else
-										{
-											bool enemy_found = false;
-											while (scanned_iterator != scanned_units.end())
-											{
-												if ((*scanned_iterator)->getPlayer()->isEnemy(BWAPI::Broodwar->self()))
-												{
-													enemy_found = true;
-													scanned_iterator = scanned_units.end();
-												}
-												else
-												{
-													scanned_iterator++;
-												}
-											}
-											if (enemy_found == false)
+											BWAPI::Unitset scanned_units = BWAPI::Broodwar->getUnitsInRadius((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition(), 200);
+											auto scanned_iterator = scanned_units.begin();
+											if (scanned_units.size() == 0)
 											{
 												auto erase_iterator = enemy_unit_iterator;
 												enemy_unit_iterator = game_state.getEnemyUnits()->erase(erase_iterator);
 											}
 											else
 											{
-												if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_High_Templar)
-													unit_iterator->getUnit()->move((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
+												bool enemy_found = false;
+												while (scanned_iterator != scanned_units.end())
+												{
+													if ((*scanned_iterator)->getPlayer()->isEnemy(BWAPI::Broodwar->self()))
+													{
+														enemy_found = true;
+														scanned_iterator = scanned_units.end();
+													}
+													else
+													{
+														scanned_iterator++;
+													}
+												}
+												if (enemy_found == false)
+												{
+													auto erase_iterator = enemy_unit_iterator;
+													enemy_unit_iterator = game_state.getEnemyUnits()->erase(erase_iterator);
+												}
 												else
-													unit_iterator->getUnit()->attack((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
-												enemy_unit_iterator++;
+												{
+													if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_High_Templar)
+														unit_iterator->getUnit()->move((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
+													else
+														unit_iterator->getUnit()->attack((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
+													enemy_unit_iterator++;
+												}
 											}
+										}
+										else
+										{
+											if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_High_Templar)
+												unit_iterator->getUnit()->move((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
+											else
+												unit_iterator->getUnit()->attack((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
+											enemy_unit_iterator = game_state.getEnemyUnits()->end();
 										}
 									}
 									else
 									{
-										if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_High_Templar)
-											unit_iterator->getUnit()->move((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
-										else
-											unit_iterator->getUnit()->attack((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
-										enemy_unit_iterator = game_state.getEnemyUnits()->end();
+										enemy_unit_iterator++;
 									}
 								}
 								else
-								{
 									enemy_unit_iterator++;
-								}
 							}
 						}
 					}
-					else if (!unit_iterator->getUnit()->isPatrolling())
+					else if (!unit_iterator->getUnit()->isPatrolling() &&
+						!unit_iterator->getUnit()->isAttacking())
 					{
 						unit_iterator->getUnit()->patrol(game_state.getRandomUncontrolledPosition());
 					}
 					unit_iterator++;
+				}
+				else if (current_objective->getObjective() == ObjectiveTypes::DefendExpansion)
+				{
+					if (game_state.getTargetExpansion() == nullptr ||
+						!game_state.getExpanding())
+					{
+						game_state.getObjectiveList()->begin()->addUnit(*unit_iterator);
+						auto erase_iterator = unit_iterator;
+						current_objective->getUnits()->erase(erase_iterator);
+					}
+					else if (unit_iterator->getUnit()->getDistance((BWAPI::Position)game_state.getTargetExpansion()->getArea()->Top()) > 500 &&
+						unit_iterator->getUnit()->isIdle())
+					{
+						unit_iterator->getUnit()->attack((BWAPI::Position)game_state.getTargetExpansion()->getArea()->Top());
+						unit_iterator++;
+					}
+					else if (unit_iterator->getUnit()->getDistance((BWAPI::Position)(*game_state.getTargetExpansion()->getArea()->Bases().begin()).Location()) < 300 &&
+						unit_iterator->getUnit()->isIdle())
+					{
+							unit_iterator->getUnit()->attack((BWAPI::Position)(*game_state.getTargetExpansion()->getArea()->ChokePoints().begin())->Center());
+							unit_iterator++;
+					}
+					else
+						unit_iterator++;
 				}
 				else
 				{

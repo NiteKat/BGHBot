@@ -18,6 +18,9 @@ GameState::GameState()
 	evolution_chambers = 0;
 	build_order = BuildOrder::Default;
 	build_tanks = false;
+	worker_defense = false;
+	expanding = false;
+	target_expansion = nullptr;
 }
 
 void GameState::addAIBase(AIBase new_base)
@@ -360,17 +363,20 @@ AIBase* GameState::getClosestEnemyBase()
 		while (enemy_base_iterator != enemy_base_list.end())
 		{
 			path_to_check = BWEM::Map::Instance().GetPath(BWAPI::Position((*enemy_base_iterator)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
-			if (path_to_check.size() < closest_path.size())
+			if (path_to_check.size() != -1)
 			{
-				closest_path = path_to_check;
-				closest_base = enemy_base_iterator;
-			}
-			else if (path_to_check.size() == closest_path.size())
-			{
-				if ((*enemy_base_iterator)->getArea()->Top().getApproxDistance(main_base->getArea()->Top()) < (*closest_base)->getArea()->Top().getApproxDistance(main_base->getArea()->Top()))
+				if (path_to_check.size() < closest_path.size())
 				{
 					closest_path = path_to_check;
 					closest_base = enemy_base_iterator;
+				}
+				else if (path_to_check.size() == closest_path.size())
+				{
+					if ((*enemy_base_iterator)->getArea()->Top().getApproxDistance(main_base->getArea()->Top()) < (*closest_base)->getArea()->Top().getApproxDistance(main_base->getArea()->Top()))
+					{
+						closest_path = path_to_check;
+						closest_base = enemy_base_iterator;
+					}
 				}
 			}
 			enemy_base_iterator++;
@@ -394,10 +400,13 @@ void GameState::checkBaseOwnership()
 			base_list_iterator->setBaseClass(1);
 			for (auto unit : building_list)
 			{
-				if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetArea(unit.getUnit()->getTilePosition())->Id())
+				if (BWEM::Map::Instance().GetArea(unit.getUnit()->getTilePosition()) != nullptr)
 				{
-					base_list_iterator->setBaseClass(4);
-					break;
+					if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetArea(unit.getUnit()->getTilePosition())->Id())
+					{
+						base_list_iterator->setBaseClass(4);
+						break;
+					}
 				}
 			}
 			if (base_list_iterator->getBaseClass() == 1)
@@ -406,10 +415,13 @@ void GameState::checkBaseOwnership()
 				{
 					if (unit->getType().isBuilding())
 					{
-						if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetArea(unit->getTilePosition())->Id())
+						if (BWEM::Map::Instance().GetArea(unit->getTilePosition()) != nullptr)
 						{
-							base_list_iterator->setBaseClass(5);
-							break;
+							if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetArea(unit->getTilePosition())->Id())
+							{
+								base_list_iterator->setBaseClass(5);
+								break;
+							}
 						}
 					}
 				}
@@ -420,10 +432,13 @@ void GameState::checkBaseOwnership()
 				{
 					if (unit.second.isBuilding())
 					{
-						if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetArea(unit.second.getDiscoveredPosition())->Id())
+						if (BWEM::Map::Instance().GetArea(unit.second.getDiscoveredPosition()) != nullptr)
 						{
-							base_list_iterator->setBaseClass(2);
-							break;
+							if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetArea(unit.second.getDiscoveredPosition())->Id())
+							{
+								base_list_iterator->setBaseClass(2);
+								break;
+							}
 						}
 					}
 				}
@@ -621,6 +636,30 @@ void GameState::assessGame()
 {
 	if (objective_list.size() >= 1)
 	{
+		if (expanding)
+		{
+			bool objective_exists = false;
+			auto current_objective = objective_list.begin();
+			while (current_objective != objective_list.end())
+			{
+				if (current_objective->getObjective() == ObjectiveTypes::DefendExpansion)
+					objective_exists = true;
+				current_objective++;
+			}
+			if (!objective_exists)
+			{
+				Objective new_objective;
+				new_objective.setObjective(ObjectiveTypes::DefendExpansion);
+				auto current_unit = objective_list.begin()->getUnits()->begin();
+				while (current_unit != objective_list.begin()->getUnits()->end())
+				{
+					new_objective.addUnit(*current_unit);
+					current_unit++;
+				}
+				objective_list.begin()->getUnits()->clear();
+				objective_list.push_back(new_objective);
+			}
+		}
 		if (objective_list.size() > 1 &&
 			BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran &&
 			build_order == BuildOrder::BGHMech &&
@@ -1018,4 +1057,107 @@ void GameState::updateBuildMap(int x, int y, BWAPI::UnitType building_type, bool
 std::vector<std::pair<TileFlags, int>>* GameState::getBuildPositionMap()
 {
 	return &build_position_map;
+}
+
+void GameState::setWorkerDefense(bool new_worker_defense)
+{
+	worker_defense = true;
+}
+
+bool GameState::getWorkerDefense()
+{
+	return worker_defense;
+}
+
+AIBase* GameState::getClosestEmptyBase()
+{
+	checkBaseOwnership();
+	auto base_list_iterator = base_list.begin();
+	auto main_base = base_list_iterator;
+	auto last_empty_base_found = base_list_iterator;
+	bool found_main = false;
+	std::vector<AIBase*> empty_base_list;
+	while (base_list_iterator != base_list.end())
+	{
+		if (base_list_iterator->getBaseClass() == 3)
+		{
+			main_base = base_list_iterator;
+			found_main = true;
+			base_list_iterator++;
+		}
+		else if (base_list_iterator->getBaseClass() == 1 &&
+				base_list_iterator->getArea()->Bases().size() > 0)
+		{
+			empty_base_list.push_back(&(*base_list_iterator));
+			base_list_iterator++;
+		}
+		else
+		{
+			base_list_iterator++;
+		}
+	}
+	if (empty_base_list.size() == 0)
+	{
+		return nullptr;
+	}
+	else if (empty_base_list.size() == 1)
+	{
+		return (*empty_base_list.begin());
+	}
+	else if (found_main == true)
+	{
+		auto empty_base_iterator = empty_base_list.begin();
+		auto closest_base = empty_base_iterator;
+		BWEM::CPPath closest_path = BWEM::Map::Instance().GetPath(BWAPI::Position((*closest_base)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
+		BWEM::CPPath path_to_check;
+		while (empty_base_iterator != empty_base_list.end())
+		{
+			path_to_check = BWEM::Map::Instance().GetPath(BWAPI::Position((*empty_base_iterator)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
+			if (path_to_check.size() != 0)
+			{
+				if (path_to_check.size() < closest_path.size())
+				{
+					closest_path = path_to_check;
+					closest_base = empty_base_iterator;
+				}
+				else if (path_to_check.size() == closest_path.size())
+				{
+					if ((*empty_base_iterator)->getArea()->Top().getApproxDistance(main_base->getArea()->Top()) < (*closest_base)->getArea()->Top().getApproxDistance(main_base->getArea()->Top()))
+					{
+						closest_path = path_to_check;
+						closest_base = empty_base_iterator;
+					}
+				}
+			}
+			empty_base_iterator++;
+		}
+		return *closest_base;
+	}
+	else
+	{
+		return nullptr;
+	}
+}
+
+void GameState::toggleExpanding()
+{
+	if (expanding)
+		expanding = false;
+	else
+		expanding = true;
+}
+
+bool GameState::getExpanding()
+{
+	return expanding;
+}
+
+void GameState::setTargetExpansion(AIBase* new_target_expansion)
+{
+	target_expansion = new_target_expansion;
+}
+
+AIBase* GameState::getTargetExpansion()
+{
+	return target_expansion;
 }
