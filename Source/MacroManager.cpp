@@ -22,6 +22,12 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 				auto erase_iterator = building_list_iterator;
 				building_list_iterator = game_state.getBuildingList()->erase(erase_iterator);
 			}
+			else if (!building_list_iterator->getUnit()->isCompleted() &&
+				!building_list_iterator->getUnit()->isBeingConstructed())
+			{
+				worker_manager->getNewBuildWorker(building_list_iterator->getUnit(), game_state);
+				building_list_iterator++;
+			}
 			else  if (game_state.getBuildOrder() == BuildOrder::BGHMech)
 			{ 
 				if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Command_Center &&

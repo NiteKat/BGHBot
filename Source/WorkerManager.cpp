@@ -66,6 +66,12 @@ int WorkerManager::manageWorkers(GameState &game_state)
 		}
 		else if (!build_worker_iterator->getUnit()->exists())
 		{
+			if (build_worker_iterator->getTargetBase() != nullptr)
+			{
+				game_state.toggleExpanding();
+				game_state.addMineralsCommitted(-400);
+				game_state.setTargetExpansion(nullptr);
+			}
 			auto erase_iterator = build_worker_iterator;
 			build_worker_iterator = game_state.getBuildWorkers()->erase(erase_iterator);
 		}
@@ -752,5 +758,20 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 	else
 	{
 		return BWAPI::Broodwar->getBuildLocation(building_type, build_worker.getUnit()->getTilePosition());
+	}
+}
+
+void WorkerManager::getNewBuildWorker(BWAPI::Unit building, GameState &game_state)
+{
+	auto mineral_worker_iterator = game_state.getMineralWorkers()->begin();
+	while (mineral_worker_iterator != game_state.getMineralWorkers()->end())
+	{
+		if (!mineral_worker_iterator->getUnit()->isCarryingMinerals())
+		{
+			mineral_worker_iterator->getUnit()->rightClick(building);
+			mineral_worker_iterator = game_state.getMineralWorkers()->end();
+		}
+		else
+			mineral_worker_iterator++;
 	}
 }
