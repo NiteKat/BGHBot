@@ -634,6 +634,8 @@ void GameState::addObjective(Objective new_objective)
 
 void GameState::assessGame()
 {
+	if (minerals_committed < 0)
+		minerals_committed = 0;
 	if (objective_list.size() >= 1)
 	{
 		if (expanding)

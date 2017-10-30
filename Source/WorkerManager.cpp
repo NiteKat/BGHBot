@@ -75,19 +75,53 @@ int WorkerManager::manageWorkers(GameState &game_state)
 			auto erase_iterator = build_worker_iterator;
 			build_worker_iterator = game_state.getBuildWorkers()->erase(erase_iterator);
 		}
-		else if (build_worker_iterator->getTargetBase() != nullptr &&
-			(build_worker_iterator->getUnit()->getOrder() != BWAPI::Orders::Move ||
-			build_worker_iterator->getUnit()->getOrder() != BWAPI::Orders::PlaceBuilding))
+		else if (build_worker_iterator->getTargetBase() != nullptr)
 		{
-			if (build_worker_iterator->getUnit()->getDistance((BWAPI::Position)build_worker_iterator->getTargetBase()->getArea()->Bases().begin()->Location()) > 320)
+			if (build_worker_iterator->getUnit()->getOrder() != BWAPI::Orders::PlaceBuilding)
 			{
-				build_worker_iterator->getUnit()->gather((*build_worker_iterator->getTargetBase()->getArea()->Minerals().begin())->Unit());
+				if (BWEM::Map::Instance().GetArea((BWAPI::TilePosition)build_worker_iterator->getUnit()->getOrderTargetPosition()) != nullptr)
+				{
+					if (build_worker_iterator->getUnit()->getOrder() == BWAPI::Orders::ConstructingBuilding &&
+						BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
+					{
+						Object new_mineral_worker(*build_worker_iterator);
+						new_mineral_worker.setBuildType(BWAPI::UnitTypes::Unknown);
+						new_mineral_worker.setBaseClass(4);
+						new_mineral_worker.setBase(new_mineral_worker.getTargetBase());
+						new_mineral_worker.setTargetBase(nullptr);
+						game_state.getMineralWorkers()->push_back(new_mineral_worker);
+						auto erase_iterator = build_worker_iterator;
+						build_worker_iterator = game_state.getBuildWorkers()->erase(erase_iterator);
+					}
+					else if (build_worker_iterator->getUnit()->getOrder() == BWAPI::Orders::MiningMinerals ||
+						build_worker_iterator->getUnit()->isCarryingMinerals())
+					{
+						build_worker_iterator->getUnit()->build(build_worker_iterator->getBuildType(), build_worker_iterator->getTargetBase()->getArea()->Bases().begin()->Location());
+						build_worker_iterator++;
+					}
+					else if (build_worker_iterator->getTargetBase()->getArea()->Id() != BWEM::Map::Instance().GetArea((BWAPI::TilePosition)build_worker_iterator->getUnit()->getOrderTargetPosition())->Id() ||
+						build_worker_iterator->getUnit()->getOrder() == BWAPI::Orders::Move)
+					{
+						if (!build_worker_iterator->getUnit()->gather((*build_worker_iterator->getTargetBase()->getArea()->Minerals().begin())->Unit()))
+						{
+							build_worker_iterator->getUnit()->move((*build_worker_iterator->getTargetBase()->getArea()->Bases().begin()).Center());
+						}
+						build_worker_iterator++;
+					}
+					else
+						build_worker_iterator++;
+				}
+				else
+				{
+					if (!build_worker_iterator->getUnit()->gather((*build_worker_iterator->getTargetBase()->getArea()->Minerals().begin())->Unit()))
+					{
+						build_worker_iterator->getUnit()->move((*build_worker_iterator->getTargetBase()->getArea()->Bases().begin()).Center());
+					}
+					build_worker_iterator++;
+				}
 			}
 			else
-			{
-				build_worker_iterator->getUnit()->build(build_worker_iterator->getBuildType(), build_worker_iterator->getTargetBase()->getArea()->Bases().begin()->Location());
-			}
-			build_worker_iterator++;
+				build_worker_iterator++;
 		}
 		else if (build_worker_iterator->getUnit()->getOrder() != BWAPI::Orders::PlaceBuilding &&
 			build_worker_iterator->getUnit()->getOrder() != BWAPI::Orders::Move &&
