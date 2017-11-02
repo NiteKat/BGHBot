@@ -8,7 +8,7 @@ MilitaryManager::MilitaryManager()
 
 void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &game_state)
 {
-	AIBase* target_base;
+	AIBase* target_base = game_state.getClosestEnemyBase();
 	/*if (global_strategy == 0 &&
 		game_state.getMilitary()->size() > 50 &&
 		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran &&
@@ -414,11 +414,10 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 							unit_iterator->getUnit()->useTech(BWAPI::TechTypes::Tank_Siege_Mode);
 						}
 					}
-					target_base = game_state.getClosestEnemyBase();
 					if (target_base != nullptr)
 					{
 						if (unit_iterator->getUnit()->isIdle() ||
-							unit_iterator->getUnit()->isPatrolling())
+							game_state.getSecondaryScouting())
 						{
 							auto enemy_unit_iterator = game_state.getEnemyUnits()->begin();
 							while (enemy_unit_iterator != game_state.getEnemyUnits()->end())
@@ -486,10 +485,33 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 							}
 						}
 					}
-					else if (!unit_iterator->getUnit()->isPatrolling() &&
-						!unit_iterator->getUnit()->isAttacking())
+					else
 					{
-						unit_iterator->getUnit()->patrol(game_state.getRandomUncontrolledPosition());
+						if (!game_state.getSecondaryScouting())
+							game_state.toggleSecondaryScouting();
+						if (unit_iterator->getUnit()->isIdle())
+						{
+							if (BWEM::Map::Instance().GetArea(unit_iterator->getUnit()->getTilePosition()) != nullptr)
+							{
+								if (BWEM::Map::Instance().GetArea(unit_iterator->getUnit()->getTilePosition())->Id() == game_state.getClosestEmptyBaseNotSecondaryScouted()->getArea()->Id())
+								{
+									game_state.getClosestEmptyBaseNotSecondaryScouted()->toggleSecondaryScouted();
+									if (game_state.getClosestEmptyBaseNotSecondaryScouted() != nullptr)
+										unit_iterator->getUnit()->attack(game_state.getClosestEmptyBaseNotSecondaryScouted()->getArea()->Bases().begin()->Center());
+									else
+										game_state.resetSecondaryScouting();
+								}
+								else
+									unit_iterator->getUnit()->attack(game_state.getClosestEmptyBaseNotSecondaryScouted()->getArea()->Bases().begin()->Center());
+							}
+							else
+							{
+								if (game_state.getClosestEmptyBaseNotSecondaryScouted() != nullptr)
+									unit_iterator->getUnit()->attack(game_state.getClosestEmptyBaseNotSecondaryScouted()->getArea()->Bases().begin()->Center());
+								else
+									game_state.resetSecondaryScouting();
+							}
+						}
 					}
 					unit_iterator++;
 				}
@@ -637,6 +659,12 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 			game_state.addMineralWorker(scout_unit);
 			scout_unit.clearObject();
 		}
+	}
+
+	if (target_base != nullptr &&
+		game_state.getSecondaryScouting())
+	{
+		game_state.toggleSecondaryScouting();
 	}
 }
 

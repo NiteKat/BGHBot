@@ -13,17 +13,20 @@ public:
 	void setBaseClass(int new_base_class);
 	void setDistance(int new_distance);
 	void toggleScouted();
+	void toggleSecondaryScouted();
 
 	const BWEM::Area *getArea();
 	int getBaseClass();
 	int getDistance();
 	bool getScouted();
+	bool getSecondaryScouted();
 
 private:
 	const BWEM::Area *my_area;
 	int base_class;
 	int distance;
 	bool scouted;
+	bool secondary_scouted;
 };
 
 #endif

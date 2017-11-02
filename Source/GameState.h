@@ -55,6 +55,8 @@ public:
 	void setWorkerDefense(bool new_worker_defense);
 	void toggleExpanding();
 	void setTargetExpansion(AIBase* new_target_expansion);
+	void toggleSecondaryScouting();
+	void resetSecondaryScouting();
 
 
 	AIBase *getContainingBase(BWAPI::Unit);
@@ -95,6 +97,8 @@ public:
 	AIBase* getClosestEmptyBase();
 	bool getExpanding();
 	AIBase* getTargetExpansion();
+	bool getSecondaryScouting();
+	AIBase* getClosestEmptyBaseNotSecondaryScouted();
 	
 	
 private:
@@ -126,6 +130,7 @@ private:
 	bool worker_defense;
 	bool expanding;
 	AIBase* target_expansion;
+	bool secondary_scouting;
 
 };
 

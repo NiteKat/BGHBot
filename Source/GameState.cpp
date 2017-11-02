@@ -21,6 +21,7 @@ GameState::GameState()
 	worker_defense = false;
 	expanding = false;
 	target_expansion = nullptr;
+	secondary_scouting = false;
 }
 
 void GameState::addAIBase(AIBase new_base)
@@ -1162,4 +1163,100 @@ void GameState::setTargetExpansion(AIBase* new_target_expansion)
 AIBase* GameState::getTargetExpansion()
 {
 	return target_expansion;
+}
+
+
+void GameState::toggleSecondaryScouting()
+{
+	if (secondary_scouting)
+		secondary_scouting = false;
+	else
+		secondary_scouting = true;
+}
+
+bool GameState::getSecondaryScouting()
+{
+	return secondary_scouting;
+}
+
+AIBase* GameState::getClosestEmptyBaseNotSecondaryScouted()
+{
+	checkBaseOwnership();
+	auto base_list_iterator = base_list.begin();
+	auto main_base = base_list_iterator;
+	auto last_empty_base_found = base_list_iterator;
+	bool found_main = false;
+	std::vector<AIBase*> empty_base_list;
+	while (base_list_iterator != base_list.end())
+	{
+		if (base_list_iterator->getBaseClass() == 3)
+		{
+			main_base = base_list_iterator;
+			found_main = true;
+			base_list_iterator++;
+		}
+		else if (base_list_iterator->getBaseClass() == 1 &&
+			base_list_iterator->getArea()->Bases().size() > 0 &&
+			!base_list_iterator->getSecondaryScouted())
+		{
+			empty_base_list.push_back(&(*base_list_iterator));
+			base_list_iterator++;
+		}
+		else
+		{
+			base_list_iterator++;
+		}
+	}
+	if (empty_base_list.size() == 0)
+	{
+		return nullptr;
+	}
+	else if (empty_base_list.size() == 1)
+	{
+		return (*empty_base_list.begin());
+	}
+	else if (found_main == true)
+	{
+		auto empty_base_iterator = empty_base_list.begin();
+		auto closest_base = empty_base_iterator;
+		BWEM::CPPath closest_path = BWEM::Map::Instance().GetPath(BWAPI::Position((*closest_base)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
+		BWEM::CPPath path_to_check;
+		while (empty_base_iterator != empty_base_list.end())
+		{
+			path_to_check = BWEM::Map::Instance().GetPath(BWAPI::Position((*empty_base_iterator)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
+			if (path_to_check.size() != 0)
+			{
+				if (path_to_check.size() < closest_path.size())
+				{
+					closest_path = path_to_check;
+					closest_base = empty_base_iterator;
+				}
+				else if (path_to_check.size() == closest_path.size())
+				{
+					if ((*empty_base_iterator)->getArea()->Top().getApproxDistance(main_base->getArea()->Top()) < (*closest_base)->getArea()->Top().getApproxDistance(main_base->getArea()->Top()))
+					{
+						closest_path = path_to_check;
+						closest_base = empty_base_iterator;
+					}
+				}
+			}
+			empty_base_iterator++;
+		}
+		return *closest_base;
+	}
+	else
+	{
+		return nullptr;
+	}
+}
+
+void GameState::resetSecondaryScouting()
+{
+	auto base_list_iterator = base_list.begin();
+	while (base_list_iterator != base_list.end())
+	{
+		if (base_list_iterator->getSecondaryScouted())
+			base_list_iterator->toggleSecondaryScouted();
+		base_list_iterator++;
+	}
 }

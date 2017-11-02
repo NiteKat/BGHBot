@@ -6,6 +6,7 @@ AIBase::AIBase()
 	base_class = -1;
 	distance = 0;
 	scouted = false;
+	secondary_scouted = false;
 }
 
 AIBase::AIBase(const BWEM::Area *new_area, int new_base_class)
@@ -13,6 +14,7 @@ AIBase::AIBase(const BWEM::Area *new_area, int new_base_class)
 	my_area = new_area;
 	base_class = new_base_class;
 	scouted = false;
+	secondary_scouted = false;
 }
 
 void AIBase::setArea(const BWEM::Area *new_area)
@@ -56,4 +58,17 @@ void AIBase::toggleScouted()
 bool AIBase::getScouted()
 {
 	return scouted;
+}
+
+void AIBase::toggleSecondaryScouted()
+{
+	if (secondary_scouted)
+		secondary_scouted = false;
+	else
+		secondary_scouted = true;
+}
+
+bool AIBase::getSecondaryScouted()
+{
+	return secondary_scouted;
 }
