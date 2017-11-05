@@ -138,3 +138,13 @@ void Object::setBase(AIBase *new_base)
 {
 	my_base = new_base;
 }
+
+void Object::setTargetBuildLocation(BWAPI::TilePosition new_target_build_location)
+{
+	target_build_location = new_target_build_location;
+}
+
+BWAPI::TilePosition Object::getTargetBuildLocation()
+{
+	return target_build_location;
+}

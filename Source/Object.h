@@ -22,6 +22,7 @@ public:
 	void setElapsedTimeOrderGiven(int new_elapsed_time);
 	void setTargetBase(AIBase *new_target_base);
 	void setBase(AIBase *new_base);
+	void setTargetBuildLocation(BWAPI::TilePosition new_target_build_location);
 
 	BWAPI::Unit getUnit();
 	AIBase *getBase();
@@ -31,6 +32,7 @@ public:
 	bool isBuilding();
 	int getElapsedTimeOrderGiven();
 	AIBase *getTargetBase();
+	BWAPI::TilePosition getTargetBuildLocation();
 
 private:
 	BWAPI::Unit my_unit;
@@ -42,6 +44,7 @@ private:
 	bool is_building;
 	int elapsed_time_order_given;
 	AIBase *target_base;
+	BWAPI::TilePosition target_build_location;
 };
 
 #endif

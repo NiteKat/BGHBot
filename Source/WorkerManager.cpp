@@ -132,6 +132,12 @@ int WorkerManager::manageWorkers(GameState &game_state)
 			else
 				build_worker_iterator++;
 		}
+		else if (build_worker_iterator->getUnit()->getOrder() == BWAPI::Orders::Move)
+		{
+			if (build_worker_iterator->getUnit()->getDistance((BWAPI::Position)build_worker_iterator->getTargetBuildLocation()) == 5 * 32)
+				build_worker_iterator->getUnit()->build(build_worker_iterator->getBuildType(), build_worker_iterator->getTargetBuildLocation());
+			build_worker_iterator++;
+		}
 		else if (build_worker_iterator->getUnit()->getOrder() != BWAPI::Orders::PlaceBuilding &&
 			build_worker_iterator->getUnit()->getOrder() != BWAPI::Orders::Move &&
 			((build_worker_iterator->getUnit()->getOrder() != BWAPI::Orders::ConstructingBuilding &&
@@ -365,7 +371,7 @@ bool WorkerManager::build(BWAPI::UnitType building_type, int base_class, GameSta
 			BWAPI::Broodwar->canMake(building_type, mineral_worker_iterator->getUnit()))
 		{
 			Object new_build_worker(*mineral_worker_iterator);
-			if (temp_change_base_class = true)
+			if (temp_change_base_class == true)
 				base_class = 1;
 			if ((building_type == BWAPI::UnitTypes::Terran_Command_Center ||
 				building_type == BWAPI::UnitTypes::Protoss_Nexus ||
@@ -400,12 +406,22 @@ bool WorkerManager::build(BWAPI::UnitType building_type, int base_class, GameSta
 						new_build_worker.setBuildType(building_type);
 						new_build_worker.setBaseClass(base_class);
 						new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
+						new_build_worker.setTargetBuildLocation(build_position);
 						game_state.getBuildWorkers()->push_back(new_build_worker);
 						game_state.getMineralWorkers()->erase(mineral_worker_iterator);
 						return true;
 					}
 					else
-						mineral_worker_iterator++;
+					{
+						new_build_worker.getUnit()->move((BWAPI::Position)build_position);
+						new_build_worker.setBuildType(building_type);
+						new_build_worker.setBaseClass(base_class);
+						new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
+						new_build_worker.setTargetBuildLocation(build_position);
+						game_state.getBuildWorkers()->push_back(new_build_worker);
+						game_state.getMineralWorkers()->erase(mineral_worker_iterator);
+						return true;
+					}
 				}
 				else
 				{
@@ -450,7 +466,7 @@ bool WorkerManager::build(BWAPI::UnitType building_type, int base_class, GameSta
 		}
 		else
 		{
-			if (temp_change_base_class = true)
+			if (temp_change_base_class == true)
 				base_class = 1;
 			mineral_worker_iterator++;
 		}
