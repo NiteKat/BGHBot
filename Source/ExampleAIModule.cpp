@@ -99,6 +99,14 @@ void ExampleAIModule::onStart()
 				}
 			}
 		}*/
+		if (Broodwar->self()->getRace() == Races::Protoss)
+		{
+			if (Broodwar->enemies().size() == 1 &&
+				Broodwar->enemy()->getRace() == BWAPI::Races::Terran)
+			{
+				game_state.setBuildOrder(BuildOrder::P2Gate1);
+			}
+		}
 		scouted = false;
 		game_state.initializeGasLocations();
 		Broodwar << game_state.getEnemyUnits()->size() << std::endl;
@@ -124,8 +132,8 @@ void ExampleAIModule::onEnd(bool isWinner)
 
 void ExampleAIModule::onFrame()
 {
-	try
-	{
+	//try
+	//{
 		std::clock_t start_clock;
 		// Called once every game frame
 		//BWEM::utils::drawMap(theMap);
@@ -191,11 +199,11 @@ void ExampleAIModule::onFrame()
 		start_clock = std::clock();
 		military_manager.checkMilitary(worker_manager, game_state);
 		check_military_time = (double)((std::clock() - start_clock) / (double)CLOCKS_PER_SEC) * 1000;
-	}
+	/*}
 	catch (const std::exception & e)
 	{
 		Broodwar << "EXCEPTION: " << e.what() << std::endl;
-	}
+	}*/
 }
 
 void ExampleAIModule::onSendText(std::string text)

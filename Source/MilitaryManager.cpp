@@ -200,6 +200,17 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 				}
 				game_state.getObjectiveList()->begin()->getUnits()->clear();
 			}
+			if (current_objective->getObjective() == ObjectiveTypes::P2GateAttack &&
+				game_state.getObjectiveList()->begin()->getUnits()->size() > 0)
+			{
+				auto current_unit = game_state.getObjectiveList()->begin()->getUnits()->begin();
+				while (current_unit != game_state.getObjectiveList()->begin()->getUnits()->end())
+				{
+					current_objective->addUnit(*current_unit);
+					current_unit++;
+				}
+				game_state.getObjectiveList()->begin()->getUnits()->clear();
+			}
 			auto unit_iterator = current_objective->getUnits()->begin();
 			while (unit_iterator != current_objective->getUnits()->end())
 			{
@@ -522,7 +533,7 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 					{
 						game_state.getObjectiveList()->begin()->addUnit(*unit_iterator);
 						auto erase_iterator = unit_iterator;
-						current_objective->getUnits()->erase(erase_iterator);
+						unit_iterator = current_objective->getUnits()->erase(erase_iterator);
 					}
 					else if (unit_iterator->getUnit()->getDistance((BWAPI::Position)game_state.getTargetExpansion()->getArea()->Top()) > 500 &&
 						unit_iterator->getUnit()->isIdle())
@@ -574,6 +585,151 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 					}
 					else
 						unit_iterator++;
+				}
+				else if (current_objective->getObjective() == ObjectiveTypes::P2GateAttack)
+				{
+					if (target_base != nullptr)
+					{
+						if (unit_iterator->getUnit()->isIdle() ||
+							game_state.getSecondaryScouting())
+						{
+							auto enemy_unit_iterator = game_state.getEnemyUnits()->begin();
+							while (enemy_unit_iterator != game_state.getEnemyUnits()->end())
+							{
+								if (BWEM::Map::Instance().GetArea(enemy_unit_iterator->second.getDiscoveredPosition()) != nullptr)
+								{
+									if (enemy_unit_iterator->second.isBuilding() &&
+										target_base->getArea()->Id() == BWEM::Map::Instance().GetArea(enemy_unit_iterator->second.getDiscoveredPosition())->Id())
+									{
+										if (BWAPI::Broodwar->isVisible(enemy_unit_iterator->second.getDiscoveredPosition()))
+										{
+											BWAPI::Unitset scanned_units = BWAPI::Broodwar->getUnitsInRadius((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition(), 200);
+											auto scanned_iterator = scanned_units.begin();
+											if (scanned_units.size() == 0)
+											{
+												auto erase_iterator = enemy_unit_iterator;
+												enemy_unit_iterator = game_state.getEnemyUnits()->erase(erase_iterator);
+											}
+											else
+											{
+												bool enemy_found = false;
+												while (scanned_iterator != scanned_units.end())
+												{
+													if ((*scanned_iterator)->getPlayer()->isEnemy(BWAPI::Broodwar->self()))
+													{
+														enemy_found = true;
+														scanned_iterator = scanned_units.end();
+													}
+													else
+													{
+														scanned_iterator++;
+													}
+												}
+												if (enemy_found == false)
+												{
+													auto erase_iterator = enemy_unit_iterator;
+													enemy_unit_iterator = game_state.getEnemyUnits()->erase(erase_iterator);
+												}
+												else
+												{
+													if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_High_Templar)
+														unit_iterator->getUnit()->move((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
+													else
+														unit_iterator->getUnit()->attack((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
+													enemy_unit_iterator++;
+												}
+											}
+										}
+										else
+										{
+											if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_High_Templar)
+												unit_iterator->getUnit()->move((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
+											else
+												unit_iterator->getUnit()->attack((BWAPI::Position)enemy_unit_iterator->second.getDiscoveredPosition());
+											enemy_unit_iterator = game_state.getEnemyUnits()->end();
+										}
+									}
+									else
+									{
+										enemy_unit_iterator++;
+									}
+								}
+								else
+									enemy_unit_iterator++;
+							}
+						}
+					}
+					else
+					{
+						if (!game_state.getSecondaryScouting())
+							game_state.toggleSecondaryScouting();
+						if (unit_iterator->getUnit()->isIdle())
+						{
+							if (BWEM::Map::Instance().GetArea(unit_iterator->getUnit()->getTilePosition()) != nullptr)
+							{
+								if (BWEM::Map::Instance().GetArea(unit_iterator->getUnit()->getTilePosition())->Id() == game_state.getClosestEmptyStartLocationNotSecondaryScouted()->getArea()->Id())
+								{
+									game_state.getClosestEmptyStartLocationNotSecondaryScouted()->toggleSecondaryScouted();
+									if (game_state.getClosestEmptyStartLocationNotSecondaryScouted() != nullptr)
+										unit_iterator->getUnit()->attack(game_state.getClosestEmptyStartLocationNotSecondaryScouted()->getArea()->Bases().begin()->Center());
+									else
+									{
+										if (BWEM::Map::Instance().GetArea(unit_iterator->getUnit()->getTilePosition()) != nullptr)
+										{
+											if (BWEM::Map::Instance().GetArea(unit_iterator->getUnit()->getTilePosition())->Id() == game_state.getClosestEmptyBaseNotSecondaryScouted()->getArea()->Id())
+											{
+												game_state.getClosestEmptyBaseNotSecondaryScouted()->toggleSecondaryScouted();
+												if (game_state.getClosestEmptyBaseNotSecondaryScouted() != nullptr)
+													unit_iterator->getUnit()->attack(game_state.getClosestEmptyBaseNotSecondaryScouted()->getArea()->Bases().begin()->Center());
+												else
+													game_state.resetSecondaryScouting();
+											}
+											else
+												unit_iterator->getUnit()->attack(game_state.getClosestEmptyBaseNotSecondaryScouted()->getArea()->Bases().begin()->Center());
+										}
+										else
+										{
+											if (game_state.getClosestEmptyBaseNotSecondaryScouted() != nullptr)
+												unit_iterator->getUnit()->attack(game_state.getClosestEmptyBaseNotSecondaryScouted()->getArea()->Bases().begin()->Center());
+											else
+												game_state.resetSecondaryScouting();
+										}
+									}
+								}
+								else
+									unit_iterator->getUnit()->attack(game_state.getClosestEmptyStartLocationNotSecondaryScouted()->getArea()->Bases().begin()->Center());
+							}
+							else
+							{
+								if (game_state.getClosestEmptyStartLocationNotSecondaryScouted() != nullptr)
+									unit_iterator->getUnit()->attack(game_state.getClosestEmptyStartLocationNotSecondaryScouted()->getArea()->Bases().begin()->Center());
+								else
+								{
+									if (BWEM::Map::Instance().GetArea(unit_iterator->getUnit()->getTilePosition()) != nullptr)
+									{
+										if (BWEM::Map::Instance().GetArea(unit_iterator->getUnit()->getTilePosition())->Id() == game_state.getClosestEmptyBaseNotSecondaryScouted()->getArea()->Id())
+										{
+											game_state.getClosestEmptyBaseNotSecondaryScouted()->toggleSecondaryScouted();
+											if (game_state.getClosestEmptyBaseNotSecondaryScouted() != nullptr)
+												unit_iterator->getUnit()->attack(game_state.getClosestEmptyBaseNotSecondaryScouted()->getArea()->Bases().begin()->Center());
+											else
+												game_state.resetSecondaryScouting();
+										}
+										else
+											unit_iterator->getUnit()->attack(game_state.getClosestEmptyBaseNotSecondaryScouted()->getArea()->Bases().begin()->Center());
+									}
+									else
+									{
+										if (game_state.getClosestEmptyBaseNotSecondaryScouted() != nullptr)
+											unit_iterator->getUnit()->attack(game_state.getClosestEmptyBaseNotSecondaryScouted()->getArea()->Bases().begin()->Center());
+										else
+											game_state.resetSecondaryScouting();
+									}
+								}
+							}
+						}
+					}
+					unit_iterator++;
 				}
 				else
 				{

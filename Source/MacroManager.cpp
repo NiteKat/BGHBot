@@ -371,226 +371,267 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 		}
 		else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss)
 		{
-			if (building_list_iterator->getUnit() == nullptr)
+			if (game_state.getBuildOrder() == BuildOrder::P2Gate1)
 			{
-				auto erase_iterator = building_list_iterator;
-				building_list_iterator = game_state.getBuildingList()->erase(erase_iterator);
-			}
-			else if (!building_list_iterator->getUnit()->exists())
-			{
-				auto erase_iterator = building_list_iterator;
-				building_list_iterator = game_state.getBuildingList()->erase(erase_iterator);
-			}
-			else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Nexus &&
-				building_list_iterator->getUnit()->isIdle() &&
-				!building_list_iterator->getUnit()->isTraining() &&
-				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
-				game_state.getSupplyUsed() < game_state.getSupplyTotal())
-			{
-				int worker_count = 0;
-				auto mineral_worker_iterator = game_state.getMineralWorkers()->begin();
-				while (mineral_worker_iterator != game_state.getMineralWorkers()->end())
+				if (building_list_iterator->getUnit() == nullptr)
 				{
-					if (mineral_worker_iterator->getBase()->getArea()->Id() == building_list_iterator->getBase()->getArea()->Id())
-						worker_count++;
-					mineral_worker_iterator++;
+					auto erase_iterator = building_list_iterator;
+					building_list_iterator = game_state.getBuildingList()->erase(erase_iterator);
 				}
-				if (worker_count < building_list_iterator->getBase()->getArea()->Minerals().size() * 2)
+				else if (!building_list_iterator->getUnit()->exists())
+				{
+					auto erase_iterator = building_list_iterator;
+					building_list_iterator = game_state.getBuildingList()->erase(erase_iterator);
+				}
+				else if ((building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Nexus &&
+					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
+					game_state.getSupplyUsed() < game_state.getSupplyTotal() &&
+					building_list_iterator->getUnit()->isIdle()) &&
+					(game_state.getSupplyUsed() < 8 ||
+					(game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Pylon) == 1 &&
+					game_state.getSupplyUsed() < 9) ||
+					(game_state.getBarracks() == 1 &&
+					game_state.getSupplyUsed() < 10) ||
+					(game_state.getBarracks() == 2 &&
+					game_state.getMineralWorkerCount() < 15)))
+				{
 					building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Probe);
-				building_list_iterator++;
-			}
-			else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Gateway &&
-				BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Protoss_High_Templar, 0) &&
-				BWAPI::Broodwar->self()->hasResearched(BWAPI::TechTypes::Psionic_Storm) &&
-				building_list_iterator->getUnit()->isIdle() &&
-				!building_list_iterator->getUnit()->isTraining() &&
-				(double)game_state.getUnitTypeCount(BWAPI::UnitTypes::Protoss_High_Templar) / (double)game_state.getMilitary()->size() < 0.1 &&
-				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
-				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 150 &&
-				game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
-			{
-				building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_High_Templar);
-				building_list_iterator++;
-			}
-			else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Gateway &&
-				BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Protoss_Dragoon, 0) &&
-				building_list_iterator->getUnit()->isIdle() &&
-				!building_list_iterator->getUnit()->isTraining() &&
-				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 125 &&
-				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 50 &&
-				game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
-			{
-				if (game_state.getUnitTypeCount(BWAPI::UnitTypes::Protoss_Dragoon) == 0)
-				{
-					building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Dragoon);
+					building_list_iterator++;
 				}
-				else if (game_state.getUnitTypeCount(BWAPI::UnitTypes::Protoss_Zealot) / game_state.getUnitTypeCount(BWAPI::UnitTypes::Protoss_Dragoon) < 3)
+				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Gateway &&
+					building_list_iterator->getUnit()->isIdle() &&
+					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
+					game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
 				{
 					building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Zealot);
+					building_list_iterator++;
 				}
 				else
-				{
-					building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Dragoon);
-				}
-				building_list_iterator++;
-			}
-			else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Gateway &&
-				!BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Protoss_Dragoon, 0) &&
-				building_list_iterator->getUnit()->isIdle() &&
-				!building_list_iterator->getUnit()->isTraining() &&
-				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
-				game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
-			{
-				building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Zealot);
-				building_list_iterator++;
-			}
-			else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Gateway &&
-				BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Protoss_Dragoon, 0) &&
-				building_list_iterator->getUnit()->isIdle() &&
-				!building_list_iterator->getUnit()->isTraining() &&
-				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
-				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() < 50 &&
-				game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
-			{
-				building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Zealot);
-				building_list_iterator++;
-			}
-			else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Templar_Archives &&
-				building_list_iterator->getUnit()->isIdle() &&
-				!building_list_iterator->getUnit()->isResearching() &&
-				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 200 &&
-				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 200)
-			{
-				building_list_iterator->getUnit()->research(BWAPI::TechTypes::Psionic_Storm);
-				building_list_iterator++;
-			}
-			else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Forge &&
-				building_list_iterator->getUnit()->isIdle() &&
-				!building_list_iterator->getUnit()->isUpgrading())
-			{
-				if (BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Ground_Weapons) == 0 &&
-					!BWAPI::Broodwar->self()->isUpgrading(BWAPI::UpgradeTypes::Protoss_Ground_Weapons) && 
-					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
-					BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 100)
-				{
-					building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Protoss_Ground_Weapons);
-				}
-				else if (BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Ground_Armor) == 0 &&
-					!BWAPI::Broodwar->self()->isUpgrading(BWAPI::UpgradeTypes::Protoss_Ground_Armor) &&
-					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
-					BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 100)
-				{
-					building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Protoss_Ground_Armor);
-				}
-				else if (BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Plasma_Shields) == 0 &&
-					!BWAPI::Broodwar->self()->isUpgrading(BWAPI::UpgradeTypes::Protoss_Plasma_Shields) &&
-					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 200 &&
-					BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 200)
-				{
-					building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Protoss_Plasma_Shields);
-				}
-				else if (BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Ground_Weapons) == 1 &&
-					!BWAPI::Broodwar->self()->isUpgrading(BWAPI::UpgradeTypes::Protoss_Ground_Weapons) &&
-					game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Templar_Archives) &&
-					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 &&
-					BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 150)
-				{
-					building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Protoss_Ground_Weapons);
-				}
-				else if (BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Ground_Armor) == 1 &&
-					!BWAPI::Broodwar->self()->isUpgrading(BWAPI::UpgradeTypes::Protoss_Ground_Armor) &&
-					game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Templar_Archives) &&
-					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 175 &&
-					BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 175)
-				{
-					building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Protoss_Ground_Armor);
-				}
-				else if (BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Plasma_Shields) == 1 &&
-					!BWAPI::Broodwar->self()->isUpgrading(BWAPI::UpgradeTypes::Protoss_Plasma_Shields) &&
-					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 300 &&
-					BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 300)
-				{
-					building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Protoss_Plasma_Shields);
-				}
-				else if (BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Ground_Weapons) == 2 &&
-					!BWAPI::Broodwar->self()->isUpgrading(BWAPI::UpgradeTypes::Protoss_Ground_Weapons) &&
-					game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Templar_Archives) &&
-					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 200 &&
-					BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 200)
-				{
-					building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Protoss_Ground_Weapons);
-				}
-				else if (BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Ground_Armor) == 2 &&
-					!BWAPI::Broodwar->self()->isUpgrading(BWAPI::UpgradeTypes::Protoss_Ground_Armor) &&
-					game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Templar_Archives) &&
-					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 250 &&
-					BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 250)
-				{
-					building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Protoss_Ground_Armor);
-				}
-				else if (BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Plasma_Shields) == 2 &&
-					!BWAPI::Broodwar->self()->isUpgrading(BWAPI::UpgradeTypes::Protoss_Plasma_Shields) &&
-					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 400 &&
-					BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 400)
-				{
-					building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Protoss_Plasma_Shields);
-				}
-
-				building_list_iterator++;
-			}
-			else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Cybernetics_Core &&
-				!building_list_iterator->getUnit()->isUpgrading() &&
-				BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Singularity_Charge) == 0 &&
-				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 &&
-				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 150)
-			{
-				building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Singularity_Charge);
-				building_list_iterator++;
-			}
-			else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Citadel_of_Adun &&
-				!building_list_iterator->getUnit()->isUpgrading() &&
-				BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Leg_Enhancements) == 0 &&
-				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 &&
-				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 150)
-			{
-				building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Leg_Enhancements);
-				building_list_iterator++;
-			}
-			else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Robotics_Facility &&
-				BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Protoss_Observer, 0) &&
-				!building_list_iterator->getUnit()->isTraining() &&
-				game_state.getDetectorCount() < 5 &&
-				game_state.getSupplyUsed() < game_state.getSupplyTotal() &&
-				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 25 &&
-				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 75)
-			{
-				building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Observer);
-				game_state.addSupplyUsed(1);
-				building_list_iterator++;
-			}
-			else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Assimilator &&
-				building_list_iterator->getUnit()->isCompleted() &&
-				building_list_iterator->getNumberGasWorkers() < 3)
-			{
-				auto mineral_worker_iterator = game_state.getMineralWorkers()->begin();
-				while (mineral_worker_iterator != game_state.getMineralWorkers()->end())
-				{
-					if (!mineral_worker_iterator->getUnit()->isCarryingMinerals())
-					{
-						building_list_iterator->addGasWorker(mineral_worker_iterator->getUnit()->getID());
-						mineral_worker_iterator->getUnit()->gather(building_list_iterator->getUnit());
-						game_state.getMineralWorkers()->erase(mineral_worker_iterator);
-						mineral_worker_iterator = game_state.getMineralWorkers()->end();
-					}
-					else
-					{
-						mineral_worker_iterator++;
-					}
-				}
+					building_list_iterator++;
 			}
 			else
 			{
-				building_list_iterator++;
+				if (building_list_iterator->getUnit() == nullptr)
+				{
+					auto erase_iterator = building_list_iterator;
+					building_list_iterator = game_state.getBuildingList()->erase(erase_iterator);
+				}
+				else if (!building_list_iterator->getUnit()->exists())
+				{
+					auto erase_iterator = building_list_iterator;
+					building_list_iterator = game_state.getBuildingList()->erase(erase_iterator);
+				}
+				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Nexus &&
+					building_list_iterator->getUnit()->isIdle() &&
+					!building_list_iterator->getUnit()->isTraining() &&
+					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
+					game_state.getSupplyUsed() < game_state.getSupplyTotal())
+				{
+					int worker_count = 0;
+					auto mineral_worker_iterator = game_state.getMineralWorkers()->begin();
+					while (mineral_worker_iterator != game_state.getMineralWorkers()->end())
+					{
+						if (mineral_worker_iterator->getBase()->getArea()->Id() == building_list_iterator->getBase()->getArea()->Id())
+							worker_count++;
+						mineral_worker_iterator++;
+					}
+					if (worker_count < building_list_iterator->getBase()->getArea()->Minerals().size() * 2)
+						building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Probe);
+					building_list_iterator++;
+				}
+				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Gateway &&
+					BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Protoss_High_Templar, 0) &&
+					BWAPI::Broodwar->self()->hasResearched(BWAPI::TechTypes::Psionic_Storm) &&
+					building_list_iterator->getUnit()->isIdle() &&
+					!building_list_iterator->getUnit()->isTraining() &&
+					(double)game_state.getUnitTypeCount(BWAPI::UnitTypes::Protoss_High_Templar) / (double)game_state.getMilitary()->size() < 0.1 &&
+					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
+					BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 150 &&
+					game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
+				{
+					building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_High_Templar);
+					building_list_iterator++;
+				}
+				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Gateway &&
+					BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Protoss_Dragoon, 0) &&
+					building_list_iterator->getUnit()->isIdle() &&
+					!building_list_iterator->getUnit()->isTraining() &&
+					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 125 &&
+					BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 50 &&
+					game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
+				{
+					if (game_state.getUnitTypeCount(BWAPI::UnitTypes::Protoss_Dragoon) == 0)
+					{
+						building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Dragoon);
+					}
+					else if (game_state.getUnitTypeCount(BWAPI::UnitTypes::Protoss_Zealot) / game_state.getUnitTypeCount(BWAPI::UnitTypes::Protoss_Dragoon) < 3)
+					{
+						building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Zealot);
+					}
+					else
+					{
+						building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Dragoon);
+					}
+					building_list_iterator++;
+				}
+				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Gateway &&
+					!BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Protoss_Dragoon, 0) &&
+					building_list_iterator->getUnit()->isIdle() &&
+					!building_list_iterator->getUnit()->isTraining() &&
+					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
+					game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
+				{
+					building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Zealot);
+					building_list_iterator++;
+				}
+				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Gateway &&
+					BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Protoss_Dragoon, 0) &&
+					building_list_iterator->getUnit()->isIdle() &&
+					!building_list_iterator->getUnit()->isTraining() &&
+					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
+					BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() < 50 &&
+					game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
+				{
+					building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Zealot);
+					building_list_iterator++;
+				}
+				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Templar_Archives &&
+					building_list_iterator->getUnit()->isIdle() &&
+					!building_list_iterator->getUnit()->isResearching() &&
+					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 200 &&
+					BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 200)
+				{
+					building_list_iterator->getUnit()->research(BWAPI::TechTypes::Psionic_Storm);
+					building_list_iterator++;
+				}
+				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Forge &&
+					building_list_iterator->getUnit()->isIdle() &&
+					!building_list_iterator->getUnit()->isUpgrading())
+				{
+					if (BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Ground_Weapons) == 0 &&
+						!BWAPI::Broodwar->self()->isUpgrading(BWAPI::UpgradeTypes::Protoss_Ground_Weapons) &&
+						BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
+						BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 100)
+					{
+						building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Protoss_Ground_Weapons);
+					}
+					else if (BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Ground_Armor) == 0 &&
+						!BWAPI::Broodwar->self()->isUpgrading(BWAPI::UpgradeTypes::Protoss_Ground_Armor) &&
+						BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
+						BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 100)
+					{
+						building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Protoss_Ground_Armor);
+					}
+					else if (BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Plasma_Shields) == 0 &&
+						!BWAPI::Broodwar->self()->isUpgrading(BWAPI::UpgradeTypes::Protoss_Plasma_Shields) &&
+						BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 200 &&
+						BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 200)
+					{
+						building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Protoss_Plasma_Shields);
+					}
+					else if (BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Ground_Weapons) == 1 &&
+						!BWAPI::Broodwar->self()->isUpgrading(BWAPI::UpgradeTypes::Protoss_Ground_Weapons) &&
+						game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Templar_Archives) &&
+						BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 &&
+						BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 150)
+					{
+						building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Protoss_Ground_Weapons);
+					}
+					else if (BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Ground_Armor) == 1 &&
+						!BWAPI::Broodwar->self()->isUpgrading(BWAPI::UpgradeTypes::Protoss_Ground_Armor) &&
+						game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Templar_Archives) &&
+						BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 175 &&
+						BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 175)
+					{
+						building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Protoss_Ground_Armor);
+					}
+					else if (BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Plasma_Shields) == 1 &&
+						!BWAPI::Broodwar->self()->isUpgrading(BWAPI::UpgradeTypes::Protoss_Plasma_Shields) &&
+						BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 300 &&
+						BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 300)
+					{
+						building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Protoss_Plasma_Shields);
+					}
+					else if (BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Ground_Weapons) == 2 &&
+						!BWAPI::Broodwar->self()->isUpgrading(BWAPI::UpgradeTypes::Protoss_Ground_Weapons) &&
+						game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Templar_Archives) &&
+						BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 200 &&
+						BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 200)
+					{
+						building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Protoss_Ground_Weapons);
+					}
+					else if (BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Ground_Armor) == 2 &&
+						!BWAPI::Broodwar->self()->isUpgrading(BWAPI::UpgradeTypes::Protoss_Ground_Armor) &&
+						game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Templar_Archives) &&
+						BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 250 &&
+						BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 250)
+					{
+						building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Protoss_Ground_Armor);
+					}
+					else if (BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Plasma_Shields) == 2 &&
+						!BWAPI::Broodwar->self()->isUpgrading(BWAPI::UpgradeTypes::Protoss_Plasma_Shields) &&
+						BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 400 &&
+						BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 400)
+					{
+						building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Protoss_Plasma_Shields);
+					}
+
+					building_list_iterator++;
+				}
+				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Cybernetics_Core &&
+					!building_list_iterator->getUnit()->isUpgrading() &&
+					BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Singularity_Charge) == 0 &&
+					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 &&
+					BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 150)
+				{
+					building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Singularity_Charge);
+					building_list_iterator++;
+				}
+				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Citadel_of_Adun &&
+					!building_list_iterator->getUnit()->isUpgrading() &&
+					BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Leg_Enhancements) == 0 &&
+					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 &&
+					BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 150)
+				{
+					building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Leg_Enhancements);
+					building_list_iterator++;
+				}
+				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Robotics_Facility &&
+					BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Protoss_Observer, 0) &&
+					!building_list_iterator->getUnit()->isTraining() &&
+					game_state.getDetectorCount() < 5 &&
+					game_state.getSupplyUsed() < game_state.getSupplyTotal() &&
+					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 25 &&
+					BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 75)
+				{
+					building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Observer);
+					game_state.addSupplyUsed(1);
+					building_list_iterator++;
+				}
+				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Assimilator &&
+					building_list_iterator->getUnit()->isCompleted() &&
+					building_list_iterator->getNumberGasWorkers() < 3)
+				{
+					auto mineral_worker_iterator = game_state.getMineralWorkers()->begin();
+					while (mineral_worker_iterator != game_state.getMineralWorkers()->end())
+					{
+						if (!mineral_worker_iterator->getUnit()->isCarryingMinerals())
+						{
+							building_list_iterator->addGasWorker(mineral_worker_iterator->getUnit()->getID());
+							mineral_worker_iterator->getUnit()->gather(building_list_iterator->getUnit());
+							game_state.getMineralWorkers()->erase(mineral_worker_iterator);
+							mineral_worker_iterator = game_state.getMineralWorkers()->end();
+						}
+						else
+						{
+							mineral_worker_iterator++;
+						}
+					}
+				}
+				else
+				{
+					building_list_iterator++;
+				}
 			}
 		}
 		else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Zerg)
@@ -1023,119 +1064,147 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 	}
 	else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss)
 	{
-		if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 400 &&
-			!game_state.getExpanding())
+		if (game_state.getBuildOrder() == BuildOrder::P2Gate1)
 		{
-			if (worker_manager->build(BWAPI::UnitTypes::Protoss_Nexus, 1, game_state))
+			if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
+				(game_state.getSupplyUsed() == 8 ||
+				(game_state.getBarracks() == 2 &&
+				game_state.getSupplyUsed() >= game_state.getSupplyExpected() - 10)))
 			{
-				game_state.addMineralsCommitted(400);
-				game_state.toggleExpanding();
+				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Pylon, 3, game_state))
+				{
+					game_state.addSupplyExpected(8);
+					game_state.addMineralsCommitted(100);
+				}
+			}
+			if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 &&
+				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Gateway) < 2 &&
+				(game_state.getSupplyUsed() == 9 ||
+				game_state.getSupplyUsed() == 10))
+			{
+				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Gateway, 3, game_state))
+				{
+					game_state.addMineralsCommitted(150);
+					game_state.addBarracks(1);
+				}
 			}
 		}
-		if ((game_state.getBarracks() == 0 && game_state.getSupplyUsed() >= game_state.getSupplyExpected() - 2 ||
-			game_state.getBarracks() >= 1 && game_state.getSupplyUsed() >= game_state.getSupplyExpected() - 10) &&
-			BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100)
+		else
 		{
-			if (worker_manager->build(BWAPI::UnitTypes::Protoss_Pylon, 3, game_state))
+			if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 400 &&
+				!game_state.getExpanding())
 			{
-				game_state.addSupplyExpected(8);
-				game_state.addMineralsCommitted(100);
+				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Nexus, 1, game_state))
+				{
+					game_state.addMineralsCommitted(400);
+					game_state.toggleExpanding();
+				}
 			}
-		}
-		if (game_state.getBarracks() >= 2 &&
-			game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Cybernetics_Core) == 0 &&
-			BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 200)
-		{
-			if (worker_manager->build(BWAPI::UnitTypes::Protoss_Cybernetics_Core, 3, game_state))
+			if ((game_state.getBarracks() == 0 && game_state.getSupplyUsed() >= game_state.getSupplyExpected() - 2 ||
+				game_state.getBarracks() >= 1 && game_state.getSupplyUsed() >= game_state.getSupplyExpected() - 10) &&
+				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100)
 			{
-				game_state.addMineralsCommitted(200);
+				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Pylon, 3, game_state))
+				{
+					game_state.addSupplyExpected(8);
+					game_state.addMineralsCommitted(100);
+				}
 			}
-		}
-		if (game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Nexus) > 1 &&
-			game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Forge) == 0 &&
-			BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150)
-		{
-			if (worker_manager->build(BWAPI::UnitTypes::Protoss_Forge, 3, game_state))
+			if (game_state.getBarracks() >= 2 &&
+				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Cybernetics_Core) == 0 &&
+				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 200)
 			{
-				game_state.addMineralsCommitted(150);
+				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Cybernetics_Core, 3, game_state))
+				{
+					game_state.addMineralsCommitted(200);
+				}
 			}
-		}
-		if (game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Cybernetics_Core) > 0 &&
-			game_state.getGas() == 0 &&
-			BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100)
-		{
-			if (worker_manager->build(BWAPI::UnitTypes::Protoss_Assimilator, 3, game_state))
+			if (game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Nexus) > 1 &&
+				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Forge) == 0 &&
+				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150)
 			{
-				game_state.addMineralsCommitted(100);
-				game_state.addGas(1);
+				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Forge, 3, game_state))
+				{
+					game_state.addMineralsCommitted(150);
+				}
 			}
-		}
-		if (game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Observatory) > 0 &&
-			game_state.getGas() == 1 &&
-			BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100)
-		{
-			if (worker_manager->build(BWAPI::UnitTypes::Protoss_Assimilator, 4, game_state))
+			if (game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Cybernetics_Core) > 0 &&
+				game_state.getGas() == 0 &&
+				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100)
 			{
-				game_state.addMineralsCommitted(100);
-				game_state.addGas(1);
+				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Assimilator, 3, game_state))
+				{
+					game_state.addMineralsCommitted(100);
+					game_state.addGas(1);
+				}
 			}
-		}
-		if (BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Protoss_Robotics_Facility, 0) &&
-			game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Robotics_Facility) == 0 &&
-			game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Nexus) > 1 &&
-			BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 200 &&
-			BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 200)
-		{
-			if (worker_manager->build(BWAPI::UnitTypes::Protoss_Robotics_Facility, 3, game_state))
+			if (game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Observatory) > 0 &&
+				game_state.getGas() == 1 &&
+				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100)
 			{
-				game_state.addMineralsCommitted(200);
-				game_state.addGasCommitted(200);
+				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Assimilator, 4, game_state))
+				{
+					game_state.addMineralsCommitted(100);
+					game_state.addGas(1);
+				}
 			}
-		}
-		if (BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Protoss_Observatory, 0) &&
-			game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Observatory) == 0 &&
-			BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
-			BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 100)
-		{
-			if (worker_manager->build(BWAPI::UnitTypes::Protoss_Observatory, 3, game_state))
+			if (BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Protoss_Robotics_Facility, 0) &&
+				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Robotics_Facility) == 0 &&
+				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Nexus) > 1 &&
+				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 200 &&
+				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 200)
 			{
-				game_state.addMineralsCommitted(50);
-				game_state.addGasCommitted(100);
+				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Robotics_Facility, 3, game_state))
+				{
+					game_state.addMineralsCommitted(200);
+					game_state.addGasCommitted(200);
+				}
 			}
-		}
-		if (game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Observatory) > 0 &&
-			game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Citadel_of_Adun) == 0 &&
-			BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 &&
-			BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 100)
-		{
-			if (worker_manager->build(BWAPI::UnitTypes::Protoss_Citadel_of_Adun, 3, game_state))
+			if (BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Protoss_Observatory, 0) &&
+				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Observatory) == 0 &&
+				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
+				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 100)
 			{
-				game_state.addMineralsCommitted(150);
-				game_state.addGasCommitted(100);
+				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Observatory, 3, game_state))
+				{
+					game_state.addMineralsCommitted(50);
+					game_state.addGasCommitted(100);
+				}
 			}
-		}
-		if (BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Protoss_Templar_Archives, 0) &&
-			game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Templar_Archives) == 0 &&
-			BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 &&
-			BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 200)
-		{
-			if (worker_manager->build(BWAPI::UnitTypes::Protoss_Templar_Archives, 3, game_state))
+			if (game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Observatory) > 0 &&
+				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Citadel_of_Adun) == 0 &&
+				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 &&
+				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 100)
 			{
-				game_state.addMineralsCommitted(150);
-				game_state.addGasCommitted(200);
+				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Citadel_of_Adun, 3, game_state))
+				{
+					game_state.addMineralsCommitted(150);
+					game_state.addGasCommitted(100);
+				}
 			}
-		}
-		if ((game_state.getBarracks() < 2 &&
-			BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150) ||
-			(game_state.getBarracks() >= 2 &&
-			game_state.getBarracks() <= 3 * game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Nexus) &&
-			game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Nexus) > 1 &&
-			BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 + 100 * game_state.getBarracks()))
-		{
-			if (worker_manager->build(BWAPI::UnitTypes::Protoss_Gateway, 3, game_state))
+			if (BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Protoss_Templar_Archives, 0) &&
+				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Templar_Archives) == 0 &&
+				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 &&
+				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 200)
 			{
-				game_state.addMineralsCommitted(150);
-				game_state.addBarracks(1);
+				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Templar_Archives, 3, game_state))
+				{
+					game_state.addMineralsCommitted(150);
+					game_state.addGasCommitted(200);
+				}
+			}
+			if ((game_state.getBarracks() < 2 &&
+				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150) ||
+				(game_state.getBarracks() >= 2 &&
+				game_state.getBarracks() <= 3 * game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Nexus) &&
+				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Nexus) > 1 &&
+				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 + 100 * game_state.getBarracks()))
+			{
+				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Gateway, 3, game_state))
+				{
+					game_state.addMineralsCommitted(150);
+					game_state.addBarracks(1);
+				}
 			}
 		}
 	}

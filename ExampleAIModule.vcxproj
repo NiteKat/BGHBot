@@ -93,6 +93,9 @@
       <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
       <AdditionalDependencies>../lib/BWAPI.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>NiteKatMap</MapFileName>
+      <MapExports>true</MapExports>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

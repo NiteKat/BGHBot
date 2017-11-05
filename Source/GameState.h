@@ -16,7 +16,8 @@ struct TileFlags
 enum class BuildOrder
 {
 	Default,
-	BGHMech
+	BGHMech,
+	P2Gate1
 };
 
 class GameState
@@ -99,6 +100,7 @@ public:
 	AIBase* getTargetExpansion();
 	bool getSecondaryScouting();
 	AIBase* getClosestEmptyBaseNotSecondaryScouted();
+	AIBase* getClosestEmptyStartLocationNotSecondaryScouted();
 	
 	
 private:

@@ -10,7 +10,8 @@ enum class ObjectiveTypes
 	None,
 	Attack,
 	Defend,
-	DefendExpansion
+	DefendExpansion,
+	P2GateAttack
 };
 
 class Objective

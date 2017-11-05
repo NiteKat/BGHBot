@@ -265,10 +265,13 @@ int WorkerManager::manageWorkers(GameState &game_state)
 			else if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Terran_Barracks)
 			{
 				game_state.addMineralsCommitted(-150);
+				game_state.addBarracks(-1);
 			}
-			else if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Protoss_Gateway)
+			else if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Protoss_Gateway &&
+				game_state.getBuildOrder() != BuildOrder::P2Gate1)
 			{
 				game_state.addMineralsCommitted(-150);
+				game_state.addBarracks(-1);
 			}
 			else if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Terran_Refinery)
 			{
@@ -585,17 +588,26 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 					if (x == BWAPI::Broodwar->mapWidth())
 					{
 						try_new_position = true;
+						x = position_to_build.x + building_size.x + 1;
 					}
 					else
 					{
 						for (int y = position_to_build.y; y < position_to_build.y + building_size.y; y++)
 						{
 							if (y == BWAPI::Broodwar->mapHeight())
+							{
 								try_new_position = true;
+								y = position_to_build.y + building_size.y;
+								x = position_to_build.x + building_size.x;
+							}
 							else
 							{
 								if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
+								{
 									try_new_position = true;
+									x = position_to_build.x + building_size.x;
+									y = position_to_build.y + building_size.y;
+								}
 							}
 						}
 					}
@@ -608,17 +620,26 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 					if (x == BWAPI::Broodwar->mapWidth())
 					{
 						try_new_position = true;
+						x = position_to_build.x + building_size.x;
 					}
 					else
 					{
 						for (int y = position_to_build.y; y < position_to_build.y + building_size.y; y++)
 						{
 							if (y == BWAPI::Broodwar->mapHeight())
+							{
 								try_new_position = true;
+								y = position_to_build.y + building_size.y;
+								x = position_to_build.x + building_size.x;
+							}
 							else
 							{
 								if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
+								{
 									try_new_position = true;
+									y = position_to_build.y + building_size.y;
+									x = position_to_build.x + building_size.x;
+								}
 							}
 						}
 					}
@@ -653,7 +674,6 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 			}
 			if ((std::clock() - build_location_start) * 1000 > 350)
 			{
-				BWAPI::Broodwar << "Building search timeout." << std::endl;
 				return BWAPI::TilePositions::Invalid;
 			}
 		}
@@ -688,10 +708,31 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 				{
 					for (int x = position_to_build.x - 1; x < position_to_build.x + building_size.x + 1; x++)
 					{
-						for (int y = position_to_build.y - 1; y < position_to_build.y + building_size.y + 1; y++)
+						if (x == BWAPI::Broodwar->mapWidth())
 						{
-							if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
-								try_new_position = true;
+							try_new_position = true;
+							x = position_to_build.x + building_size.x + 1;
+						}
+						else
+						{
+							for (int y = position_to_build.y - 1; y < position_to_build.y + building_size.y + 1; y++)
+							{
+								if (y == BWAPI::Broodwar->mapHeight())
+								{
+									try_new_position = true;
+									y = position_to_build.y + building_size.y + 1;
+									x = position_to_build.x + building_size.y + 1;
+								}
+								else
+								{
+									if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
+									{
+										try_new_position = true;
+										y = position_to_build.y + building_size.y + 1;
+										x = position_to_build.x + building_size.y + 1;
+									}
+								}
+							}
 						}
 					}
 				}
@@ -699,10 +740,32 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 				{
 					for (int x = position_to_build.x; x < position_to_build.x + building_size.x; x++)
 					{
-						for (int y = position_to_build.y; y < position_to_build.y + building_size.y; y++)
+						if (x == BWAPI::Broodwar->mapWidth())
 						{
-							if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
-								try_new_position = true;
+							try_new_position = true;
+							x = position_to_build.x + building_size.x;
+						}
+						else
+						{
+							for (int y = position_to_build.y; y < position_to_build.y + building_size.y; y++)
+							{
+								if (y == BWAPI::Broodwar->mapHeight())
+								{
+									try_new_position = true;
+									x = position_to_build.x + building_size.x;
+									y = position_to_build.y + building_size.y;
+								}
+								else
+								{
+									if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
+									{
+										try_new_position = true;
+										try_new_position = true;
+										x = position_to_build.x + building_size.x;
+										y = position_to_build.y + building_size.y;
+									}
+								}
+							}
 						}
 					}
 				}
@@ -727,7 +790,6 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 				}
 				if ((std::clock() - build_location_start) * 1000 > 350)
 				{
-					BWAPI::Broodwar << "Building search timeout." << std::endl;
 					return BWAPI::TilePositions::Invalid;
 				}
 			}
@@ -750,10 +812,31 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 					{
 						for (int x = position_to_build.x - 1; x < position_to_build.x + building_size.x + 1; x++)
 						{
-							for (int y = position_to_build.y - 1; y < position_to_build.y + building_size.y + 1; y++)
+							if (x == BWAPI::Broodwar->mapWidth())
 							{
-								if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
-									try_new_position = true;
+								try_new_position = true;
+								x = position_to_build.x + building_size.x + 1;
+							}
+							else
+							{
+								for (int y = position_to_build.y - 1; y < position_to_build.y + building_size.y + 1; y++)
+								{
+									if (y == BWAPI::Broodwar->mapHeight())
+									{
+										try_new_position = true;
+										x = position_to_build.x + building_size.x + 1;
+										y = position_to_build.y + building_size.y + 1;
+									}
+									else
+									{
+										if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
+										{
+											try_new_position = true;
+											x = position_to_build.x + building_size.x + 1;
+											y = position_to_build.y + building_size.y + 1;
+										}
+									}
+								}
 							}
 						}
 					}
@@ -761,10 +844,31 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 					{
 						for (int x = position_to_build.x; x < position_to_build.x + building_size.x; x++)
 						{
-							for (int y = position_to_build.y; y < position_to_build.y + building_size.y; y++)
+							if (x == BWAPI::Broodwar->mapWidth())
 							{
-								if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
-									try_new_position = true;
+								try_new_position = true;
+								x = position_to_build.x + building_size.x;
+							}
+							else
+							{
+								for (int y = position_to_build.y; y < position_to_build.y + building_size.y; y++)
+								{
+									if (y == BWAPI::Broodwar->mapHeight())
+									{
+										try_new_position = true;
+										x = position_to_build.x + building_size.x;
+										y = position_to_build.y + building_size.y;
+									}
+									else
+									{
+										if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
+										{
+											try_new_position = true;
+											x = position_to_build.x + building_size.x;
+											y = position_to_build.y + building_size.y;
+										}
+									}
+								}
 							}
 						}
 					}
@@ -791,7 +895,6 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 				}
 				if ((std::clock() - build_location_start) * 1000 > 350)
 				{
-					BWAPI::Broodwar << "Building search timeout." << std::endl;
 					return BWAPI::TilePositions::Invalid;
 				}
 			}

@@ -663,6 +663,31 @@ void GameState::assessGame()
 				objective_list.push_back(new_objective);
 			}
 		}
+		if (build_order == BuildOrder::P2Gate1 &&
+			objective_list.begin()->getUnits()->size() > 0)
+		{
+			bool objective_exists = false;
+			auto current_objective = objective_list.begin();
+			while (current_objective != objective_list.end())
+			{
+				if (current_objective->getObjective() == ObjectiveTypes::P2GateAttack)
+					objective_exists = true;
+				current_objective++;
+			}
+			if (!objective_exists)
+			{
+				Objective new_objective;
+				new_objective.setObjective(ObjectiveTypes::P2GateAttack);
+				auto current_unit = objective_list.begin()->getUnits()->begin();
+				while (current_unit != objective_list.begin()->getUnits()->end())
+				{
+					new_objective.addUnit(*current_unit);
+					current_unit++;
+				}
+				objective_list.begin()->getUnits()->clear();
+				objective_list.push_back(new_objective);
+			}
+		}
 		if (objective_list.size() > 1 &&
 			BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran &&
 			build_order == BuildOrder::BGHMech &&
@@ -1258,5 +1283,77 @@ void GameState::resetSecondaryScouting()
 		if (base_list_iterator->getSecondaryScouted())
 			base_list_iterator->toggleSecondaryScouted();
 		base_list_iterator++;
+	}
+}
+
+AIBase* GameState::getClosestEmptyStartLocationNotSecondaryScouted()
+{
+	checkBaseOwnership();
+	auto base_list_iterator = base_list.begin();
+	auto main_base = base_list_iterator;
+	auto last_empty_base_found = base_list_iterator;
+	bool found_main = false;
+	std::vector<AIBase*> empty_base_list;
+	while (base_list_iterator != base_list.end())
+	{
+		if (base_list_iterator->getBaseClass() == 3)
+		{
+			main_base = base_list_iterator;
+			found_main = true;
+			base_list_iterator++;
+		}
+		else if (base_list_iterator->getBaseClass() == 1 &&
+			base_list_iterator->getArea()->Bases().size() > 0 &&
+			base_list_iterator->getArea()->Bases().begin()->Starting() &&
+			!base_list_iterator->getSecondaryScouted())
+		{
+			empty_base_list.push_back(&(*base_list_iterator));
+			base_list_iterator++;
+		}
+		else
+		{
+			base_list_iterator++;
+		}
+	}
+	if (empty_base_list.size() == 0)
+	{
+		return nullptr;
+	}
+	else if (empty_base_list.size() == 1)
+	{
+		return (*empty_base_list.begin());
+	}
+	else if (found_main == true)
+	{
+		auto empty_base_iterator = empty_base_list.begin();
+		auto closest_base = empty_base_iterator;
+		BWEM::CPPath closest_path = BWEM::Map::Instance().GetPath(BWAPI::Position((*closest_base)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
+		BWEM::CPPath path_to_check;
+		while (empty_base_iterator != empty_base_list.end())
+		{
+			path_to_check = BWEM::Map::Instance().GetPath(BWAPI::Position((*empty_base_iterator)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
+			if (path_to_check.size() != 0)
+			{
+				if (path_to_check.size() < closest_path.size())
+				{
+					closest_path = path_to_check;
+					closest_base = empty_base_iterator;
+				}
+				else if (path_to_check.size() == closest_path.size())
+				{
+					if ((*empty_base_iterator)->getArea()->Top().getApproxDistance(main_base->getArea()->Top()) < (*closest_base)->getArea()->Top().getApproxDistance(main_base->getArea()->Top()))
+					{
+						closest_path = path_to_check;
+						closest_base = empty_base_iterator;
+					}
+				}
+			}
+			empty_base_iterator++;
+		}
+		return *closest_base;
+	}
+	else
+	{
+		return nullptr;
 	}
 }
