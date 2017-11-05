@@ -2,6 +2,11 @@ BGH Bot Version 1.06a
 This is a Broodwar AI developed in C++ using Visual Studio Community 2013, BWAPI, and the BWEM library. This bot is designed for play on the Big Game Hunters map, and can play all three races in the game.
 
 Version History:
+1.07e
+Changes:
+-Bug Fixes
+-Added code so workers will attack other workers that are attacking them.
+
 1.07d
 Changes:
 -Fixed bugs pertaining to trying to build in fog of war.

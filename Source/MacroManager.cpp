@@ -282,7 +282,8 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 					building_list_iterator++;
 				}
 				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Barracks &&
-					!BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Terran_Medic, 0) &&
+					(!BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Terran_Medic, 0) ||
+					BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() < 25) &&
 					building_list_iterator->getUnit()->isIdle() &&
 					!building_list_iterator->getUnit()->isTraining() &&
 					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
@@ -305,7 +306,8 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 					{
 						if (marines >= 5)
 						{
-							building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_Medic);
+							if (!building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_Medic))
+								building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_Marine);
 						}
 						else
 						{

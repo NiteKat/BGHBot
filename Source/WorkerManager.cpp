@@ -21,9 +21,13 @@ int WorkerManager::manageWorkers(GameState &game_state)
 			if (mineral_worker_iterator->getUnit()->isUnderAttack() &&
 				mineral_worker_iterator->getUnit()->getOrder() != BWAPI::Orders::AttackUnit)
 			{
-				for (auto unit : mineral_worker_iterator->getUnit()->getUnitsInRadius(10))
+				for (auto unit : mineral_worker_iterator->getUnit()->getUnitsInRadius(100))
 				{
-					if (unit->getType() == BWAPI::UnitTypes::Zerg_Zergling)
+					if ((unit->getType() == BWAPI::UnitTypes::Zerg_Zergling ||
+						unit->getType() == BWAPI::UnitTypes::Terran_SCV ||
+						unit->getType() == BWAPI::UnitTypes::Protoss_Probe ||
+						unit->getType() == BWAPI::UnitTypes::Zerg_Drone) &&
+						unit->getPlayer()->isEnemy(BWAPI::Broodwar->self()))
 					{
 						mineral_worker_iterator->getUnit()->attack(unit);
 					}
