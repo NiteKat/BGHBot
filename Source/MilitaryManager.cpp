@@ -167,10 +167,7 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 			unit->isCloaked()) &&
 			!unit->isDetected())
 		{
-			std::time_t start_detector_search = std::clock();
 			Object* detector = game_state.getAvailableDetector();
-			if ((std::clock() - start_detector_search) * 1000 > 35)
-				BWAPI::Broodwar << "Detector search took " << (std::clock() - start_detector_search) * 1000 << " ms." << std::endl;
 			if (detector != nullptr)
 			{
 				detector->getUnit()->move(unit->getPosition());
@@ -190,7 +187,7 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 		else
 		{
 			if (current_objective->getObjective() == ObjectiveTypes::Attack &&
-				game_state.getObjectiveList()->begin()->getUnits()->size() >= 10)
+				game_state.getObjectiveList()->begin()->getUnits()->size() >= 3 * game_state.getBarracks())
 			{
 				auto current_unit = game_state.getObjectiveList()->begin()->getUnits()->begin();
 				while (current_unit != game_state.getObjectiveList()->begin()->getUnits()->end())
@@ -317,7 +314,6 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 							}
 						}
 						auto enemy_iterator = game_state.getEnemyUnits()->begin();
-						game_state.checkBaseOwnership();
 						while (enemy_iterator != game_state.getEnemyUnits()->end())
 						{
 							if (enemy_iterator->second.getUnit()->exists())
@@ -665,7 +661,8 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 							game_state.toggleSecondaryScouting();
 						if (unit_iterator->getUnit()->isIdle())
 						{
-							if (BWEM::Map::Instance().GetArea(unit_iterator->getUnit()->getTilePosition()) != nullptr)
+							if (BWEM::Map::Instance().GetArea(unit_iterator->getUnit()->getTilePosition()) != nullptr &&
+								game_state.getClosestEmptyStartLocationNotSecondaryScouted() != nullptr)
 							{
 								if (BWEM::Map::Instance().GetArea(unit_iterator->getUnit()->getTilePosition())->Id() == game_state.getClosestEmptyStartLocationNotSecondaryScouted()->getArea()->Id())
 								{

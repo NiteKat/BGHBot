@@ -966,7 +966,7 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 					game_state.addBarracks(1);
 				}
 			}
-			if ((game_state.getBarracks() > 0 &&
+			if ((game_state.getBarracks() > 1 &&
 				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
 				game_state.getGas() == 0) ||
 				(game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Factory) > 1 &&
@@ -1010,12 +1010,14 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 		else
 		{
 			if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 400 &&
-				!game_state.getExpanding())
+				!game_state.getExpanding() &&
+				BWAPI::Broodwar->elapsedTime() - game_state.getLastTimeExpanded() >= 105)
 			{
 				if (worker_manager->build(BWAPI::UnitTypes::Terran_Command_Center, 1, game_state))
 				{
 					game_state.addMineralsCommitted(400);
 					game_state.toggleExpanding();
+					game_state.setLastTimeExpanded();
 				}
 			}
 			if (game_state.getBarracks() > 1 &&
@@ -1051,10 +1053,10 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 					game_state.addBarracks(1);
 				}
 			}
-			if (game_state.getBarracks() > 0 &&
+			if (game_state.getBarracks() > 1 &&
 				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
 				game_state.getGas() == 0 &&
-				game_state.checkValidGasBuildTileLocation())
+				game_state.checkValidGasBuildTileLocation(3))
 			{
 				if (worker_manager->build(BWAPI::UnitTypes::Terran_Refinery, 3, game_state))
 				{
@@ -1094,12 +1096,14 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 		else
 		{
 			if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 400 &&
-				!game_state.getExpanding())
+				!game_state.getExpanding() &&
+				BWAPI::Broodwar->elapsedTime() - game_state.getLastTimeExpanded() >= 105)
 			{
 				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Nexus, 1, game_state))
 				{
 					game_state.addMineralsCommitted(400);
 					game_state.toggleExpanding();
+					game_state.setLastTimeExpanded();
 				}
 			}
 			if ((game_state.getBarracks() == 0 && game_state.getSupplyUsed() >= game_state.getSupplyExpected() - 2 ||
@@ -1130,11 +1134,18 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 					game_state.addMineralsCommitted(150);
 				}
 			}
-			if (game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Cybernetics_Core) > 0 &&
-				game_state.getGas() == 0 &&
+			if (((game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Cybernetics_Core) > 0 &&
+				game_state.getGas() == 0) ||
+				(game_state.getGas() >= 1 &&
+				game_state.getGas() < game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Nexus))) &&
 				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100)
 			{
 				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Assimilator, 3, game_state))
+				{
+					game_state.addMineralsCommitted(100);
+					game_state.addGas(1);
+				}
+				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Assimilator, 4, game_state))
 				{
 					game_state.addMineralsCommitted(100);
 					game_state.addGas(1);
@@ -1256,7 +1267,7 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 		if (game_state.getBuildingTypeCount(BWAPI::UnitTypes::Zerg_Hatchery) > 1 &&
 			BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
 			game_state.getGas() == 0 &&
-			game_state.checkValidGasBuildTileLocation())
+			game_state.checkValidGasBuildTileLocation(3))
 		{
 			if (worker_manager->build(BWAPI::UnitTypes::Zerg_Extractor, 3, game_state))
 			{

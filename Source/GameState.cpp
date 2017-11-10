@@ -22,6 +22,7 @@ GameState::GameState()
 	expanding = false;
 	target_expansion = nullptr;
 	secondary_scouting = false;
+	last_time_expanded = 0;
 }
 
 void GameState::addAIBase(AIBase new_base)
@@ -208,13 +209,13 @@ void GameState::initializeGasLocations()
 	}
 }
 
-BWAPI::TilePosition GameState::getGasBuildTileLocation()
+BWAPI::TilePosition GameState::getGasBuildTileLocation(const BWEM::Area* area)
 {
 	auto gas_location_iterator = gas_locations.begin();
 	while (gas_location_iterator != gas_locations.end())
 	{
 		if (gas_location_iterator->first == false &&
-			getContainingBase(gas_location_iterator->second)->getBaseClass() == 3)
+			getContainingBase(gas_location_iterator->second)->getArea() == area)
 		{
 			return gas_location_iterator->second;
 		}
@@ -225,13 +226,13 @@ BWAPI::TilePosition GameState::getGasBuildTileLocation()
 	}
 	return BWAPI::TilePositions::Invalid;
 }
-bool GameState::checkValidGasBuildTileLocation()
+bool GameState::checkValidGasBuildTileLocation(int base_class)
 {
 	auto gas_location_iterator = gas_locations.begin();
 	while (gas_location_iterator != gas_locations.end())
 	{
 		if (gas_location_iterator->first == false &&
-			getContainingBase(gas_location_iterator->second)->getBaseClass() == 3)
+			getContainingBase(gas_location_iterator->second)->getBaseClass() == base_class)
 		{
 			return true;
 		}
@@ -323,7 +324,6 @@ int GameState::getLastScan()
 
 AIBase* GameState::getClosestEnemyBase()
 {
-	checkBaseOwnership();
 	auto base_list_iterator = base_list.begin();
 	auto main_base = base_list_iterator;
 	auto last_enemy_base_found = base_list_iterator;
@@ -401,12 +401,15 @@ void GameState::checkBaseOwnership()
 			base_list_iterator->setBaseClass(1);
 			for (auto unit : building_list)
 			{
-				if (BWEM::Map::Instance().GetArea(unit.getUnit()->getTilePosition()) != nullptr)
+				if (unit.getUnit()->exists())
 				{
-					if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetArea(unit.getUnit()->getTilePosition())->Id())
+					if (BWEM::Map::Instance().GetArea(unit.getUnit()->getTilePosition()) != nullptr)
 					{
-						base_list_iterator->setBaseClass(4);
-						break;
+						if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetArea(unit.getUnit()->getTilePosition())->Id())
+						{
+							base_list_iterator->setBaseClass(4);
+							break;
+						}
 					}
 				}
 			}
@@ -414,14 +417,17 @@ void GameState::checkBaseOwnership()
 			{
 				for (auto unit : BWAPI::Broodwar->allies().getUnits())
 				{
-					if (unit->getType().isBuilding())
+					if (unit->exists())
 					{
-						if (BWEM::Map::Instance().GetArea(unit->getTilePosition()) != nullptr)
+						if (unit->getType().isBuilding())
 						{
-							if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetArea(unit->getTilePosition())->Id())
+							if (BWEM::Map::Instance().GetArea(unit->getTilePosition()) != nullptr)
 							{
-								base_list_iterator->setBaseClass(5);
-								break;
+								if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetArea(unit->getTilePosition())->Id())
+								{
+									base_list_iterator->setBaseClass(5);
+									break;
+								}
 							}
 						}
 					}
@@ -433,12 +439,18 @@ void GameState::checkBaseOwnership()
 				{
 					if (unit.second.isBuilding())
 					{
-						if (BWEM::Map::Instance().GetArea(unit.second.getDiscoveredPosition()) != nullptr)
+						if (unit.second.getDiscoveredPosition() != BWAPI::TilePositions::Invalid ||
+							unit.second.getDiscoveredPosition() != BWAPI::TilePositions::None ||
+							unit.second.getDiscoveredPosition() != BWAPI::TilePositions::Origin ||
+							unit.second.getDiscoveredPosition() != BWAPI::TilePositions::Unknown)
 						{
-							if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetArea(unit.second.getDiscoveredPosition())->Id())
+							if (BWEM::Map::Instance().GetArea(unit.second.getDiscoveredPosition()) != nullptr)
 							{
-								base_list_iterator->setBaseClass(2);
-								break;
+								if (base_list_iterator->getArea()->Id() == BWEM::Map::Instance().GetArea(unit.second.getDiscoveredPosition())->Id())
+								{
+									base_list_iterator->setBaseClass(2);
+									break;
+								}
 							}
 						}
 					}
@@ -544,7 +556,6 @@ Object* GameState::getAvailableDetector()
 
 BWAPI::Position GameState::getRandomUncontrolledPosition()
 {
-	checkBaseOwnership();
 	BWAPI::Position random_position;
 	while (true)
 	{
@@ -635,6 +646,7 @@ void GameState::addObjective(Objective new_objective)
 
 void GameState::assessGame()
 {
+	checkBaseOwnership();
 	if (minerals_committed < 0)
 		minerals_committed = 0;
 	if (objective_list.size() >= 1)
@@ -1099,7 +1111,6 @@ bool GameState::getWorkerDefense()
 
 AIBase* GameState::getClosestEmptyBase()
 {
-	checkBaseOwnership();
 	auto base_list_iterator = base_list.begin();
 	auto main_base = base_list_iterator;
 	auto last_empty_base_found = base_list_iterator;
@@ -1206,7 +1217,6 @@ bool GameState::getSecondaryScouting()
 
 AIBase* GameState::getClosestEmptyBaseNotSecondaryScouted()
 {
-	checkBaseOwnership();
 	auto base_list_iterator = base_list.begin();
 	auto main_base = base_list_iterator;
 	auto last_empty_base_found = base_list_iterator;
@@ -1288,7 +1298,6 @@ void GameState::resetSecondaryScouting()
 
 AIBase* GameState::getClosestEmptyStartLocationNotSecondaryScouted()
 {
-	checkBaseOwnership();
 	auto base_list_iterator = base_list.begin();
 	auto main_base = base_list_iterator;
 	auto last_empty_base_found = base_list_iterator;
@@ -1356,4 +1365,14 @@ AIBase* GameState::getClosestEmptyStartLocationNotSecondaryScouted()
 	{
 		return nullptr;
 	}
+}
+
+void GameState::setLastTimeExpanded()
+{
+	last_time_expanded = BWAPI::Broodwar->elapsedTime();
+}
+
+int GameState::getLastTimeExpanded()
+{
+	return last_time_expanded;
 }

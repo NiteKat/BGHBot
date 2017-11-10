@@ -41,7 +41,8 @@ int WorkerManager::manageWorkers(GameState &game_state)
 					(mineral_worker_iterator->getUnit()->getOrderTargetPosition().x == 0 &&
 					mineral_worker_iterator->getUnit()->getOrderTargetPosition().y == 0))
 				{
-					mineral_worker_iterator->getUnit()->gather((*mineral_worker_iterator->getBase()->getArea()->Minerals().begin())->Unit());
+					if (mineral_worker_iterator->getBase()->getArea()->Minerals().size() > 0)
+						mineral_worker_iterator->getUnit()->gather((*mineral_worker_iterator->getBase()->getArea()->Minerals().begin())->Unit());
 				}
 				mineral_worker_iterator++;
 			}
@@ -72,7 +73,10 @@ int WorkerManager::manageWorkers(GameState &game_state)
 		{
 			if (build_worker_iterator->getTargetBase() != nullptr)
 			{
-				game_state.toggleExpanding();
+				if (game_state.getExpanding())
+				{
+					game_state.toggleExpanding();
+				}
 				game_state.addMineralsCommitted(-400);
 				game_state.setTargetExpansion(nullptr);
 			}
@@ -81,23 +85,50 @@ int WorkerManager::manageWorkers(GameState &game_state)
 		}
 		else if (build_worker_iterator->getTargetBase() != nullptr)
 		{
-			if (build_worker_iterator->getUnit()->getOrder() != BWAPI::Orders::PlaceBuilding)
+			if (BWEM::Map::Instance().GetArea(build_worker_iterator->getUnit()->getTilePosition()) != nullptr)
 			{
-				if (BWEM::Map::Instance().GetArea((BWAPI::TilePosition)build_worker_iterator->getUnit()->getOrderTargetPosition()) != nullptr)
+				if (build_worker_iterator->getUnit()->getOrder() != BWAPI::Orders::PlaceBuilding)
 				{
-					if (build_worker_iterator->getUnit()->getOrder() == BWAPI::Orders::ConstructingBuilding &&
-						BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
+					if (((build_worker_iterator->getUnit()->getOrder() == BWAPI::Orders::ConstructingBuilding &&
+						BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran) ||
+						(build_worker_iterator->getUnit()->getOrder() == BWAPI::Orders::PlayerGuard &&
+						BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss)) &&
+						build_worker_iterator->getTargetBase()->getArea()->Id() == BWEM::Map::Instance().GetArea(build_worker_iterator->getUnit()->getTilePosition())->Id())
 					{
-						Object new_mineral_worker(*build_worker_iterator);
-						new_mineral_worker.setBuildType(BWAPI::UnitTypes::Unknown);
-						new_mineral_worker.setBaseClass(4);
-						new_mineral_worker.setBase(new_mineral_worker.getTargetBase());
-						new_mineral_worker.setTargetBase(nullptr);
-						game_state.getMineralWorkers()->push_back(new_mineral_worker);
-						auto erase_iterator = build_worker_iterator;
-						build_worker_iterator = game_state.getBuildWorkers()->erase(erase_iterator);
+						bool building_found = false;
+						for (auto unit : BWAPI::Broodwar->getUnitsInRadius(build_worker_iterator->getUnit()->getPosition(), 2 * 32))
+						{
+							if (unit->getPlayer() == BWAPI::Broodwar->self() &&
+								(unit->getType() == BWAPI::UnitTypes::Terran_Command_Center ||
+								unit->getType() == BWAPI::UnitTypes::Protoss_Nexus))
+							{
+								building_found = true;
+							}
+						}
+						if (building_found == true)
+						{
+							Object new_mineral_worker(*build_worker_iterator);
+							new_mineral_worker.setBuildType(BWAPI::UnitTypes::Unknown);
+							new_mineral_worker.setBaseClass(4);
+							new_mineral_worker.setBase(new_mineral_worker.getTargetBase());
+							new_mineral_worker.setTargetBase(nullptr);
+							game_state.getMineralWorkers()->push_back(new_mineral_worker);
+							auto erase_iterator = build_worker_iterator;
+							build_worker_iterator = game_state.getBuildWorkers()->erase(erase_iterator);
+						}
+						else if (build_worker_iterator->getUnit()->getDistance((BWAPI::Position)build_worker_iterator->getTargetBase()->getArea()->Bases().begin()->Location()) <= 5 * 32)
+						{
+							if(!build_worker_iterator->getUnit()->build(build_worker_iterator->getBuildType(), build_worker_iterator->getTargetBase()->getArea()->Bases().begin()->Location()))
+								build_worker_iterator->getUnit()->move((*build_worker_iterator->getTargetBase()->getArea()->Bases().begin()).Center());
+							build_worker_iterator++;
+						}
+						else
+						{
+							build_worker_iterator->getUnit()->move((*build_worker_iterator->getTargetBase()->getArea()->Bases().begin()).Center());
+							build_worker_iterator++;
+						}
 					}
-					else
+					else if (BWEM::Map::Instance().GetArea((BWAPI::TilePosition)build_worker_iterator->getUnit()->getOrderTargetPosition()) != nullptr)
 					{
 						if (BWEM::Map::Instance().GetArea(build_worker_iterator->getUnit()->getTilePosition()) != nullptr)
 						{
@@ -108,10 +139,23 @@ int WorkerManager::manageWorkers(GameState &game_state)
 								build_worker_iterator->getUnit()->build(build_worker_iterator->getBuildType(), build_worker_iterator->getTargetBase()->getArea()->Bases().begin()->Location());
 								build_worker_iterator++;
 							}
+							else if (build_worker_iterator->getTargetBase()->getArea()->Minerals().size() == 0 &&
+								build_worker_iterator->getUnit()->getDistance((BWAPI::Position)build_worker_iterator->getTargetBase()->getArea()->Bases().begin()->Location()) <= 5 * 32)
+							{
+								build_worker_iterator->getUnit()->build(build_worker_iterator->getBuildType(), build_worker_iterator->getTargetBase()->getArea()->Bases().begin()->Location());
+								build_worker_iterator++;
+							}
 							else if (build_worker_iterator->getTargetBase()->getArea()->Id() != BWEM::Map::Instance().GetArea((BWAPI::TilePosition)build_worker_iterator->getUnit()->getOrderTargetPosition())->Id() ||
 								build_worker_iterator->getUnit()->getOrder() == BWAPI::Orders::Move)
 							{
-								if (!build_worker_iterator->getUnit()->gather((*build_worker_iterator->getTargetBase()->getArea()->Minerals().begin())->Unit()))
+								if (build_worker_iterator->getTargetBase()->getArea()->Minerals().size() > 0)
+								{
+									if (!build_worker_iterator->getUnit()->gather((*build_worker_iterator->getTargetBase()->getArea()->Minerals().begin())->Unit()))
+									{
+										build_worker_iterator->getUnit()->move((*build_worker_iterator->getTargetBase()->getArea()->Bases().begin()).Center());
+									}
+								}
+								else
 								{
 									build_worker_iterator->getUnit()->move((*build_worker_iterator->getTargetBase()->getArea()->Bases().begin()).Center());
 								}
@@ -123,15 +167,24 @@ int WorkerManager::manageWorkers(GameState &game_state)
 						else
 							build_worker_iterator++;
 					}
+					else
+					{
+						if (build_worker_iterator->getTargetBase()->getArea()->Minerals().size() > 0)
+						{
+							if (!build_worker_iterator->getUnit()->gather((*build_worker_iterator->getTargetBase()->getArea()->Minerals().begin())->Unit()))
+							{
+								build_worker_iterator->getUnit()->move((*build_worker_iterator->getTargetBase()->getArea()->Bases().begin()).Center());
+							}
+						}
+						else
+						{
+							build_worker_iterator->getUnit()->move((*build_worker_iterator->getTargetBase()->getArea()->Bases().begin()).Center());
+						}
+						build_worker_iterator++;
+					}
 				}
 				else
-				{
-					if (!build_worker_iterator->getUnit()->gather((*build_worker_iterator->getTargetBase()->getArea()->Minerals().begin())->Unit()))
-					{
-						build_worker_iterator->getUnit()->move((*build_worker_iterator->getTargetBase()->getArea()->Bases().begin()).Center());
-					}
 					build_worker_iterator++;
-				}
 			}
 			else
 				build_worker_iterator++;
@@ -164,7 +217,7 @@ int WorkerManager::manageWorkers(GameState &game_state)
 			}
 			else
 			{
-				BWAPI::TilePosition build_position = game_state.getGasBuildTileLocation();
+				BWAPI::TilePosition build_position = game_state.getGasBuildTileLocation(build_worker_iterator->getBase()->getArea());
 				build_worker_iterator->getUnit()->build(build_worker_iterator->getBuildType(), build_position);
 				build_worker_iterator++;
 			}
@@ -434,9 +487,10 @@ bool WorkerManager::build(BWAPI::UnitType building_type, int base_class, GameSta
 			}
 			else
 			{
-				if (game_state.checkValidGasBuildTileLocation())
+				if (game_state.checkValidGasBuildTileLocation(base_class) &&
+					BWEM::Map::Instance().GetArea(new_build_worker.getUnit()->getTilePosition()) != nullptr)
 				{
-					BWAPI::TilePosition build_position = game_state.getGasBuildTileLocation();
+					BWAPI::TilePosition build_position = game_state.getGasBuildTileLocation(BWEM::Map::Instance().GetArea(new_build_worker.getUnit()->getTilePosition()));
 					if (build_position != BWAPI::TilePositions::Invalid)
 					{
 						if (new_build_worker.getUnit()->build(building_type, build_position))
@@ -460,7 +514,7 @@ bool WorkerManager::build(BWAPI::UnitType building_type, int base_class, GameSta
 						}
 					}
 					else
-						return false;
+						mineral_worker_iterator++;
 				}
 				else
 				{
@@ -594,7 +648,11 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 				return position_to_build;
 			}
 		}
-		BWAPI::TilePosition position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
+		BWAPI::TilePosition position_to_build;
+		if (BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition()) != nullptr)
+			position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
+		else
+			position_to_build = build_worker.getUnit()->getTilePosition();
 		BWAPI::TilePosition building_size = building_type.tileSize();
 		bool can_build = false;
 		bool try_new_position = false;
@@ -681,15 +739,43 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 						if (BWEM::Map::Instance().GetArea(position_to_build) == nullptr)
 						{
 							in_base = false;
-							position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
+							if (BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition()) != nullptr)
+								position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
+							else
+								position_to_build = build_worker.getUnit()->getTilePosition();
 						}
 						else if (BWEM::Map::Instance().GetArea(position_to_build)->Id() == build_worker.getBase()->getArea()->Id())
 							in_base = true;
+						else if (game_state.getContainingBase(position_to_build) != nullptr)
+						{
+							if (build_worker.getBase()->getBaseClass() == 3 &&
+								game_state.getContainingBase(position_to_build)->getBaseClass() == 3)
+							{
+								in_base = true;
+							}
+							else
+							{
+								if (BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition()) != nullptr)
+									position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
+								else
+									position_to_build = build_worker.getUnit()->getTilePosition();
+							}
+						}
 						else
-							position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
+						{
+							if (BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition()) != nullptr)
+								position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
+							else
+								position_to_build = build_worker.getUnit()->getTilePosition();
+						}
 					}
 					else
-						position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
+					{
+						if (BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition()) != nullptr)
+							position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
+						else
+							position_to_build = build_worker.getUnit()->getTilePosition();
+					}
 				}
 			}
 			if ((std::clock() - build_location_start) * 1000 > 350)
@@ -717,7 +803,11 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 	{
 		if (building_type == BWAPI::UnitTypes::Protoss_Pylon)
 		{
-			BWAPI::TilePosition position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
+			BWAPI::TilePosition position_to_build;
+			if (BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition()) != nullptr)
+				position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
+			else
+				position_to_build = build_worker.getUnit()->getTilePosition();
 			BWAPI::TilePosition building_size = building_type.tileSize();
 			bool can_build = false;
 			bool try_new_position = false;
@@ -803,8 +893,28 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 						{
 							if (BWEM::Map::Instance().GetArea(position_to_build)->Id() == build_worker.getBase()->getArea()->Id())
 								in_base = true;
+							else if (game_state.getContainingBase(position_to_build) != nullptr)
+							{
+								if (build_worker.getBase()->getBaseClass() == 3 &&
+									game_state.getContainingBase(position_to_build)->getBaseClass() == 3)
+								{
+									in_base = true;
+								}
+								else
+								{
+									if (BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition()) != nullptr)
+										position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
+									else
+										position_to_build = build_worker.getUnit()->getTilePosition();
+								}
+							}
 							else
-								position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
+							{
+								if (BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition()) != nullptr)
+									position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
+								else
+									position_to_build = build_worker.getUnit()->getTilePosition();
+							}
 						}
 					}
 				}
@@ -817,108 +927,137 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 		}
 		else
 		{
-			BWAPI::TilePosition position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
-			BWAPI::TilePosition building_size = building_type.tileSize();
-			bool can_build = false;
-			bool try_new_position = false;
-			while (!can_build)
+			if (BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition()) != nullptr)
 			{
-				try_new_position = false;
-				if (!BWAPI::Broodwar->hasPower(position_to_build, building_type))
-					try_new_position = true;
-				if (!try_new_position)
+				BWAPI::TilePosition position_to_build;
+				if (BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition()) != nullptr)
+					position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
+				else
+					position_to_build = build_worker.getUnit()->getTilePosition();
+				BWAPI::TilePosition building_size = building_type.tileSize();
+				bool can_build = false;
+				bool try_new_position = false;
+				while (!can_build)
 				{
-					if (position_to_build.x != 0 && position_to_build.y != 0)
+					try_new_position = false;
+					if (!BWAPI::Broodwar->hasPower(position_to_build, building_type))
+						try_new_position = true;
+					if (!try_new_position)
 					{
-						for (int x = position_to_build.x - 1; x < position_to_build.x + building_size.x + 1; x++)
+						if (position_to_build.x != 0 && position_to_build.y != 0)
 						{
-							if (x == BWAPI::Broodwar->mapWidth())
+							for (int x = position_to_build.x - 1; x < position_to_build.x + building_size.x + 1; x++)
 							{
-								try_new_position = true;
-								x = position_to_build.x + building_size.x + 1;
-							}
-							else
-							{
-								for (int y = position_to_build.y - 1; y < position_to_build.y + building_size.y + 1; y++)
+								if (x == BWAPI::Broodwar->mapWidth())
 								{
-									if (y == BWAPI::Broodwar->mapHeight())
+									try_new_position = true;
+									x = position_to_build.x + building_size.x + 1;
+								}
+								else
+								{
+									for (int y = position_to_build.y - 1; y < position_to_build.y + building_size.y + 1; y++)
 									{
-										try_new_position = true;
-										x = position_to_build.x + building_size.x + 1;
-										y = position_to_build.y + building_size.y + 1;
-									}
-									else
-									{
-										if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
+										if (y == BWAPI::Broodwar->mapHeight())
 										{
 											try_new_position = true;
 											x = position_to_build.x + building_size.x + 1;
 											y = position_to_build.y + building_size.y + 1;
 										}
+										else
+										{
+											if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
+											{
+												try_new_position = true;
+												x = position_to_build.x + building_size.x + 1;
+												y = position_to_build.y + building_size.y + 1;
+											}
+										}
 									}
 								}
 							}
 						}
-					}
-					else
-					{
-						for (int x = position_to_build.x; x < position_to_build.x + building_size.x; x++)
+						else
 						{
-							if (x == BWAPI::Broodwar->mapWidth())
+							for (int x = position_to_build.x; x < position_to_build.x + building_size.x; x++)
 							{
-								try_new_position = true;
-								x = position_to_build.x + building_size.x;
-							}
-							else
-							{
-								for (int y = position_to_build.y; y < position_to_build.y + building_size.y; y++)
+								if (x == BWAPI::Broodwar->mapWidth())
 								{
-									if (y == BWAPI::Broodwar->mapHeight())
+									try_new_position = true;
+									x = position_to_build.x + building_size.x;
+								}
+								else
+								{
+									for (int y = position_to_build.y; y < position_to_build.y + building_size.y; y++)
 									{
-										try_new_position = true;
-										x = position_to_build.x + building_size.x;
-										y = position_to_build.y + building_size.y;
-									}
-									else
-									{
-										if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
+										if (y == BWAPI::Broodwar->mapHeight())
 										{
 											try_new_position = true;
 											x = position_to_build.x + building_size.x;
 											y = position_to_build.y + building_size.y;
+										}
+										else
+										{
+											if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
+											{
+												try_new_position = true;
+												x = position_to_build.x + building_size.x;
+												y = position_to_build.y + building_size.y;
+											}
 										}
 									}
 								}
 							}
 						}
 					}
-				}
-				if (!try_new_position)
-					can_build = true;
-				else
-				{
-					bool in_base = false;
-					while (!in_base)
+					if (!try_new_position)
+						can_build = true;
+					else
 					{
-						position_to_build.x += rand() % 5 - 2;
-						position_to_build.y += rand() % 5 - 2;
-						position_to_build.makeValid();
-
-						if (!(BWEM::Map::Instance().GetArea(position_to_build) == nullptr))
+						bool in_base = false;
+						while (!in_base)
 						{
-							if (BWEM::Map::Instance().GetArea(position_to_build)->Id() == build_worker.getBase()->getArea()->Id())
-								in_base = true;
-							else
-								position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
+							position_to_build.x += rand() % 5 - 2;
+							position_to_build.y += rand() % 5 - 2;
+							position_to_build.makeValid();
+
+							if (!(BWEM::Map::Instance().GetArea(position_to_build) == nullptr))
+							{
+								if (BWEM::Map::Instance().GetArea(position_to_build)->Id() == build_worker.getBase()->getArea()->Id())
+									in_base = true;
+								else if (game_state.getContainingBase(position_to_build) != nullptr)
+								{
+									if (build_worker.getBase()->getBaseClass() == 3 &&
+										game_state.getContainingBase(position_to_build)->getBaseClass() == 3)
+									{
+										in_base = true;
+									}
+									else
+									{
+										if (BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition()) != nullptr)
+											position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
+										else
+											position_to_build = build_worker.getUnit()->getTilePosition();
+									}
+								}
+								else
+								{
+									if (BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition()) != nullptr)
+										position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
+									else
+										position_to_build = build_worker.getUnit()->getTilePosition();
+								}
+							}
 						}
 					}
+					if ((std::clock() - build_location_start) * 1000 > 350)
+					{
+						return BWAPI::TilePositions::Invalid;
+					}
 				}
-				if ((std::clock() - build_location_start) * 1000 > 350)
-				{
-					return BWAPI::TilePositions::Invalid;
-				}
+				return position_to_build;
 			}
-			return position_to_build;
+			else
+				return BWAPI::Broodwar->getBuildLocation(building_type, build_worker.getUnit()->getTilePosition());
 		}
 	}
 	else

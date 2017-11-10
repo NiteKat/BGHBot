@@ -58,6 +58,7 @@ public:
 	void setTargetExpansion(AIBase* new_target_expansion);
 	void toggleSecondaryScouting();
 	void resetSecondaryScouting();
+	void setLastTimeExpanded();
 
 
 	AIBase *getContainingBase(BWAPI::Unit);
@@ -75,8 +76,8 @@ public:
 	std::vector<Object> *getMineralWorkers();
 	std::vector<Object> *getBuildWorkers();
 	int getGas();
-	BWAPI::TilePosition getGasBuildTileLocation();
-	bool checkValidGasBuildTileLocation();
+	BWAPI::TilePosition getGasBuildTileLocation(const BWEM::Area* area);
+	bool checkValidGasBuildTileLocation(int base_class);
 	int getGasCommitted();
 	bool checkAcademy();
 	bool checkComsatStation();
@@ -101,6 +102,7 @@ public:
 	bool getSecondaryScouting();
 	AIBase* getClosestEmptyBaseNotSecondaryScouted();
 	AIBase* getClosestEmptyStartLocationNotSecondaryScouted();
+	int getLastTimeExpanded();
 	
 	
 private:
@@ -133,6 +135,7 @@ private:
 	bool expanding;
 	AIBase* target_expansion;
 	bool secondary_scouting;
+	int last_time_expanded;
 
 };
 

@@ -81,6 +81,24 @@ void ExampleAIModule::onStart()
 					new_base.toggleScouted();
 				game_state.addAIBase(new_base);
 			}
+			auto base_list_iterator = game_state.getBaseList()->begin();
+			while (base_list_iterator != game_state.getBaseList()->end())
+			{
+				if (base_list_iterator->getBaseClass() == 3)
+				{
+					auto base_list_iterator2 = game_state.getBaseList()->begin();
+					while (base_list_iterator2 != game_state.getBaseList()->end())
+					{
+						if (base_list_iterator2->getBaseClass() == 0 &&
+							theMap.GetPath((BWAPI::Position)base_list_iterator2->getArea()->Top(), (BWAPI::Position)base_list_iterator->getArea()->Top()).size() == 1)
+							base_list_iterator2->setBaseClass(3);
+						base_list_iterator2++;
+					}
+					base_list_iterator = game_state.getBaseList()->end();
+				}
+				else
+					base_list_iterator++;
+			}
 		}
 		Objective new_objective;
 		new_objective.setObjective(ObjectiveTypes::Defend);
@@ -132,14 +150,25 @@ void ExampleAIModule::onEnd(bool isWinner)
 
 void ExampleAIModule::onFrame()
 {
-	//try
-	//{
+	try
+	{
 		std::clock_t start_clock;
 		// Called once every game frame
-		//BWEM::utils::drawMap(theMap);
+		//Debug code for drawing the map and listing base classes.
+		/*BWEM::utils::drawMap(theMap);
+		if (game_state.getBaseList()->size() > 0)
+		{
+			auto base_list_iterator = game_state.getBaseList()->begin();
+			while (base_list_iterator != game_state.getBaseList()->end())
+			{
+				Broodwar->drawTextMap((BWAPI::Position)base_list_iterator->getArea()->Top(), "%i", base_list_iterator->getBaseClass());
+				base_list_iterator++;
+			}
+		}*/
 		if (Broodwar->getSelectedUnits().size() == 1)
 		{
 			Broodwar->drawTextScreen(0, 20, "x=%i y=%i", (*Broodwar->getSelectedUnits().begin())->getTilePosition().x, (*Broodwar->getSelectedUnits().begin())->getTilePosition().y);
+			Broodwar->drawTextScreen(0, 30, "Order: %s", (*Broodwar->getSelectedUnits().begin())->getOrder().c_str());
 		}
 		else
 		{
@@ -199,11 +228,11 @@ void ExampleAIModule::onFrame()
 		start_clock = std::clock();
 		military_manager.checkMilitary(worker_manager, game_state);
 		check_military_time = (double)((std::clock() - start_clock) / (double)CLOCKS_PER_SEC) * 1000;
-	/*}
+	}
 	catch (const std::exception & e)
 	{
 		Broodwar << "EXCEPTION: " << e.what() << std::endl;
-	}*/
+	}
 }
 
 void ExampleAIModule::onSendText(std::string text)
@@ -469,7 +498,7 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
 		  Object new_building(unit, game_state.getContainingBase(unit));
 		  game_state.addBuilding(new_building);
 		  game_state.addSupplyExpected(9);
-		  game_state.addMineralsCommitted(-400);
+ 		  game_state.addMineralsCommitted(-400);
 		  if (game_state.getExpanding())
 		  {
 			  game_state.toggleExpanding();
