@@ -103,6 +103,7 @@ public:
 	AIBase* getClosestEmptyBaseNotSecondaryScouted();
 	AIBase* getClosestEmptyStartLocationNotSecondaryScouted();
 	int getLastTimeExpanded();
+	int getGroundDistance(BWAPI::Position point_a, BWAPI::Position point_b);
 	
 	
 private:

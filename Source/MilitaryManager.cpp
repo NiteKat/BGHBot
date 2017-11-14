@@ -540,44 +540,35 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 					else if (unit_iterator->getUnit()->getDistance((BWAPI::Position)(*game_state.getTargetExpansion()->getArea()->Bases().begin()).Location()) < 300 &&
 						unit_iterator->getUnit()->isIdle())
 					{
-						/*if (game_state.getTargetExpansion()->getArea()->ChokePoints().size() > 1 &&
-							game_state.getMineralWorkers()->size() >= 1)
+						if (game_state.getTargetExpansion()->getArea()->ChokePoints().size() > 1)
 						{
-							BWEM::CPPath path_to_check;
-							BWAPI::Position farthest_chokepoint = (BWAPI::Position)(*game_state.getTargetExpansion()->getArea()->ChokePoints().begin())->Center();
 							auto choke_point_iterator = game_state.getTargetExpansion()->getArea()->ChokePoints().begin();
-							farthest_chokepoint = (BWAPI::Position)(*choke_point_iterator)->Center();
+							BWAPI::Position farthest_chokepoint = (BWAPI::Position)(*choke_point_iterator)->Center();
+							int farthest_distance = 0;
 							choke_point_iterator++;
 
-							Object main_mineral_worker;
-							auto mineral_worker_iterator = game_state.getMineralWorkers()->begin();
-							main_mineral_worker = (*mineral_worker_iterator);
-							while (mineral_worker_iterator != game_state.getMineralWorkers()->end())
+							AIBase* closest_enemy_base = game_state.getClosestEnemyBase();
+							if (closest_enemy_base != nullptr)
 							{
-								if (mineral_worker_iterator->getBase()->getBaseClass() == 3)
+								farthest_distance = game_state.getGroundDistance(farthest_chokepoint, (BWAPI::Position)closest_enemy_base->getArea()->Top());
+								while (choke_point_iterator != game_state.getTargetExpansion()->getArea()->ChokePoints().end())
 								{
-									main_mineral_worker = (*mineral_worker_iterator);
-									mineral_worker_iterator = game_state.getMineralWorkers()->end();
+									int distance = game_state.getGroundDistance((BWAPI::Position)(*choke_point_iterator)->Center(), (BWAPI::Position)closest_enemy_base->getArea()->Top());
+									if (farthest_distance > distance)
+									{
+										farthest_chokepoint = (BWAPI::Position)(*choke_point_iterator)->Center();
+										farthest_distance = distance;
+									}
+									choke_point_iterator++;
 								}
-								else
-									mineral_worker_iterator++;
-							}
-
-							while (choke_point_iterator != game_state.getTargetExpansion()->getArea()->ChokePoints().end())
-							{
-								path_to_check = BWEM::Map::Instance().GetPath((BWAPI::Position)(*choke_point_iterator)->Center(), main_mineral_worker.getUnit()->getPosition());
-								if (path_to_check.size() < BWEM::Map::Instance().GetPath(mineral_worker_iterator->getUnit()->getPosition(), farthest_chokepoint).size())
-									farthest_chokepoint = (BWAPI::Position)(*choke_point_iterator)->Center();
-								choke_point_iterator++;
 							}
 							unit_iterator->getUnit()->attack(farthest_chokepoint);
 							unit_iterator++;
 						}
 						else
-						{*/
+						{
 							unit_iterator->getUnit()->attack((BWAPI::Position)(*game_state.getTargetExpansion()->getArea()->ChokePoints().begin())->Center());
-							unit_iterator++;
-						//}
+						}
 					}
 					else
 						unit_iterator++;

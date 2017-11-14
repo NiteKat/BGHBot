@@ -1376,3 +1376,19 @@ int GameState::getLastTimeExpanded()
 {
 	return last_time_expanded;
 }
+
+int GameState::getGroundDistance(BWAPI::Position point_a, BWAPI::Position point_b)
+{
+	int distance = 0;
+	
+	auto path = BWEM::Map::Instance().GetPath(point_a, point_b);
+
+	for (auto cpp : path)
+	{
+		auto center = BWAPI::Position{ cpp->Center() };
+		distance += point_a.getDistance(center);
+		point_a = center;
+	}
+
+	return distance + point_a.getDistance(point_b);
+}
