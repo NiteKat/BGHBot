@@ -1074,6 +1074,11 @@ void WorkerManager::getNewBuildWorker(BWAPI::Unit building, GameState &game_stat
 		if (!mineral_worker_iterator->getUnit()->isCarryingMinerals())
 		{
 			mineral_worker_iterator->getUnit()->rightClick(building);
+			if (building->getType() == BWAPI::UnitTypes::Terran_Command_Center)
+			{
+				mineral_worker_iterator->setBase(game_state.getContainingBase(building->getTilePosition()));
+				mineral_worker_iterator->setBaseClass(4);
+			}
 			mineral_worker_iterator = game_state.getMineralWorkers()->end();
 		}
 		else
