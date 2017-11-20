@@ -11,7 +11,8 @@ enum class ObjectiveTypes
 	Attack,
 	Defend,
 	DefendExpansion,
-	P2GateAttack
+	P2GateAttack,
+	P4GateGoonAttack
 };
 
 class Objective
@@ -23,7 +24,7 @@ public:
 
 	std::vector<Object>* getUnits();
 	ObjectiveTypes getObjective();
-
+	BWAPI::Position getCentroid();
 
 private:
 	std::vector<Object> my_units;

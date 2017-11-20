@@ -4,6 +4,7 @@
 #include"Object.h"
 #include"AIBase.h"
 #include"Objective.h"
+#include<math.h>
 
 struct TileFlags
 {
@@ -17,7 +18,10 @@ enum class BuildOrder
 {
 	Default,
 	BGHMech,
-	P2Gate1
+	P2Gate1,
+	P4GateGoonOpening,
+	P4GateGoonMid,
+	P4GateGoonLate
 };
 
 class GameState
@@ -59,6 +63,11 @@ public:
 	void toggleSecondaryScouting();
 	void resetSecondaryScouting();
 	void setLastTimeExpanded();
+	void toggleCyberCore();
+	void addRoboticsFacility(int additional_robotics_facility);
+	void addObservatory(int additional_observatory);
+	void addForge(int additional_forge);
+	void addCitadelofAdun(int additional_citadel_of_adun);
 
 
 	AIBase *getContainingBase(BWAPI::Unit);
@@ -104,6 +113,17 @@ public:
 	AIBase* getClosestEmptyStartLocationNotSecondaryScouted();
 	int getLastTimeExpanded();
 	int getGroundDistance(BWAPI::Position point_a, BWAPI::Position point_b);
+	bool checkCyberCore();
+	double getEnemyTotalStrength();
+	double getObjectiveStrength(Objective my_objective);
+	AIBase* getMainBase();
+	double getLocalStrength(Object my_unit);
+	double getMyTotalStrength();
+	AIBase* getMyClosestBase(Object my_unit);
+	int getRoboticsFacility();
+	int getObservatory();
+	int getForge();
+	int getCitadelofAdun();
 	
 	
 private:
@@ -137,7 +157,11 @@ private:
 	AIBase* target_expansion;
 	bool secondary_scouting;
 	int last_time_expanded;
-
+	bool cyber_core;
+	int robotics_facility;
+	int observatory;
+	int forge;
+	int citadel_of_adun;
 };
 
 #endif

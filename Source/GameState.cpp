@@ -23,6 +23,9 @@ GameState::GameState()
 	target_expansion = nullptr;
 	secondary_scouting = false;
 	last_time_expanded = 0;
+	cyber_core = false;
+	robotics_facility = 0;
+	observatory = 0;
 }
 
 void GameState::addAIBase(AIBase new_base)
@@ -82,19 +85,24 @@ AIBase* GameState::getContainingBase(BWAPI::Unit unit)
 
 AIBase* GameState::getContainingBase(BWAPI::TilePosition tile_position)
 {
-	auto base_list_iterator = base_list.begin();
-	while (base_list_iterator != base_list.end())
+	if (BWEM::Map::Instance().GetArea(tile_position) != nullptr)
 	{
-		if (base_list_iterator->getArea() == BWEM::Map::Instance().GetArea(tile_position))
+		auto base_list_iterator = base_list.begin();
+		while (base_list_iterator != base_list.end())
 		{
-			return &(*base_list_iterator);
+			if (base_list_iterator->getArea() == BWEM::Map::Instance().GetArea(tile_position))
+			{
+				return &(*base_list_iterator);
+			}
+			else
+			{
+				base_list_iterator++;
+			}
 		}
-		else
-		{
-			base_list_iterator++;
-		}
+		return nullptr;
 	}
-	return nullptr;
+	else
+		return nullptr;
 }
 
 std::vector<AIBase>* GameState::getBaseList()
@@ -700,6 +708,26 @@ void GameState::assessGame()
 				objective_list.push_back(new_objective);
 			}
 		}
+		else if (build_order == BuildOrder::P4GateGoonOpening &&
+			getUnitTypeCount(BWAPI::UnitTypes::Protoss_Dragoon) >= 8)
+		{
+			Objective new_objective;
+			new_objective.setObjective(ObjectiveTypes::P4GateGoonAttack);
+			auto current_unit = objective_list.begin()->getUnits()->begin();
+			while (current_unit != objective_list.begin()->getUnits()->end())
+			{
+				new_objective.addUnit(*current_unit);
+				current_unit++;
+			}
+			objective_list.begin()->getUnits()->clear();
+			objective_list.push_back(new_objective);
+			build_order = BuildOrder::P4GateGoonMid;
+		}
+		if (build_order == BuildOrder::P4GateGoonMid &&
+			getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Nexus) >= 3)
+		{
+			build_order = BuildOrder::P4GateGoonLate;
+		}
 		if (objective_list.size() > 1 &&
 			BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran &&
 			build_order == BuildOrder::BGHMech &&
@@ -837,7 +865,9 @@ void GameState::assessGame()
 		}
 		else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss)
 		{
-			if (build_order == BuildOrder::Default &&
+			if ((build_order == BuildOrder::Default ||
+				build_order == BuildOrder::P4GateGoonMid ||
+				build_order == BuildOrder::P4GateGoonLate) &&
 				objective_list.begin()->getUnits()->size() > 30)
 			{
 				Objective new_objective;
@@ -1391,4 +1421,227 @@ int GameState::getGroundDistance(BWAPI::Position point_a, BWAPI::Position point_
 	}
 
 	return distance + point_a.getDistance(point_b);
+}
+
+void GameState::toggleCyberCore()
+{
+	if (cyber_core)
+		cyber_core = false;
+	else
+		cyber_core = true;
+}
+
+bool GameState::checkCyberCore()
+{
+	return cyber_core;
+}
+
+double GameState::getEnemyTotalStrength()
+{
+	double army_strength = 0;
+	for (auto current_enemy_unit : enemy_units)
+	{
+		if (current_enemy_unit.second.getUnit()->getType().groundWeapon() != BWAPI::WeaponTypes::None &&
+			current_enemy_unit.second.getUnit()->getType().groundWeapon() != BWAPI::WeaponTypes::Unknown &&
+			current_enemy_unit.second.getUnit()->getType() != BWAPI::UnitTypes::Terran_SCV &&
+			current_enemy_unit.second.getUnit()->getType() != BWAPI::UnitTypes::Protoss_Probe &&
+			current_enemy_unit.second.getUnit()->getType() != BWAPI::UnitTypes::Zerg_Drone)
+		{
+			if (current_enemy_unit.second.getUnit()->getType() == BWAPI::UnitTypes::Protoss_Reaver)
+			{
+				army_strength += (((double)(BWAPI::UnitTypes::Protoss_Scarab.groundWeapon().damageAmount() * BWAPI::UnitTypes::Protoss_Scarab.maxGroundHits() * BWAPI::UnitTypes::Protoss_Scarab.groundWeapon().damageFactor()) / (double)60) * pow(current_enemy_unit.second.getUnit()->getType().groundWeapon().maxRange(), 1 / 3)) / 4;
+			}
+			else if (current_enemy_unit.second.getUnit()->getType() == BWAPI::UnitTypes::Protoss_Scarab)
+			{
+
+			}
+			else
+				army_strength += ((double)(current_enemy_unit.second.getUnit()->getType().groundWeapon().damageAmount() * current_enemy_unit.second.getUnit()->getType().maxGroundHits() * current_enemy_unit.second.getUnit()->getType().groundWeapon().damageFactor()) / (double)current_enemy_unit.second.getUnit()->getType().groundWeapon().damageCooldown()) * pow(current_enemy_unit.second.getUnit()->getType().groundWeapon().maxRange(), 1 / 3);
+		}
+	}
+	return army_strength;
+}
+
+double GameState::getObjectiveStrength(Objective my_objective)
+{
+	double army_strength = 0;
+	for (auto current_unit : *my_objective.getUnits())
+	{
+		army_strength += ((double)(current_unit.getUnit()->getType().groundWeapon().damageAmount() * current_unit.getUnit()->getType().maxGroundHits() * current_unit.getUnit()->getType().groundWeapon().damageFactor()) / (double)current_unit.getUnit()->getType().groundWeapon().damageCooldown()) * pow(current_unit.getUnit()->getType().groundWeapon().maxRange(), 1 / 3);
+	}
+	return army_strength;
+}
+
+AIBase* GameState::getMainBase()
+{
+	auto base_list_iterator = base_list.begin();
+	auto main_base = base_list_iterator;
+	while (base_list_iterator != base_list.end())
+	{
+		if (base_list_iterator->getBaseClass() == 3)
+		{
+			return &(*base_list_iterator);
+		}
+		base_list_iterator++;
+	}
+	return nullptr;
+}
+
+double GameState::getLocalStrength(Object my_unit)
+{
+	double my_strength = 0;
+	double enemy_strength = 0;
+	if (BWAPI::Broodwar->getUnitsInRadius(my_unit.getUnit()->getPosition(), my_unit.getUnit()->getType().sightRange(), BWAPI::Filter::IsEnemy).size() > 0)
+	{
+		1;
+	}
+	for (auto current_unit : BWAPI::Broodwar->getUnitsInRadius(my_unit.getUnit()->getPosition(), my_unit.getUnit()->getType().sightRange()))
+	{
+		if (current_unit->getPlayer() == BWAPI::Broodwar->self() ||
+			current_unit->getPlayer()->isAlly(BWAPI::Broodwar->self()))
+		{
+			if (current_unit->getType().groundWeapon() != BWAPI::WeaponTypes::None &&
+				current_unit->getType().groundWeapon() != BWAPI::WeaponTypes::Unknown &&
+				current_unit->getType() != BWAPI::UnitTypes::Terran_SCV &&
+				current_unit->getType() != BWAPI::UnitTypes::Protoss_Probe &&
+				current_unit->getType() != BWAPI::UnitTypes::Zerg_Drone)
+			{
+				if (current_unit->getType() == BWAPI::UnitTypes::Protoss_Reaver)
+				{
+					my_strength += (((double)(BWAPI::UnitTypes::Protoss_Scarab.groundWeapon().damageAmount() * BWAPI::UnitTypes::Protoss_Scarab.maxGroundHits() * BWAPI::UnitTypes::Protoss_Scarab.groundWeapon().damageFactor()) / (double)60) * pow(current_unit->getType().groundWeapon().maxRange(), 1 / 3)) / 4;
+				}
+				else if (current_unit->getType() == BWAPI::UnitTypes::Protoss_Scarab)
+				{
+
+				}
+				else
+					my_strength += ((double)(current_unit->getType().groundWeapon().damageAmount() * current_unit->getType().maxGroundHits() * current_unit->getType().groundWeapon().damageFactor()) / (double)current_unit->getType().groundWeapon().damageCooldown()) * pow(current_unit->getType().groundWeapon().maxRange(), 1 / 3);
+			}
+		}
+		else
+		{
+			if (current_unit->getType().groundWeapon() != BWAPI::WeaponTypes::None &&
+				current_unit->getType().groundWeapon() != BWAPI::WeaponTypes::Unknown &&
+				current_unit->getType() != BWAPI::UnitTypes::Terran_SCV &&
+				current_unit->getType() != BWAPI::UnitTypes::Protoss_Probe &&
+				current_unit->getType() != BWAPI::UnitTypes::Zerg_Drone)
+			{
+				if (current_unit->getType() == BWAPI::UnitTypes::Protoss_Reaver)
+				{
+					enemy_strength += (((double)(BWAPI::UnitTypes::Protoss_Scarab.groundWeapon().damageAmount() * BWAPI::UnitTypes::Protoss_Scarab.maxGroundHits() * BWAPI::UnitTypes::Protoss_Scarab.groundWeapon().damageFactor()) / (double)60) * pow(current_unit->getType().groundWeapon().maxRange(), 1 / 3)) / 4;
+				}
+				else if (current_unit->getType() == BWAPI::UnitTypes::Protoss_Scarab)
+				{
+
+				}
+				else
+					enemy_strength += ((double)(current_unit->getType().groundWeapon().damageAmount() * current_unit->getType().maxGroundHits() * current_unit->getType().groundWeapon().damageFactor()) / (double)current_unit->getType().groundWeapon().damageCooldown()) * pow(current_unit->getType().groundWeapon().maxRange(), 1 / 3);
+			}
+		}
+	}
+	return my_strength - enemy_strength;
+}
+
+double GameState::getMyTotalStrength()
+{
+	double army_strength = 0;
+	auto current_objective = objective_list.begin();
+	while (current_objective != objective_list.end())
+	{
+		auto unit_iterator = current_objective->getUnits()->begin();
+		while (unit_iterator != current_objective->getUnits()->end())
+		{
+			if (unit_iterator->getUnit()->getType().groundWeapon() != BWAPI::WeaponTypes::None &&
+				unit_iterator->getUnit()->getType().groundWeapon() != BWAPI::WeaponTypes::Unknown &&
+				unit_iterator->getUnit()->getType() != BWAPI::UnitTypes::Terran_SCV &&
+				unit_iterator->getUnit()->getType() != BWAPI::UnitTypes::Protoss_Probe &&
+				unit_iterator->getUnit()->getType() != BWAPI::UnitTypes::Zerg_Drone)
+			{
+				if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Reaver)
+				{
+					army_strength += (((double)(BWAPI::UnitTypes::Protoss_Scarab.groundWeapon().damageAmount() * BWAPI::UnitTypes::Protoss_Scarab.maxGroundHits() * BWAPI::UnitTypes::Protoss_Scarab.groundWeapon().damageFactor()) / (double)60) * pow(unit_iterator->getUnit()->getType().groundWeapon().maxRange(), 1 / 3)) / 4;
+				}
+				else if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Scarab)
+				{
+
+				}
+				else
+					army_strength += ((double)(unit_iterator->getUnit()->getType().groundWeapon().damageAmount() * unit_iterator->getUnit()->getType().maxGroundHits() * unit_iterator->getUnit()->getType().groundWeapon().damageFactor()) / (double)unit_iterator->getUnit()->getType().groundWeapon().damageCooldown()) * pow(unit_iterator->getUnit()->getType().groundWeapon().maxRange(), 1 / 3);
+			}
+			unit_iterator++;
+		}
+		current_objective++;
+	}
+	return army_strength;
+}
+
+AIBase* GameState::getMyClosestBase(Object my_unit)
+{
+	auto base_list_iterator = base_list.begin();
+	int farthest_distance = 0;
+	int distance_to_test = 0;
+	AIBase* return_base = nullptr;
+	while (base_list_iterator != base_list.end())
+	{
+		if (base_list_iterator->getBaseClass() == 3 ||
+			base_list_iterator->getBaseClass() == 4)
+		{
+			if (farthest_distance == 0)
+			{
+				farthest_distance = getGroundDistance(my_unit.getUnit()->getPosition(), (BWAPI::Position)base_list_iterator->getArea()->Top());
+				return_base = &(*base_list_iterator);
+			}
+			else
+			{
+				distance_to_test = getGroundDistance(my_unit.getUnit()->getPosition(), (BWAPI::Position)base_list_iterator->getArea()->Top());
+				if (distance_to_test < farthest_distance)
+				{
+					farthest_distance = distance_to_test;
+					return_base = &(*base_list_iterator);
+				}
+			}
+		}
+		base_list_iterator++;
+	}
+	return return_base;
+}
+
+void GameState::addRoboticsFacility(int additional_robotics_facility)
+{
+	robotics_facility += additional_robotics_facility;
+}
+
+void GameState::addObservatory(int additional_observatory)
+{
+	observatory += additional_observatory;
+}
+
+int GameState::getRoboticsFacility()
+{
+	return robotics_facility;
+}
+
+int GameState::getObservatory()
+{
+	return observatory;
+}
+
+void GameState::addForge(int additional_forge)
+{
+	forge += additional_forge;
+}
+
+int GameState::getForge()
+{
+	return forge;
+}
+
+void GameState::addCitadelofAdun(int additional_citadel_of_adun)
+{
+	citadel_of_adun += additional_citadel_of_adun;
+}
+
+int GameState::getCitadelofAdun()
+{
+	return citadel_of_adun;
 }

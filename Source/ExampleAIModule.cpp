@@ -121,9 +121,10 @@ void ExampleAIModule::onStart()
 		{
 			if (Broodwar->enemies().size() == 1 &&
 				Broodwar->enemy()->getRace() == BWAPI::Races::Terran)
-			{
 				game_state.setBuildOrder(BuildOrder::P2Gate1);
-			}
+			else if (Broodwar->enemies().size() == 1 &&
+				Broodwar->enemy()->getRace() == BWAPI::Races::Protoss)
+				game_state.setBuildOrder(BuildOrder::P4GateGoonOpening);
 		}
 		scouted = false;
 		game_state.initializeGasLocations();
@@ -164,30 +165,44 @@ void ExampleAIModule::onFrame()
 				Broodwar->drawTextMap((BWAPI::Position)base_list_iterator->getArea()->Top(), "%i", base_list_iterator->getBaseClass());
 				base_list_iterator++;
 			}
-		}*/
+		}
 		if (Broodwar->getSelectedUnits().size() == 1)
 		{
 			Broodwar->drawTextScreen(0, 20, "x=%i y=%i", (*Broodwar->getSelectedUnits().begin())->getTilePosition().x, (*Broodwar->getSelectedUnits().begin())->getTilePosition().y);
-			Broodwar->drawTextScreen(0, 30, "Order: %s", (*Broodwar->getSelectedUnits().begin())->getOrder().c_str());
+			Broodwar->drawTextScreen(0, 30, "Order: %s, current cooldown: %d", (*Broodwar->getSelectedUnits().begin())->getOrder().c_str(), (*Broodwar->getSelectedUnits().begin())->getGroundWeaponCooldown());
 		}
 		else
 		{
 			Broodwar->drawTextScreen(0, 20, "Nothing selected.");
 		}
-		/*for (int index = 0; index < game_state.getBuildPositionMap()->size(); index++)
+		for (int index = 0; index < game_state.getBuildPositionMap()->size(); index++)
 		{
 			if (game_state.getBuildPositionMap()->at(index).first.unobstructed)
 				Broodwar->drawTextMap((index - Broodwar->mapWidth() * (index / Broodwar->mapWidth())) * 32, (index / Broodwar->mapWidth()) * 32, "T");
 			else
 				Broodwar->drawTextMap((index - Broodwar->mapWidth() * (index / Broodwar->mapWidth())) * 32, (index / Broodwar->mapWidth()) * 32, "F");
 		}*/
-		
+		if (game_state.getBuildOrder() == BuildOrder::BGHMech)
+			Broodwar->drawTextScreen(0, 30, "Build Order is BGH Mech");
+		else if (game_state.getBuildOrder() == BuildOrder::Default)
+			Broodwar->drawTextScreen(0, 30, "Build Order is Default");
+		else if (game_state.getBuildOrder() == BuildOrder::P2Gate1)
+			Broodwar->drawTextScreen(0, 30, "Build Order is P2Gate1");
+		else if (game_state.getBuildOrder() == BuildOrder::P4GateGoonLate)
+			Broodwar->drawTextScreen(0, 30, "Build Order is P2GateGoonLate");
+		else if (game_state.getBuildOrder() == BuildOrder::P4GateGoonMid)
+			Broodwar->drawTextScreen(0, 30, "Build Order is P4GateGoonMid");
+		else if (game_state.getBuildOrder() == BuildOrder::P4GateGoonOpening)
+			Broodwar->drawTextScreen(0, 30, "Build Order is P4GateGoonOpening");
 		Broodwar->drawTextScreen(0, 40, "Minerals Committed: %i", game_state.getMineralsCommitted());
 		Broodwar->drawTextScreen(0, 60, "Gas Committed: %i", game_state.getGasCommitted());
 		Broodwar->drawTextScreen(0, 70, "Assess Game Time: %f", assess_game_time);
 		Broodwar->drawTextScreen(0, 80, "Manage Worker Time: %f", manage_workers_time);
 		Broodwar->drawTextScreen(0, 90, "Check Macro Time: %f", check_macro_time);
 		Broodwar->drawTextScreen(0, 100, "Check Military Time: %f", check_military_time);
+		Broodwar->drawTextScreen(0, 110, "My army strength: %f", game_state.getMyTotalStrength());
+		Broodwar->drawTextScreen(0, 120, "Enemy army strength: %f", game_state.getEnemyTotalStrength());
+
 
 
 		/*for (const auto &area : theMap.Areas())
@@ -209,7 +224,7 @@ void ExampleAIModule::onFrame()
 		// Latency frames are the number of frames before commands are processed.
 		if (Broodwar->getFrameCount() % Broodwar->getLatencyFrames() != 0)
 			return;
-
+		
 		if (scouted == false &&
 			game_state.getSupplyUsed() >= 10)
 		{
@@ -589,6 +604,27 @@ void ExampleAIModule::onUnitDestroy(BWAPI::Unit unit)
 			unit->getPlayer() == Broodwar->self())
 		{
 			game_state.addSupplyUsed(-1);
+		}
+		else if (unit->getType() == UnitTypes::Protoss_Observatory &&
+			unit->getPlayer() == Broodwar->self())
+		{
+			game_state.addObservatory(-1);
+		}
+		else if (unit->getType() == UnitTypes::Protoss_Robotics_Facility &&
+			unit->getPlayer() == Broodwar->self())
+		{
+			game_state.addRoboticsFacility(-1);
+		}
+		else if (unit->getType() == UnitTypes::Protoss_Citadel_of_Adun &&
+			unit->getPlayer() == Broodwar->self())
+		{
+			game_state.addCitadelofAdun(-1);
+		}
+		else if (unit->getType() == UnitTypes::Protoss_Cybernetics_Core &&
+			unit->getPlayer() == Broodwar->self() &&
+			game_state.checkCyberCore())
+		{
+			game_state.toggleCyberCore();
 		}
 	}
 	catch (const std::exception & e)
