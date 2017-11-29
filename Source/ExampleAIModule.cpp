@@ -325,49 +325,67 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
   }
   else
   {
-	  if ((unit->getType().isBuilding() &&
+	  if (((unit->getType().isBuilding() &&
 		  unit->getPlayer() == Broodwar->self()) ||
-		   unit->getType().isResourceContainer())
+		   unit->getType().isResourceContainer()) &&
+		   unit->getType().getRace() != Races::Protoss)
 	  {
 		  game_state.updateBuildMap(unit->getTilePosition().x, unit->getTilePosition().y, unit->getType(), true);
+	  }
+	  if (unit->getType().isBuilding() &&
+		  unit->getType().getRace() == Races::Protoss &&
+		  unit->getPlayer() == Broodwar->self())
+	  {
+		  if (unit->getType() == BWAPI::UnitTypes::Protoss_Nexus)
+			  game_state.updateBuildMap(unit->getTilePosition().x, unit->getTilePosition().y, unit->getType(), true);
+		  auto build_worker_iterator = game_state.getBuildWorkers()->begin();
+		  while (build_worker_iterator != game_state.getBuildWorkers()->end())
+		  {
+
+			  if (build_worker_iterator->getBuildType() == unit->getType() &&
+				  build_worker_iterator->getTargetBuildLocation() == unit->getTilePosition())
+			  {
+				  Object new_mineral_worker(*build_worker_iterator);
+				  new_mineral_worker.setBuildType(BWAPI::UnitTypes::Unknown);
+				  new_mineral_worker.setBaseClass(0);
+				  game_state.getMineralWorkers()->push_back(new_mineral_worker);
+				  auto erase_iterator = build_worker_iterator;
+				  build_worker_iterator = game_state.getBuildWorkers()->erase(erase_iterator);
+				  build_worker_iterator = game_state.getBuildWorkers()->end();
+			  }
+			  else
+				  build_worker_iterator++;
+		  }
+		  game_state.addMineralsCommitted(-1 * unit->getType().mineralPrice());
+		  game_state.addGasCommitted(-1 * unit->getType().gasPrice());
 	  }
 	  if (unit->getType() == UnitTypes::Terran_SCV &&
 		  unit->getPlayer() == Broodwar->self())
 	  {
-		  Object new_worker(unit, game_state.getContainingBase(unit));
-		  game_state.addMineralWorker(new_worker);
 		  game_state.addSupplyUsed(1);
 	  }
 	  else if (unit->getType() == UnitTypes::Protoss_Probe &&
 		  unit->getPlayer() == Broodwar->self())
 	  {
-		  Object new_worker(unit, game_state.getContainingBase(unit));
-		  game_state.addMineralWorker(new_worker);
 		  game_state.addSupplyUsed(1);
 	  }
 	  else if (unit->getType() == UnitTypes::Zerg_Drone &&
 		  unit->getPlayer() == Broodwar->self())
 	  {
-		  Object new_worker(unit, game_state.getContainingBase(unit));
-		  game_state.addMineralWorker(new_worker);
 		  game_state.addSupplyUsed(1);
 	  }
 	  else if ((unit->getType() == UnitTypes::Terran_Marine ||
 		  unit->getType() == UnitTypes::Terran_Medic )&&
 		  unit->getPlayer() == Broodwar->self())
 	  {
-		  Object new_unit(unit);
 		  game_state.addSupplyUsed(1);
-		  game_state.addUnit(new_unit);
 	  }
 	  else if ((unit->getType() == UnitTypes::Protoss_Zealot ||
 		  unit->getType() == UnitTypes::Protoss_Dragoon ||
 		  unit->getType() == UnitTypes::Protoss_High_Templar) &&
 		  unit->getPlayer() == Broodwar->self())
 	  {
-		  Object new_unit(unit);
 		  game_state.addSupplyUsed(2);
-		  game_state.addUnit(new_unit);
 	  }
 	  else if (unit->getType() == UnitTypes::Terran_Supply_Depot &&
 		  unit->getPlayer() == Broodwar->self())
@@ -440,12 +458,6 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
 		  Object new_building(unit, game_state.getContainingBase(unit));
 		  game_state.addBuilding(new_building);
 	  }
-	  else if (unit->getType() == BWAPI::UnitTypes::Zerg_Zergling &&
-		  unit->getPlayer() == Broodwar->self())
-	  {
-		  Object new_unit(unit, game_state.getContainingBase(unit));
-		  game_state.addUnit(new_unit);
-	  }
 	  else if ((unit->getType() == BWAPI::UnitTypes::Protoss_Forge ||
 		  unit->getType() == BWAPI::UnitTypes::Protoss_Cybernetics_Core ||
 		  unit->getType() == BWAPI::UnitTypes::Protoss_Robotics_Facility ||
@@ -465,14 +477,10 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
 	  }
 	  else if (unit->getType() == BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode)
 	  {
-		  Object new_unit(unit, game_state.getContainingBase(unit));
-		  game_state.addUnit(new_unit);
 		  game_state.addSupplyUsed(2);
 	  }
 	  else if (unit->getType() == BWAPI::UnitTypes::Terran_Goliath)
 	  {
-		  Object new_unit(unit, game_state.getContainingBase(unit));
-		  game_state.addUnit(new_unit);
 		  game_state.addSupplyUsed(2);
 	  }
 	  else if (unit->getType() == BWAPI::UnitTypes::Terran_Factory)
@@ -729,6 +737,13 @@ void ExampleAIModule::onUnitMorph(BWAPI::Unit unit)
 
 void ExampleAIModule::onUnitRenegade(BWAPI::Unit unit)
 {
+	if (unit->getType() == UnitTypes::Protoss_Assimilator &&
+		unit->getPlayer() == Broodwar->self())
+	{
+		Object new_building(unit, game_state.getContainingBase(unit));
+		game_state.addBuilding(new_building);
+		game_state.setGeyserUsed(unit->getTilePosition());
+	}
 }
 
 void ExampleAIModule::onSaveGame(std::string gameName)
@@ -810,5 +825,21 @@ void ExampleAIModule::onUnitComplete(BWAPI::Unit unit)
 		unit->getPlayer() == Broodwar->self())
 	{
 		game_state.addSupplyTotal(1);
+	}
+	else if (unit->getPlayer() == BWAPI::Broodwar->self() &&
+		(unit->getType() == UnitTypes::Terran_SCV ||
+		unit->getType() == UnitTypes::Protoss_Probe ||
+		unit->getType() == UnitTypes::Zerg_Drone))
+	{
+		Object new_worker(unit, game_state.getContainingBase(unit));
+		game_state.addMineralWorker(new_worker);
+	}
+	else if (unit->getPlayer() == BWAPI::Broodwar->self() &&
+		(unit->getType() != UnitTypes::Protoss_Observer ||
+		unit->getType() != UnitTypes::Zerg_Overlord) &&
+		!unit->getType().isBuilding())
+	{
+		Object new_unit(unit);
+		game_state.addUnit(new_unit);
 	}
 }

@@ -417,34 +417,41 @@ game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
 					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
 					game_state.getSupplyUsed() < game_state.getSupplyTotal() &&
 					building_list_iterator->getUnit()->isIdle()) &&
-					(game_state.getSupplyUsed() < 8 ||
-					(game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Pylon) == 1 &&
-					game_state.getSupplyUsed() < 10) ||
+					(game_state.getSupplyBuilt() < 8 ||
+					(game_state.getPylon() == 1 &&
+					game_state.getSupplyBuilt() < 10) ||
 					(game_state.getBarracks() == 1 &&
-					game_state.getSupplyUsed() < 12) ||
-					(game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Pylon) == 2 &&
-					game_state.getMineralWorkerCount() < 16) ||
+					game_state.getSupplyBuilt() < 12) ||
+					(game_state.getPylon() == 2 &&
+					game_state.getSupplyBuilt() < 16) ||
 					(game_state.getGas() == 1 &&
-					game_state.getSupplyUsed() < 17) ||
-					(game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Cybernetics_Core) == 1 &&
-					game_state.getSupplyUsed() < 27)))
+					game_state.getSupplyBuilt() < 17) ||
+					(game_state.checkCyberCore() &&
+					game_state.getSupplyBuilt() < 27)))
 				{
-					building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Probe);
+					if (building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Probe))
+						game_state.addSupplyBuilt(1);
 				}
 				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Gateway &&
 					building_list_iterator->getUnit()->isIdle())
 				{
 					if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= BWAPI::UnitTypes::Protoss_Dragoon.mineralPrice() &&
 						BWAPI::Broodwar->self()->gas() - game_state.getMineralsCommitted() >= BWAPI::UnitTypes::Protoss_Dragoon.gasPrice() &&
-						game_state.getSupplyUsed() <= game_state.getSupplyTotal() - 2)
+						game_state.getSupplyUsed() <= game_state.getSupplyTotal() - 2 &&
+						(game_state.getSupplyBuilt() < 31 ||
+						game_state.getBarracks() == 4))
 					{
-						building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Dragoon);
+						if(building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Dragoon))
+							game_state.addSupplyBuilt(2);
 					}
 					else if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= BWAPI::UnitTypes::Protoss_Zealot.mineralPrice() &&
-						game_state.getUnitTypeCount(BWAPI::UnitTypes::Protoss_Zealot) < 2 &&
+						(game_state.getUnitTypeCount(BWAPI::UnitTypes::Protoss_Zealot) < 1 ||
+						(game_state.getUnitTypeCount(BWAPI::UnitTypes::Protoss_Zealot) < 2 &&
+						game_state.checkCyberCore())) &&
 						game_state.getSupplyUsed() <= game_state.getSupplyTotal() - 2)
 					{
-						building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Zealot);
+						if (building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Zealot))
+							game_state.addSupplyBuilt(2);
 					}
 				}
 				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_Cybernetics_Core &&
@@ -452,7 +459,7 @@ game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
 				{
 					if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= BWAPI::UpgradeTypes::Singularity_Charge.mineralPrice() &&
 						BWAPI::Broodwar->self()->gas() - game_state.getMineralsCommitted() >= BWAPI::UpgradeTypes::Singularity_Charge.gasPrice() &&
-						game_state.getSupplyUsed() >= 26)
+						game_state.getSupplyBuilt() >= 26)
 					{
 						building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Singularity_Charge);
 					}
@@ -1391,27 +1398,28 @@ game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
 		else if (game_state.getBuildOrder() == BuildOrder::P4GateGoonOpening)
 		{
 			if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
-				((game_state.getSupplyUsed() == 8 &&
-				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Pylon) < 1) ||
-				(game_state.getSupplyUsed() == 12 &&
-				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Pylon) < 2) ||
-				(game_state.getSupplyUsed() == 22 &&
-				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Pylon) < 3) ||
-				(game_state.getSupplyUsed() == 33 &&
-				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Pylon) < 4) ||
-				(game_state.getSupplyUsed() == 41 &&
-				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Protoss_Pylon) < 5)))
+				((game_state.getSupplyBuilt() == 8 &&
+				game_state.getPylon() < 1) ||
+				(game_state.getSupplyBuilt() == 12 &&
+				game_state.getPylon() < 2) ||
+				(game_state.getSupplyBuilt() == 22 &&
+				game_state.getPylon() < 3) ||
+				(game_state.getSupplyBuilt() == 33 &&
+				game_state.getPylon() < 4) ||
+				(game_state.getSupplyBuilt() == 41 &&
+				game_state.getPylon() < 5)))
 			{
 				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Pylon, 3, game_state))
 				{
 					game_state.addSupplyExpected(8);
 					game_state.addMineralsCommitted(100);
+					game_state.addPylon(1);
 				}
 			}
 			if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 &&
-				((game_state.getSupplyUsed() == 10 &&
+				((game_state.getSupplyBuilt() == 10 &&
 				game_state.getBarracks() == 0) ||
-				(game_state.getSupplyUsed() >= 26 &&
+				(game_state.getSupplyBuilt() >= 31 &&
 				game_state.getBarracks() < 4)))
 			{
 				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Gateway, 3, game_state))
@@ -1422,7 +1430,7 @@ game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
 			}
 			if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
 				game_state.getGas() == 0 &&
-				game_state.getSupplyUsed() >= 16)
+				game_state.getSupplyBuilt() >= 16)
 			{
 				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Assimilator, 3, game_state))
 				{
@@ -1432,7 +1440,7 @@ game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
 			}
 			if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= BWAPI::UnitTypes::Protoss_Cybernetics_Core.mineralPrice() &&
 				!game_state.checkCyberCore() &&
-				game_state.getSupplyUsed() >= 17)
+				game_state.getSupplyBuilt() >= 17)
 			{
 				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Cybernetics_Core, 3, game_state))
 				{

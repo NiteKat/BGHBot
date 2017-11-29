@@ -918,8 +918,8 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 								}
 							}
 						}
+						unit_iterator++;
 					}
-					unit_iterator++;
 				}
 				else
 				{

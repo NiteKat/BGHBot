@@ -1,7 +1,13 @@
-BGH Bot Version 1.09
+BGH Bot Version 1.09a
 This is a Broodwar AI developed in C++ using Visual Studio Community 2013, BWAPI, and the BWEM library. This bot is designed for play on the Big Game Hunters map, and can play all three races in the game.
 
 Version History:
+1.09a
+Changes:
+-Fixed some crashes.
+-Rebuilt Protoss building placement.
+-Adjusted PvP 4 Gate Goon build to be more robust.
+
 1.09
 Changes:
 -Fixed some crashes related to BWEM areas.

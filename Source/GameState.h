@@ -68,6 +68,8 @@ public:
 	void addObservatory(int additional_observatory);
 	void addForge(int additional_forge);
 	void addCitadelofAdun(int additional_citadel_of_adun);
+	void addSupplyBuilt(int new_supply);
+	void addPylon(int additional_pylon);
 
 
 	AIBase *getContainingBase(BWAPI::Unit);
@@ -124,7 +126,8 @@ public:
 	int getObservatory();
 	int getForge();
 	int getCitadelofAdun();
-	
+	int getSupplyBuilt();
+	int getPylon();
 	
 private:
 	std::vector<Object> building_list;
@@ -162,6 +165,8 @@ private:
 	int observatory;
 	int forge;
 	int citadel_of_adun;
+	int supply_built;
+	int pylon;
 };
 
 #endif

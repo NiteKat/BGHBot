@@ -26,6 +26,8 @@ GameState::GameState()
 	cyber_core = false;
 	robotics_facility = 0;
 	observatory = 0;
+	supply_built = 4;
+	pylon = 0;
 }
 
 void GameState::addAIBase(AIBase new_base)
@@ -709,7 +711,7 @@ void GameState::assessGame()
 			}
 		}
 		else if (build_order == BuildOrder::P4GateGoonOpening &&
-			getUnitTypeCount(BWAPI::UnitTypes::Protoss_Dragoon) >= 8)
+			getUnitTypeCount(BWAPI::UnitTypes::Protoss_Dragoon) >= 6)
 		{
 			Objective new_objective;
 			new_objective.setObjective(ObjectiveTypes::P4GateGoonAttack);
@@ -962,6 +964,9 @@ void GameState::updateBuildMap(int x, int y, BWAPI::UnitType building_type, bool
 		building_type == BWAPI::UnitTypes::Protoss_Photon_Cannon ||
 		building_type == BWAPI::UnitTypes::Protoss_Pylon)
 	{
+		if (x + 2 > BWAPI::Broodwar->mapWidth() ||
+			y + 2 > BWAPI::Broodwar->mapHeight())
+			return;
 		if (build_or_remove)
 		{
 			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
@@ -993,6 +998,9 @@ void GameState::updateBuildMap(int x, int y, BWAPI::UnitType building_type, bool
 		building_type == BWAPI::UnitTypes::Protoss_Shield_Battery ||
 		building_type == BWAPI::UnitTypes::Protoss_Templar_Archives)
 	{
+		if (x + 3 > BWAPI::Broodwar->mapWidth() ||
+			y + 2 > BWAPI::Broodwar->mapHeight())
+			return;
 		if (build_or_remove)
 		{
 			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
@@ -1015,6 +1023,9 @@ void GameState::updateBuildMap(int x, int y, BWAPI::UnitType building_type, bool
 	//4x2
 	else if (building_type == BWAPI::UnitTypes::Resource_Vespene_Geyser)
 	{
+		if (x + 4 > BWAPI::Broodwar->mapWidth() ||
+			y + 2 > BWAPI::Broodwar->mapHeight())
+			return;
 		if (build_or_remove)
 		{
 			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
@@ -1045,6 +1056,9 @@ void GameState::updateBuildMap(int x, int y, BWAPI::UnitType building_type, bool
 		building_type == BWAPI::UnitTypes::Protoss_Nexus ||
 		building_type == BWAPI::UnitTypes::Protoss_Stargate)
 	{
+		if (x + 4 > BWAPI::Broodwar->mapWidth() ||
+			y + 3 > BWAPI::Broodwar->mapHeight())
+			return;
 		if (build_or_remove)
 		{
 			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
@@ -1082,6 +1096,9 @@ void GameState::updateBuildMap(int x, int y, BWAPI::UnitType building_type, bool
 		building_type == BWAPI::UnitTypes::Terran_Science_Facility ||
 		building_type == BWAPI::UnitTypes::Terran_Starport)
 	{
+		if (x + 4 > BWAPI::Broodwar->mapWidth() ||
+			y + 3 > BWAPI::Broodwar->mapHeight())
+			return;
 		if (build_or_remove)
 		{
 			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
@@ -1467,6 +1484,12 @@ double GameState::getObjectiveStrength(Objective my_objective)
 	double army_strength = 0;
 	for (auto current_unit : *my_objective.getUnits())
 	{
+		std::string my_type = current_unit.getUnit()->getType().toString();
+		double first = current_unit.getUnit()->getType().groundWeapon().damageAmount();
+		double second = current_unit.getUnit()->getType().maxGroundHits();
+		double third = current_unit.getUnit()->getType().groundWeapon().damageFactor();
+		double fourth = current_unit.getUnit()->getType().groundWeapon().damageCooldown();
+		double fifth = pow(current_unit.getUnit()->getType().groundWeapon().maxRange(), 1 / 3);
 		army_strength += ((double)(current_unit.getUnit()->getType().groundWeapon().damageAmount() * current_unit.getUnit()->getType().maxGroundHits() * current_unit.getUnit()->getType().groundWeapon().damageFactor()) / (double)current_unit.getUnit()->getType().groundWeapon().damageCooldown()) * pow(current_unit.getUnit()->getType().groundWeapon().maxRange(), 1 / 3);
 	}
 	return army_strength;
@@ -1644,4 +1667,24 @@ void GameState::addCitadelofAdun(int additional_citadel_of_adun)
 int GameState::getCitadelofAdun()
 {
 	return citadel_of_adun;
+}
+
+void GameState::addSupplyBuilt(int new_supply)
+{
+	supply_built += new_supply;
+}
+
+int GameState::getSupplyBuilt()
+{
+	return supply_built;
+}
+
+void GameState::addPylon(int additional_pylon)
+{
+	pylon += additional_pylon;
+}
+
+int GameState::getPylon()
+{
+	return pylon;
 }
