@@ -364,6 +364,7 @@ int WorkerManager::manageWorkers(GameState &game_state)
 			{
 				game_state.addMineralsCommitted(-200);
 				game_state.addGasCommitted(-150);
+				game_state.addFactory(-1);
 			}
 			else if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Terran_Armory)
 			{
@@ -528,119 +529,9 @@ bool WorkerManager::build(BWAPI::UnitType building_type, int base_class, GameSta
 BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::UnitType building_type, GameState &game_state)
 {
 	std::time_t build_location_start = std::clock();
+	bool has_addon = building_type.canBuildAddon();
 	if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
 	{
-		if (game_state.getBuildOrder() == BuildOrder::BGHMech)
-		{
-			if (building_type == BWAPI::UnitTypes::Terran_Supply_Depot &&
-				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Supply_Depot) == 0)
-			{
-				BWAPI::TilePosition position_to_build;
-				if (BWAPI::Broodwar->self()->getStartLocation().x == 114 &&
-					BWAPI::Broodwar->self()->getStartLocation().y == 116)
-				{
-					position_to_build.x = 92;
-					position_to_build.y = 95;
-				}
-				else if (BWAPI::Broodwar->self()->getStartLocation().x == 114 &&
-					BWAPI::Broodwar->self()->getStartLocation().y == 80)
-				{
-					position_to_build.x = 101;
-					position_to_build.y = 61;
-				}
-				else if (BWAPI::Broodwar->self()->getStartLocation().x == 113 &&
-					BWAPI::Broodwar->self()->getStartLocation().y == 8)
-				{
-					position_to_build.x = 95;
-					position_to_build.y = 22;
-				}
-				else if (BWAPI::Broodwar->self()->getStartLocation().x == 72 &&
-					BWAPI::Broodwar->self()->getStartLocation().y == 8)
-				{
-					position_to_build.x = 52;
-					position_to_build.y = 23;
-				}
-				else if (BWAPI::Broodwar->self()->getStartLocation().x == 10 &&
-					BWAPI::Broodwar->self()->getStartLocation().y == 6)
-				{
-					position_to_build.x = 32;
-					position_to_build.y = 21;
-				}
-				else if (BWAPI::Broodwar->self()->getStartLocation().x == 8 &&
-					BWAPI::Broodwar->self()->getStartLocation().y == 47)
-				{
-					position_to_build.x = 24;
-					position_to_build.y = 55;
-				}
-				else if (BWAPI::Broodwar->self()->getStartLocation().x == 10 &&
-					BWAPI::Broodwar->self()->getStartLocation().y == 114)
-				{
-					position_to_build.x = 16;
-					position_to_build.y = 93;
-				}
-				else if (BWAPI::Broodwar->self()->getStartLocation().x == 63 &&
-					BWAPI::Broodwar->self()->getStartLocation().y == 117)
-				{
-					position_to_build.x = 55;
-					position_to_build.y = 94;
-				}
-				return position_to_build;
-			}
-			else if (building_type == BWAPI::UnitTypes::Terran_Barracks &&
-				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Barracks) == 0)
-			{
-				BWAPI::TilePosition position_to_build;
-				if (BWAPI::Broodwar->self()->getStartLocation().x == 114 &&
-					BWAPI::Broodwar->self()->getStartLocation().y == 116)
-				{
-					position_to_build.x = 90;
-					position_to_build.y = 97;
-				}
-				else if (BWAPI::Broodwar->self()->getStartLocation().x == 114 &&
-					BWAPI::Broodwar->self()->getStartLocation().y == 80)
-				{
-					position_to_build.x = 101;
-					position_to_build.y = 63;
-				}
-				else if (BWAPI::Broodwar->self()->getStartLocation().x == 113 &&
-					BWAPI::Broodwar->self()->getStartLocation().y == 8)
-				{
-					position_to_build.x = 96;
-					position_to_build.y = 24;
-				}
-				else if (BWAPI::Broodwar->self()->getStartLocation().x == 72 &&
-					BWAPI::Broodwar->self()->getStartLocation().y == 8)
-				{
-					position_to_build.x = 54;
-					position_to_build.y = 25;
-				}
-				else if (BWAPI::Broodwar->self()->getStartLocation().x == 10 &&
-					BWAPI::Broodwar->self()->getStartLocation().y == 6)
-				{
-					position_to_build.x = 30;
-					position_to_build.y = 23;
-				}
-				else if (BWAPI::Broodwar->self()->getStartLocation().x == 8 &&
-					BWAPI::Broodwar->self()->getStartLocation().y == 47)
-				{
-					position_to_build.x = 22;
-					position_to_build.y = 57;
-				}
-				else if (BWAPI::Broodwar->self()->getStartLocation().x == 10 &&
-					BWAPI::Broodwar->self()->getStartLocation().y == 114)
-				{
-					position_to_build.x = 17;
-					position_to_build.y = 95;
-				}
-				else if (BWAPI::Broodwar->self()->getStartLocation().x == 63 &&
-					BWAPI::Broodwar->self()->getStartLocation().y == 117)
-				{
-					position_to_build.x = 52;
-					position_to_build.y = 96;
-				}
-				return position_to_build;
-			}
-		}
 		BWAPI::TilePosition position_to_build;
 		if (BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition()) != nullptr)
 			position_to_build = (BWAPI::TilePosition)BWEM::Map::Instance().GetArea(build_worker.getUnit()->getTilePosition())->Top();
@@ -710,6 +601,74 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 									try_new_position = true;
 									y = position_to_build.y + building_size.y;
 									x = position_to_build.x + building_size.x;
+								}
+							}
+						}
+					}
+				}
+			}
+			if (!try_new_position &&
+				has_addon)
+			{
+				if (position_to_build.x != 0 && position_to_build.y != 0)
+				{
+					for (int x = position_to_build.x + building_size.x - 1; x < position_to_build.x + building_size.x + 3; x++)
+					{
+						if (x == BWAPI::Broodwar->mapWidth())
+						{
+							try_new_position = true;
+							x = position_to_build.x + building_size.x + 3;
+						}
+						else
+						{
+							for (int y = position_to_build.y + building_size.y - 2; y < position_to_build.y + building_size.y; y++)
+							{
+								if (y == BWAPI::Broodwar->mapHeight())
+								{
+									try_new_position = true;
+									y = position_to_build.y + building_size.y;
+									x = position_to_build.x + building_size.x;
+								}
+								else
+								{
+									if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
+									{
+										try_new_position = true;
+										x = position_to_build.x + building_size.x + 3;
+										y = position_to_build.y + building_size.y;
+									}
+								}
+							}
+						}
+					}
+				}
+				else
+				{
+					for (int x = position_to_build.x + building_size.x; x < position_to_build.x + building_size.x + 2; x++)
+					{
+						if (x == BWAPI::Broodwar->mapWidth())
+						{
+							try_new_position = true;
+							x = position_to_build.x + building_size.x;
+						}
+						else
+						{
+							for (int y = position_to_build.y + building_size.y - 2; y < position_to_build.y + building_size.y; y++)
+							{
+								if (y == BWAPI::Broodwar->mapHeight())
+								{
+									try_new_position = true;
+									y = position_to_build.y + building_size.y;
+									x = position_to_build.x + building_size.x;
+								}
+								else
+								{
+									if (!game_state.getBuildPositionMap()->at(x + (y * BWAPI::Broodwar->mapWidth())).first.unobstructed)
+									{
+										try_new_position = true;
+										y = position_to_build.y + building_size.y;
+										x = position_to_build.x + building_size.x + 2;
+									}
 								}
 							}
 						}

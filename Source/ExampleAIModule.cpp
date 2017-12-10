@@ -125,6 +125,9 @@ void ExampleAIModule::onStart()
 			else if (Broodwar->enemies().size() == 1 &&
 				Broodwar->enemy()->getRace() == BWAPI::Races::Protoss)
 				game_state.setBuildOrder(BuildOrder::P4GateGoonOpening);
+			/*else if (Broodwar->enemies().size() == 1 &&
+				Broodwar->enemy()->getRace() == BWAPI::Races::Zerg)
+				game_state.setBuildOrder(BuildOrder::PForgeFastExpand9poolOpening);*/
 		}
 		scouted = false;
 		game_state.initializeGasLocations();
@@ -174,7 +177,7 @@ void ExampleAIModule::onFrame()
 		else
 		{
 			Broodwar->drawTextScreen(0, 20, "Nothing selected.");
-		}
+		}/*
 		for (int index = 0; index < game_state.getBuildPositionMap()->size(); index++)
 		{
 			if (game_state.getBuildPositionMap()->at(index).first.unobstructed)
@@ -194,6 +197,8 @@ void ExampleAIModule::onFrame()
 			Broodwar->drawTextScreen(0, 30, "Build Order is P4GateGoonMid");
 		else if (game_state.getBuildOrder() == BuildOrder::P4GateGoonOpening)
 			Broodwar->drawTextScreen(0, 30, "Build Order is P4GateGoonOpening");
+		else if (game_state.getBuildOrder() == BuildOrder::PForgeFastExpand9poolOpening)
+			Broodwar->drawTextScreen(0, 30, "Build Order is PForgeFastExpand9poolOpening");
 		Broodwar->drawTextScreen(0, 40, "Minerals Committed: %i", game_state.getMineralsCommitted());
 		Broodwar->drawTextScreen(0, 60, "Gas Committed: %i", game_state.getGasCommitted());
 		Broodwar->drawTextScreen(0, 70, "Assess Game Time: %f", assess_game_time);
@@ -243,6 +248,7 @@ void ExampleAIModule::onFrame()
 		start_clock = std::clock();
 		military_manager.checkMilitary(worker_manager, game_state);
 		check_military_time = (double)((std::clock() - start_clock) / (double)CLOCKS_PER_SEC) * 1000;
+		
 	}
 	catch (const std::exception & e)
 	{
@@ -633,6 +639,11 @@ void ExampleAIModule::onUnitDestroy(BWAPI::Unit unit)
 			game_state.checkCyberCore())
 		{
 			game_state.toggleCyberCore();
+		}
+		else if (unit->getType() == UnitTypes::Terran_Factory &&
+			unit->getPlayer() == Broodwar->self())
+		{
+			game_state.addFactory(-1);
 		}
 	}
 	catch (const std::exception & e)

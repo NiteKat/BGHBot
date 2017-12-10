@@ -365,6 +365,52 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 					}
 					building_list_iterator++;
 				}
+				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Comsat_Station &&
+					building_list_iterator->getUnit()->getEnergy() > 190 &&
+					BWAPI::Broodwar->elapsedTime() - game_state.getLastScan() > 30)
+				{
+					AIBase* base_to_scan = game_state.getFarthestEmptyBaseNotSecondaryScouted();
+					if (base_to_scan != nullptr)
+					{
+						building_list_iterator->getUnit()->useTech(BWAPI::TechTypes::Scanner_Sweep, (BWAPI::Position)base_to_scan->getArea()->Top());
+						base_to_scan->toggleSecondaryScouted();
+						game_state.setLastScan(BWAPI::Broodwar->elapsedTime());
+					}
+					else
+					{
+						game_state.resetSecondaryScouting();
+					}
+					building_list_iterator++;
+				}
+				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Factory &&
+					building_list_iterator->getUnit()->getAddon() == nullptr &&
+					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= BWAPI::UnitTypes::Terran_Machine_Shop.mineralPrice() &&
+					BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= BWAPI::UnitTypes::Terran_Machine_Shop.gasPrice())
+				{
+					building_list_iterator->getUnit()->buildAddon(BWAPI::UnitTypes::Terran_Machine_Shop);
+					building_list_iterator++;
+				}
+				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Machine_Shop &&
+					!building_list_iterator->getUnit()->isResearching() &&
+					!BWAPI::Broodwar->self()->hasResearched(BWAPI::TechTypes::Tank_Siege_Mode) &&
+					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= BWAPI::UnitTypes::Terran_Machine_Shop.mineralPrice() &&
+					BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= BWAPI::UnitTypes::Terran_Machine_Shop.gasPrice())
+				{
+					if (building_list_iterator->getUnit()->research(BWAPI::TechTypes::Tank_Siege_Mode))
+						game_state.toggleBuildTanks();
+					building_list_iterator++;
+				}
+				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Factory &&
+					!building_list_iterator->getUnit()->isTraining() &&
+					building_list_iterator->getUnit()->isIdle() &&
+					game_state.getUnitTypeCount(BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode) + game_state.getUnitTypeCount(BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode) < 10 &&
+					game_state.getBuildTanks() &&
+					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode.mineralPrice() &&
+					BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode.gasPrice())
+				{
+					building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode);
+					building_list_iterator++;
+				}
 				else
 				{
 					building_list_iterator++;
@@ -1237,80 +1283,6 @@ game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
 
 	if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
 	{
-		if (game_state.getBuildOrder() == BuildOrder::BGHMech)
-		{
-			if (game_state.getUnitTypeCount(BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode) + game_state.getUnitTypeCount(BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode) >= 2 &&
-				!game_state.checkAcademy() &&
-				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150)
-			{
-				if (worker_manager->build(BWAPI::UnitTypes::Terran_Academy, 3, game_state))
-				{
-					game_state.addMineralsCommitted(150);
-					game_state.toggleAcademy();
-				}
-			}
-			if ((game_state.getBarracks() == 0 && game_state.getSupplyUsed() >= game_state.getSupplyExpected() - 2 ||
-				game_state.getBarracks() >= 1 && game_state.getSupplyUsed() >= game_state.getSupplyExpected() - 10) &&
-				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100)
-			{
-				if (worker_manager->build(BWAPI::UnitTypes::Terran_Supply_Depot, 3, game_state))
-				{
-					game_state.addSupplyExpected(8);
-					game_state.addMineralsCommitted(100);
-				}
-			}
-			if (game_state.getBarracks() < 1 &&
-				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150)
-			{
-				if (worker_manager->build(BWAPI::UnitTypes::Terran_Barracks, 3, game_state))
-				{
-					game_state.addMineralsCommitted(150);
-					game_state.addBarracks(1);
-				}
-			}
-			if ((game_state.getBarracks() > 1 &&
-				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
-				game_state.getGas() == 0) ||
-				(game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Factory) > 1 &&
-				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
-				game_state.getGas() == 1))
-			{
-				if (worker_manager->build(BWAPI::UnitTypes::Terran_Refinery, 3, game_state))
-				{
-					game_state.addMineralsCommitted(100);
-					game_state.addGas(1);
-				}
-			}
-			if (BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Terran_Armory, 0) &&
-				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Armory) < 2 &&
-				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
-				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 50)
-			{
-				if (worker_manager->build(BWAPI::UnitTypes::Terran_Armory, 3, game_state))
-				{
-					game_state.addMineralsCommitted(100);
-					game_state.addGasCommitted(50);
-				}
-			}
-			if ((BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Terran_Factory, 0) &&
-				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Factory) == 0 &&
-				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 200 &&
-				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 100 )||
-				(BWAPI::Broodwar->self()->hasUnitTypeRequirement(BWAPI::UnitTypes::Terran_Factory, 0) &&
-				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Armory) > 1 &&
-				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Factory) < 5 &&
-				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 200 &&
-				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 100))
-			{
-				if (worker_manager->build(BWAPI::UnitTypes::Terran_Factory, 3, game_state))
-				{
-					game_state.addMineralsCommitted(200);
-					game_state.addGasCommitted(150);
-				}
-			}
-		}
-		else
-		{
 			if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 400 &&
 				!game_state.getExpanding() &&
 				BWAPI::Broodwar->elapsedTime() - game_state.getLastTimeExpanded() >= 105)
@@ -1346,7 +1318,8 @@ game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
 			if ((game_state.getBarracks() < 2 &&
 				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150) ||
 				(game_state.getBarracks() >= 2 &&
-				game_state.getBarracks() < 3 * game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Command_Center) &&
+				game_state.getFactory() >= 1 &&
+				game_state.getBarracks() < 3 * game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Command_Center) - 1&&
 				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 + 50 * game_state.getBarracks()))
 			{
 				if (worker_manager->build(BWAPI::UnitTypes::Terran_Barracks, 3, game_state))
@@ -1357,16 +1330,31 @@ game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
 			}
 			if (game_state.getBarracks() > 1 &&
 				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
-				game_state.getGas() == 0 &&
-				game_state.checkValidGasBuildTileLocation(3))
+				game_state.getGas() < game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Command_Center))
 			{
 				if (worker_manager->build(BWAPI::UnitTypes::Terran_Refinery, 3, game_state))
 				{
 					game_state.addMineralsCommitted(100);
 					game_state.addGas(1);
 				}
+				else if (worker_manager->build(BWAPI::UnitTypes::Terran_Refinery, 4, game_state))
+				{
+					game_state.addMineralsCommitted(100);
+					game_state.addGas(1);
+				}
 			}
-		}
+			if (game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Barracks) >= 2 &&
+				game_state.getFactory() < 1 &&
+				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= BWAPI::UnitTypes::Terran_Factory.mineralPrice() &&
+				BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= BWAPI::UnitTypes::Terran_Factory.gasPrice())
+			{
+				if (worker_manager->build(BWAPI::UnitTypes::Terran_Factory, 3, game_state))
+				{
+					game_state.addMineralsCommitted(BWAPI::UnitTypes::Terran_Factory.mineralPrice());
+					game_state.addGasCommitted(BWAPI::UnitTypes::Terran_Factory.gasPrice());
+					game_state.addFactory(1);
+				}
+			}
 	}
 	else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss)
 	{
@@ -1655,6 +1643,13 @@ game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
 					game_state.addMineralsCommitted(150);
 					game_state.addForge(1);
 				}
+			}
+		}
+		else if (game_state.getBuildOrder() == BuildOrder::PForgeFastExpand9poolOpening)
+		{
+			if (game_state.getSupplyBuilt() == 8)
+			{
+
 			}
 		}
 		else

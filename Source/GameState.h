@@ -21,7 +21,8 @@ enum class BuildOrder
 	P2Gate1,
 	P4GateGoonOpening,
 	P4GateGoonMid,
-	P4GateGoonLate
+	P4GateGoonLate,
+	PForgeFastExpand9poolOpening
 };
 
 class GameState
@@ -70,6 +71,7 @@ public:
 	void addCitadelofAdun(int additional_citadel_of_adun);
 	void addSupplyBuilt(int new_supply);
 	void addPylon(int additional_pylon);
+	void addFactory(int additional_factory);
 
 
 	AIBase *getContainingBase(BWAPI::Unit);
@@ -128,6 +130,8 @@ public:
 	int getCitadelofAdun();
 	int getSupplyBuilt();
 	int getPylon();
+	AIBase* getFarthestEmptyBaseNotSecondaryScouted();
+	int getFactory();
 	
 private:
 	std::vector<Object> building_list;
@@ -167,6 +171,7 @@ private:
 	int citadel_of_adun;
 	int supply_built;
 	int pylon;
+	int factory;
 };
 
 #endif

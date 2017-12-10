@@ -28,6 +28,7 @@ GameState::GameState()
 	observatory = 0;
 	supply_built = 4;
 	pylon = 0;
+	factory = 0;
 }
 
 void GameState::addAIBase(AIBase new_base)
@@ -224,15 +225,19 @@ BWAPI::TilePosition GameState::getGasBuildTileLocation(const BWEM::Area* area)
 	auto gas_location_iterator = gas_locations.begin();
 	while (gas_location_iterator != gas_locations.end())
 	{
-		if (gas_location_iterator->first == false &&
-			getContainingBase(gas_location_iterator->second)->getArea() == area)
+		if (getContainingBase(gas_location_iterator->second) != nullptr)
 		{
-			return gas_location_iterator->second;
+			if (gas_location_iterator->first == false &&
+				getContainingBase(gas_location_iterator->second)->getArea() == area)
+			{
+				return gas_location_iterator->second;
+			}
+			else
+			{
+				gas_location_iterator++;
+			}
 		}
-		else
-		{
-			gas_location_iterator++;
-		}
+		else gas_location_iterator++;
 	}
 	return BWAPI::TilePositions::Invalid;
 }
@@ -241,15 +246,20 @@ bool GameState::checkValidGasBuildTileLocation(int base_class)
 	auto gas_location_iterator = gas_locations.begin();
 	while (gas_location_iterator != gas_locations.end())
 	{
-		if (gas_location_iterator->first == false &&
-			getContainingBase(gas_location_iterator->second)->getBaseClass() == base_class)
+		if (getContainingBase(gas_location_iterator->second) != nullptr)
 		{
-			return true;
+			if (gas_location_iterator->first == false &&
+				getContainingBase(gas_location_iterator->second)->getBaseClass() == base_class)
+			{
+				return true;
+			}
+			else
+			{
+				gas_location_iterator++;
+			}
 		}
 		else
-		{
 			gas_location_iterator++;
-		}
 	}
 	return false;
 }
@@ -338,6 +348,7 @@ AIBase* GameState::getClosestEnemyBase()
 	auto main_base = base_list_iterator;
 	auto last_enemy_base_found = base_list_iterator;
 	bool found_main = false;
+	int closest_distance = 0;
 	std::vector<AIBase*> enemy_base_list;
 	while (base_list_iterator != base_list.end())
 	{
@@ -369,26 +380,16 @@ AIBase* GameState::getClosestEnemyBase()
 	{
 		auto enemy_base_iterator = enemy_base_list.begin();
 		auto closest_base = enemy_base_iterator;
-		BWEM::CPPath closest_path = BWEM::Map::Instance().GetPath(BWAPI::Position((*closest_base)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
-		BWEM::CPPath path_to_check;
+		closest_distance = getGroundDistance(BWAPI::Position(main_base->getArea()->Top()), BWAPI::Position((*closest_base)->getArea()->Top()));
+		enemy_base_iterator++;
+		int distance_to_check = 0;
 		while (enemy_base_iterator != enemy_base_list.end())
 		{
-			path_to_check = BWEM::Map::Instance().GetPath(BWAPI::Position((*enemy_base_iterator)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
-			if (path_to_check.size() != -1)
+			distance_to_check = getGroundDistance(BWAPI::Position(main_base->getArea()->Top()), BWAPI::Position((*enemy_base_iterator)->getArea()->Top()));
+			if (distance_to_check < closest_distance)
 			{
-				if (path_to_check.size() < closest_path.size())
-				{
-					closest_path = path_to_check;
-					closest_base = enemy_base_iterator;
-				}
-				else if (path_to_check.size() == closest_path.size())
-				{
-					if ((*enemy_base_iterator)->getArea()->Top().getApproxDistance(main_base->getArea()->Top()) < (*closest_base)->getArea()->Top().getApproxDistance(main_base->getArea()->Top()))
-					{
-						closest_path = path_to_check;
-						closest_base = enemy_base_iterator;
-					}
-				}
+				closest_distance = distance_to_check;
+				closest_base = enemy_base_iterator;
 			}
 			enemy_base_iterator++;
 		}
@@ -1162,6 +1163,7 @@ AIBase* GameState::getClosestEmptyBase()
 	auto main_base = base_list_iterator;
 	auto last_empty_base_found = base_list_iterator;
 	bool found_main = false;
+	int closest_distance = 0;
 	std::vector<AIBase*> empty_base_list;
 	while (base_list_iterator != base_list.end())
 	{
@@ -1194,26 +1196,16 @@ AIBase* GameState::getClosestEmptyBase()
 	{
 		auto empty_base_iterator = empty_base_list.begin();
 		auto closest_base = empty_base_iterator;
-		BWEM::CPPath closest_path = BWEM::Map::Instance().GetPath(BWAPI::Position((*closest_base)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
-		BWEM::CPPath path_to_check;
+		closest_distance = getGroundDistance(BWAPI::Position((*closest_base)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
+		int distance_to_check = 0;
+		empty_base_iterator++;
 		while (empty_base_iterator != empty_base_list.end())
 		{
-			path_to_check = BWEM::Map::Instance().GetPath(BWAPI::Position((*empty_base_iterator)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
-			if (path_to_check.size() != 0)
+			distance_to_check = getGroundDistance(BWAPI::Position((*empty_base_iterator)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
+			if (distance_to_check < closest_distance)
 			{
-				if (path_to_check.size() < closest_path.size())
-				{
-					closest_path = path_to_check;
-					closest_base = empty_base_iterator;
-				}
-				else if (path_to_check.size() == closest_path.size())
-				{
-					if ((*empty_base_iterator)->getArea()->Top().getApproxDistance(main_base->getArea()->Top()) < (*closest_base)->getArea()->Top().getApproxDistance(main_base->getArea()->Top()))
-					{
-						closest_path = path_to_check;
-						closest_base = empty_base_iterator;
-					}
-				}
+				closest_distance = distance_to_check;
+				closest_base = empty_base_iterator;
 			}
 			empty_base_iterator++;
 		}
@@ -1268,6 +1260,7 @@ AIBase* GameState::getClosestEmptyBaseNotSecondaryScouted()
 	auto main_base = base_list_iterator;
 	auto last_empty_base_found = base_list_iterator;
 	bool found_main = false;
+	int closest_distance = 0;
 	std::vector<AIBase*> empty_base_list;
 	while (base_list_iterator != base_list.end())
 	{
@@ -1301,26 +1294,16 @@ AIBase* GameState::getClosestEmptyBaseNotSecondaryScouted()
 	{
 		auto empty_base_iterator = empty_base_list.begin();
 		auto closest_base = empty_base_iterator;
-		BWEM::CPPath closest_path = BWEM::Map::Instance().GetPath(BWAPI::Position((*closest_base)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
-		BWEM::CPPath path_to_check;
+		closest_distance = getGroundDistance(BWAPI::Position(main_base->getArea()->Top()), BWAPI::Position((*closest_base)->getArea()->Top()));
+		int distance_to_check = 0;
+		empty_base_iterator++;
 		while (empty_base_iterator != empty_base_list.end())
 		{
-			path_to_check = BWEM::Map::Instance().GetPath(BWAPI::Position((*empty_base_iterator)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
-			if (path_to_check.size() != 0)
+			distance_to_check = getGroundDistance(BWAPI::Position(main_base->getArea()->Top()), BWAPI::Position((*empty_base_iterator)->getArea()->Top()));
+			if (distance_to_check < closest_distance)
 			{
-				if (path_to_check.size() < closest_path.size())
-				{
-					closest_path = path_to_check;
-					closest_base = empty_base_iterator;
-				}
-				else if (path_to_check.size() == closest_path.size())
-				{
-					if ((*empty_base_iterator)->getArea()->Top().getApproxDistance(main_base->getArea()->Top()) < (*closest_base)->getArea()->Top().getApproxDistance(main_base->getArea()->Top()))
-					{
-						closest_path = path_to_check;
-						closest_base = empty_base_iterator;
-					}
-				}
+				closest_distance = distance_to_check;
+				closest_base = empty_base_iterator;
 			}
 			empty_base_iterator++;
 		}
@@ -1349,6 +1332,7 @@ AIBase* GameState::getClosestEmptyStartLocationNotSecondaryScouted()
 	auto main_base = base_list_iterator;
 	auto last_empty_base_found = base_list_iterator;
 	bool found_main = false;
+	int closest_distance = 0;
 	std::vector<AIBase*> empty_base_list;
 	while (base_list_iterator != base_list.end())
 	{
@@ -1383,26 +1367,16 @@ AIBase* GameState::getClosestEmptyStartLocationNotSecondaryScouted()
 	{
 		auto empty_base_iterator = empty_base_list.begin();
 		auto closest_base = empty_base_iterator;
-		BWEM::CPPath closest_path = BWEM::Map::Instance().GetPath(BWAPI::Position((*closest_base)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
-		BWEM::CPPath path_to_check;
+		closest_distance = getGroundDistance(BWAPI::Position((*closest_base)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
+		int distance_to_check = 0;
+		empty_base_iterator++;
 		while (empty_base_iterator != empty_base_list.end())
 		{
-			path_to_check = BWEM::Map::Instance().GetPath(BWAPI::Position((*empty_base_iterator)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
-			if (path_to_check.size() != 0)
+			distance_to_check = getGroundDistance(BWAPI::Position((*empty_base_iterator)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
+			if (distance_to_check < closest_distance)
 			{
-				if (path_to_check.size() < closest_path.size())
-				{
-					closest_path = path_to_check;
-					closest_base = empty_base_iterator;
-				}
-				else if (path_to_check.size() == closest_path.size())
-				{
-					if ((*empty_base_iterator)->getArea()->Top().getApproxDistance(main_base->getArea()->Top()) < (*closest_base)->getArea()->Top().getApproxDistance(main_base->getArea()->Top()))
-					{
-						closest_path = path_to_check;
-						closest_base = empty_base_iterator;
-					}
-				}
+				closest_distance = distance_to_check;
+				closest_base = empty_base_iterator;
 			}
 			empty_base_iterator++;
 		}
@@ -1687,4 +1661,75 @@ void GameState::addPylon(int additional_pylon)
 int GameState::getPylon()
 {
 	return pylon;
+}
+
+AIBase* GameState::getFarthestEmptyBaseNotSecondaryScouted()
+{
+	auto base_list_iterator = base_list.begin();
+	auto main_base = base_list_iterator;
+	auto last_empty_base_found = base_list_iterator;
+	bool found_main = false;
+	int farthest_distance = 0;
+	std::vector<AIBase*> empty_base_list;
+	while (base_list_iterator != base_list.end())
+	{
+		if (base_list_iterator->getBaseClass() == 3)
+		{
+			main_base = base_list_iterator;
+			found_main = true;
+			base_list_iterator++;
+		}
+		else if (base_list_iterator->getBaseClass() == 1 &&
+			base_list_iterator->getArea()->Bases().size() > 0 &&
+			!base_list_iterator->getSecondaryScouted())
+		{
+			empty_base_list.push_back(&(*base_list_iterator));
+			base_list_iterator++;
+		}
+		else
+		{
+			base_list_iterator++;
+		}
+	}
+	if (empty_base_list.size() == 0)
+	{
+		return nullptr;
+	}
+	else if (empty_base_list.size() == 1)
+	{
+		return (*empty_base_list.begin());
+	}
+	else if (found_main == true)
+	{
+		auto empty_base_iterator = empty_base_list.begin();
+		auto farthest_base = empty_base_iterator;
+		farthest_distance = getGroundDistance(BWAPI::Position(main_base->getArea()->Top()), BWAPI::Position((*farthest_base)->getArea()->Top()));
+		int distance_to_check = 0;
+		empty_base_iterator++;
+		while (empty_base_iterator != empty_base_list.end())
+		{
+			distance_to_check = getGroundDistance(BWAPI::Position(main_base->getArea()->Top()), BWAPI::Position((*empty_base_iterator)->getArea()->Top()));
+			if (distance_to_check > farthest_distance)
+			{
+				farthest_distance = distance_to_check;
+				farthest_base = empty_base_iterator;
+			}
+			empty_base_iterator++;
+		}
+		return *farthest_base;
+	}
+	else
+	{
+		return nullptr;
+	}
+}
+
+void GameState::addFactory(int additional_factory)
+{
+	factory += additional_factory;
+}
+
+int GameState::getFactory()
+{
+	return factory;
 }

@@ -263,33 +263,6 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 					{
 						unit_iterator->getUnit()->useTech(BWAPI::TechTypes::Stim_Packs);
 					}
-					if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode)
-					{
-						auto building_list_iterator = game_state.getBuildingList()->begin();
-						while (building_list_iterator != game_state.getBuildingList()->end())
-						{
-							if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Barracks)
-							{
-								if (unit_iterator->getUnit()->getDistance(building_list_iterator->getUnit()->getPosition()) < 150 &&
-									BWAPI::Broodwar->self()->hasResearched(BWAPI::TechTypes::Tank_Siege_Mode))
-								{
-									unit_iterator->getUnit()->useTech(BWAPI::TechTypes::Tank_Siege_Mode);
-								}
-								else if (unit_iterator->getUnit()->getDistance(building_list_iterator->getUnit()->getPosition()) < 150 &&
-									!BWAPI::Broodwar->self()->hasResearched(BWAPI::TechTypes::Tank_Siege_Mode))
-								{
-									unit_iterator->getUnit()->holdPosition();
-								}
-								else
-								{
-									unit_iterator->getUnit()->move(building_list_iterator->getUnit()->getPosition());
-								}
-								building_list_iterator = game_state.getBuildingList()->end();
-							}
-							else
-								building_list_iterator++;
-						}
-					}
 					if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Protoss_High_Templar &&
 						unit_iterator->getUnit()->getEnergy() >= 75)
 					{
@@ -306,6 +279,38 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 									break;
 								}
 							}
+						}
+					}
+					if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode &&
+						BWAPI::Broodwar->self()->hasResearched(BWAPI::TechTypes::Tank_Siege_Mode))
+					{
+						auto scanned_units = unit_iterator->getUnit()->getUnitsInRadius(BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode.groundWeapon().maxRange());
+						for (auto check_unit : scanned_units)
+						{
+							if (check_unit->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
+								!check_unit->isFlying())
+							{
+								unit_iterator->getUnit()->useTech(BWAPI::TechTypes::Tank_Siege_Mode);
+								break;
+							}
+						}
+					}
+					else if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode)
+					{
+						bool nearby_enemy = false;
+						auto scanned_units = unit_iterator->getUnit()->getUnitsInRadius(BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode.groundWeapon().maxRange());
+						for (auto check_unit : scanned_units)
+						{
+							if (check_unit->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
+								!check_unit->isFlying())
+							{
+								nearby_enemy = true;
+								break;
+							}
+						}
+						if (nearby_enemy == false)
+						{
+							unit_iterator->getUnit()->useTech(BWAPI::TechTypes::Tank_Siege_Mode);
 						}
 					}
 					AIBase* my_current_area = game_state.getContainingBase(unit_iterator->getUnit());
@@ -326,34 +331,6 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 					if (unit_iterator->getUnit()->isIdle() ||
 						unit_iterator->getUnit()->getOrder() == BWAPI::Orders::Move)
 					{
-						if (game_state.getBuildOrder() == BuildOrder::BGHMech)
-						{
-							if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Marine)
-							{
-								auto base_list_iterator = game_state.getBaseList()->begin();
-								while (base_list_iterator != game_state.getBaseList()->end())
-								{
-									if (base_list_iterator->getBaseClass() == 3)
-									{
-										if (base_list_iterator->getArea()->Id() == game_state.getContainingBase(unit_iterator->getUnit())->getArea()->Id())
-										{
-											unit_iterator->getUnit()->holdPosition();
-										}
-										else
-										{
-											BWEM::CPPath path_to_check = BWEM::Map::Instance().GetPath((BWAPI::Position)game_state.getContainingBase(unit_iterator->getUnit())->getArea()->Top(), (BWAPI::Position)base_list_iterator->getArea()->Top());
-											if (path_to_check.size() <= 0)
-											{
-												unit_iterator->getUnit()->move((BWAPI::Position)base_list_iterator->getArea()->Top());
-											}
-										}
-										base_list_iterator = game_state.getBaseList()->end();
-									}
-									else
-										base_list_iterator++;
-								}
-							}
-						}
 						auto enemy_iterator = game_state.getEnemyUnits()->begin();
 						while (enemy_iterator != game_state.getEnemyUnits()->end())
 						{
@@ -566,6 +543,38 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 				}
 				else if (current_objective->getObjective() == ObjectiveTypes::DefendExpansion)
 				{
+					if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode &&
+						BWAPI::Broodwar->self()->hasResearched(BWAPI::TechTypes::Tank_Siege_Mode))
+					{
+						auto scanned_units = unit_iterator->getUnit()->getUnitsInRadius(BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode.groundWeapon().maxRange());
+						for (auto check_unit : scanned_units)
+						{
+							if (check_unit->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
+								!check_unit->isFlying())
+							{
+								unit_iterator->getUnit()->useTech(BWAPI::TechTypes::Tank_Siege_Mode);
+								break;
+							}
+						}
+					}
+					else if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode)
+					{
+						bool nearby_enemy = false;
+						auto scanned_units = unit_iterator->getUnit()->getUnitsInRadius(BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode.groundWeapon().maxRange());
+						for (auto check_unit : scanned_units)
+						{
+							if (check_unit->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
+								!check_unit->isFlying())
+							{
+								nearby_enemy = true;
+								break;
+							}
+						}
+						if (nearby_enemy == false)
+						{
+							unit_iterator->getUnit()->useTech(BWAPI::TechTypes::Tank_Siege_Mode);
+						}
+					}
 					if (game_state.getTargetExpansion() == nullptr ||
 						!game_state.getExpanding())
 					{
@@ -1029,10 +1038,6 @@ void MilitaryManager::scout(WorkerManager &worker_manager, GameState &game_state
 		{
 			if (base_iterator->getArea()->Bases().size() > 0)
 			{
-				if ((*base_iterator->getArea()->Bases().begin()).Starting())
-				{
-					BWAPI::Broodwar << "True" << std::endl;
-				}
 				if ((*base_iterator->getArea()->Bases().begin()).Starting() &&
 					base_iterator->getBaseClass() == 1)
 				{
