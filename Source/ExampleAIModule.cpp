@@ -185,6 +185,7 @@ void ExampleAIModule::onFrame()
 			else
 				Broodwar->drawTextMap((index - Broodwar->mapWidth() * (index / Broodwar->mapWidth())) * 32, (index / Broodwar->mapWidth()) * 32, "F");
 		}*/
+		Broodwar->drawTextScreen(0, 20, "# of Tanks = %i", game_state.getUnitTypeCount(BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode) + game_state.getUnitTypeCount(BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode));
 		if (game_state.getBuildOrder() == BuildOrder::BGHMech)
 			Broodwar->drawTextScreen(0, 30, "Build Order is BGH Mech");
 		else if (game_state.getBuildOrder() == BuildOrder::Default)
@@ -848,7 +849,8 @@ void ExampleAIModule::onUnitComplete(BWAPI::Unit unit)
 	else if (unit->getPlayer() == BWAPI::Broodwar->self() &&
 		(unit->getType() != UnitTypes::Protoss_Observer ||
 		unit->getType() != UnitTypes::Zerg_Overlord) &&
-		!unit->getType().isBuilding())
+		!unit->getType().isBuilding() &&
+		game_state.getMilitary()->find(unit->getID()) == game_state.getMilitary()->end())
 	{
 		Object new_unit(unit);
 		game_state.addUnit(new_unit);

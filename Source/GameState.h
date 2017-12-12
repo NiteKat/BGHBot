@@ -97,7 +97,7 @@ public:
 	int getLastScan();
 	AIBase* getClosestEnemyBase();
 	int getUnitTypeCount(BWAPI::UnitType type_to_check);
-	std::vector<Object> *getMilitary();
+	std::map<int, Object> *getMilitary();
 	std::vector<Object> *getLarva();
 	int getBuildingTypeCount(BWAPI::UnitType type_to_check);
 	Object* getAvailableDetector();
@@ -132,6 +132,8 @@ public:
 	int getPylon();
 	AIBase* getFarthestEmptyBaseNotSecondaryScouted();
 	int getFactory();
+	int getCompletedMacroBuildings();
+	int getUnderConstructionMacroBuildings();
 	
 private:
 	std::vector<Object> building_list;
@@ -140,7 +142,7 @@ private:
 	std::vector<Object> mineral_workers;
 	std::vector<Object> build_workers;
 	std::vector<std::pair<bool, BWAPI::TilePosition>> gas_locations;
-	std::vector<Object> military;
+	std::map<int, Object> military;
 	std::vector<Object> larva;
 	std::vector<Object> detectors;
 	std::vector<Objective> objective_list;

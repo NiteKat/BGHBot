@@ -1305,8 +1305,7 @@ game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
 					game_state.toggleAcademy();
 				}
 			}
-			if ((game_state.getBarracks() == 0 && game_state.getSupplyUsed() >= game_state.getSupplyExpected() - 2 ||
-				game_state.getBarracks() >= 1 && game_state.getSupplyUsed() >= game_state.getSupplyExpected() - 10) &&
+			if (game_state.getSupplyUsed() >= game_state.getSupplyExpected() - (game_state.getCompletedMacroBuildings() * 2 + game_state.getUnderConstructionMacroBuildings()) &&
 				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100)
 			{
 				if (worker_manager->build(BWAPI::UnitTypes::Terran_Supply_Depot, 3, game_state))

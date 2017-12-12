@@ -241,7 +241,7 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 					auto military_iterator = game_state.getMilitary()->begin();
 					while (military_iterator != game_state.getMilitary()->end())
 					{
-						if (military_iterator->getUnit()->getID() == unit_iterator->getUnit()->getID())
+						if (military_iterator->second.getUnit()->getID() == unit_iterator->getUnit()->getID())
 						{
 							auto erase_iterator = military_iterator;
 							game_state.getMilitary()->erase(erase_iterator);
@@ -517,7 +517,8 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 							game_state.toggleSecondaryScouting();
 						if (unit_iterator->getUnit()->isIdle())
 						{
-							if (BWEM::Map::Instance().GetArea(unit_iterator->getUnit()->getTilePosition()) != nullptr)
+							if (BWEM::Map::Instance().GetArea(unit_iterator->getUnit()->getTilePosition()) != nullptr &&
+								game_state.getClosestEmptyBaseNotSecondaryScouted() != nullptr)
 							{
 								if (BWEM::Map::Instance().GetArea(unit_iterator->getUnit()->getTilePosition())->Id() == game_state.getClosestEmptyBaseNotSecondaryScouted()->getArea()->Id())
 								{
@@ -543,38 +544,7 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 				}
 				else if (current_objective->getObjective() == ObjectiveTypes::DefendExpansion)
 				{
-					if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode &&
-						BWAPI::Broodwar->self()->hasResearched(BWAPI::TechTypes::Tank_Siege_Mode))
-					{
-						auto scanned_units = unit_iterator->getUnit()->getUnitsInRadius(BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode.groundWeapon().maxRange());
-						for (auto check_unit : scanned_units)
-						{
-							if (check_unit->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
-								!check_unit->isFlying())
-							{
-								unit_iterator->getUnit()->useTech(BWAPI::TechTypes::Tank_Siege_Mode);
-								break;
-							}
-						}
-					}
-					else if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode)
-					{
-						bool nearby_enemy = false;
-						auto scanned_units = unit_iterator->getUnit()->getUnitsInRadius(BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode.groundWeapon().maxRange());
-						for (auto check_unit : scanned_units)
-						{
-							if (check_unit->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
-								!check_unit->isFlying())
-							{
-								nearby_enemy = true;
-								break;
-							}
-						}
-						if (nearby_enemy == false)
-						{
-							unit_iterator->getUnit()->useTech(BWAPI::TechTypes::Tank_Siege_Mode);
-						}
-					}
+					BWAPI::Position farthest_chokepoint;
 					if (game_state.getTargetExpansion() == nullptr ||
 						!game_state.getExpanding())
 					{
@@ -582,22 +552,14 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 						auto erase_iterator = unit_iterator;
 						unit_iterator = current_objective->getUnits()->erase(erase_iterator);
 					}
-					else if (unit_iterator->getUnit()->getDistance((BWAPI::Position)game_state.getTargetExpansion()->getArea()->Top()) > 500 &&
-						unit_iterator->getUnit()->isIdle())
+					else
 					{
-						unit_iterator->getUnit()->attack((BWAPI::Position)game_state.getTargetExpansion()->getArea()->Top());
-						unit_iterator++;
-					}
-					else if (unit_iterator->getUnit()->getDistance((BWAPI::Position)(*game_state.getTargetExpansion()->getArea()->Bases().begin()).Location()) < 300 &&
-						unit_iterator->getUnit()->isIdle())
-					{
+						farthest_chokepoint = (BWAPI::Position)(*game_state.getTargetExpansion()->getArea()->ChokePoints().begin())->Center();
 						if (game_state.getTargetExpansion()->getArea()->ChokePoints().size() > 1)
 						{
 							auto choke_point_iterator = game_state.getTargetExpansion()->getArea()->ChokePoints().begin();
-							BWAPI::Position farthest_chokepoint = (BWAPI::Position)(*choke_point_iterator)->Center();
 							int farthest_distance = 0;
 							choke_point_iterator++;
-
 							AIBase* closest_enemy_base = game_state.getClosestEnemyBase();
 							if (closest_enemy_base != nullptr)
 							{
@@ -613,17 +575,54 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 									choke_point_iterator++;
 								}
 							}
+						}
+						if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode &&
+							BWAPI::Broodwar->self()->hasResearched(BWAPI::TechTypes::Tank_Siege_Mode))
+						{
+							auto scanned_units = unit_iterator->getUnit()->getUnitsInRadius(BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode.groundWeapon().maxRange());
+							for (auto check_unit : scanned_units)
+							{
+								if (check_unit->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
+									!check_unit->isFlying())
+								{
+									unit_iterator->getUnit()->useTech(BWAPI::TechTypes::Tank_Siege_Mode);
+									break;
+								}
+							}
+						}
+						else if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode)
+						{
+							bool nearby_enemy = false;
+							auto scanned_units = unit_iterator->getUnit()->getUnitsInRadius(BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode.groundWeapon().maxRange());
+							for (auto check_unit : scanned_units)
+							{
+								if (check_unit->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
+									!check_unit->isFlying())
+								{
+									nearby_enemy = true;
+									break;
+								}
+							}
+							if (nearby_enemy == false)
+							{
+								unit_iterator->getUnit()->useTech(BWAPI::TechTypes::Tank_Siege_Mode);
+							}
+						}
+						if (unit_iterator->getUnit()->getDistance((BWAPI::Position)game_state.getTargetExpansion()->getArea()->Top()) > game_state.getGroundDistance((BWAPI::Position)game_state.getTargetExpansion()->getArea()->Top(), farthest_chokepoint) &&
+							unit_iterator->getUnit()->isIdle())
+						{
+							unit_iterator->getUnit()->attack((BWAPI::Position)game_state.getTargetExpansion()->getArea()->Top());
+							unit_iterator++;
+						}
+						else if (unit_iterator->getUnit()->getDistance((BWAPI::Position)game_state.getTargetExpansion()->getArea()->Top()) < 100 &&
+							unit_iterator->getUnit()->isIdle())
+						{
 							unit_iterator->getUnit()->attack(farthest_chokepoint);
 							unit_iterator++;
 						}
 						else
-						{
-							unit_iterator->getUnit()->attack((BWAPI::Position)(*game_state.getTargetExpansion()->getArea()->ChokePoints().begin())->Center());
 							unit_iterator++;
-						}
 					}
-					else
-						unit_iterator++;
 				}
 				else if (current_objective->getObjective() == ObjectiveTypes::P2GateAttack)
 				{

@@ -478,7 +478,7 @@ int GameState::getUnitTypeCount(BWAPI::UnitType type_to_check)
 	auto military_iterator = military.begin();
 	while (military_iterator != military.end())
 	{
-		if (military_iterator->getUnit()->getType() == type_to_check)
+		if (military_iterator->second.getUnit()->getType() == type_to_check)
 			count_of_type++;
 		military_iterator++;
 	}
@@ -487,11 +487,11 @@ int GameState::getUnitTypeCount(BWAPI::UnitType type_to_check)
 
 void GameState::addUnit(Object new_unit)
 {
-	military.push_back(new_unit);
+	military.insert(std::make_pair(new_unit.getUnit()->getID(), new_unit));
 	objective_list.begin()->addUnit(new_unit);
 }
 
-std::vector<Object>* GameState::getMilitary()
+std::map<int, Object>* GameState::getMilitary()
 {
 	return &military;
 }
@@ -1732,4 +1732,28 @@ void GameState::addFactory(int additional_factory)
 int GameState::getFactory()
 {
 	return factory;
+}
+
+int GameState::getCompletedMacroBuildings()
+{
+	int count = 0;
+	for (auto building_iterator : building_list)
+	{
+		if (building_iterator.getUnit()->getType().canProduce() &&
+			!building_iterator.getUnit()->isBeingConstructed())
+			count++;
+	}
+	return count;
+}
+
+int GameState::getUnderConstructionMacroBuildings()
+{
+	int count = 0;
+	for (auto building_iterator : building_list)
+	{
+		if (building_iterator.getUnit()->getType().canProduce() &&
+			building_iterator.getUnit()->isBeingConstructed())
+			count++;
+	}
+	return count;
 }
