@@ -23,6 +23,7 @@ public:
 	void setTargetBase(AIBase *new_target_base);
 	void setBase(AIBase *new_base);
 	void setTargetBuildLocation(BWAPI::TilePosition new_target_build_location);
+	void setRepairTarget(BWAPI::Unit new_repair_target);
 
 	BWAPI::Unit getUnit();
 	AIBase *getBase();
@@ -33,6 +34,7 @@ public:
 	int getElapsedTimeOrderGiven();
 	AIBase *getTargetBase();
 	BWAPI::TilePosition getTargetBuildLocation();
+	BWAPI::Unit getRepairTarget();
 
 private:
 	BWAPI::Unit my_unit;
@@ -45,6 +47,7 @@ private:
 	int elapsed_time_order_given;
 	AIBase *target_base;
 	BWAPI::TilePosition target_build_location;
+	BWAPI::Unit my_repair_target;
 };
 
 #endif

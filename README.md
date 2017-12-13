@@ -1,7 +1,13 @@
-BGH Bot Version 1.10a
-This is a Broodwar AI developed in C++ using Visual Studio Community 2013, BWAPI, and the BWEM library. This bot is designed for play on the Big Game Hunters map, and can play all three races in the game.
+BGH Bot Version 1.10b
+This is a Broodwar AI developed in C++ using Visual Studio Community 2013, BWAPI, and the BWEM library. This bot is designed for normal money maps and BGH for all races, except Zerg which is only designed for BGH.
 
 Version History:
+1.10b
+Changes:
+-Added Bunker support.
+-Added repair script for bunker.
+-Fixed bug related to getGroundDistance.
+
 1.10a
 Changes:
 -Fixed expansion logic so that units won't clutter the ramp to the natural.

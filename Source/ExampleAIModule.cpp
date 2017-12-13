@@ -535,6 +535,12 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
 			  game_state.setTargetExpansion(nullptr);
 		  }
 	  }
+	  else if (unit->getType() == BWAPI::UnitTypes::Terran_Bunker)
+	  {
+		  Object new_building(unit, game_state.getContainingBase(unit));
+		  game_state.addBuilding(new_building);
+		  game_state.addMineralsCommitted(-100);
+	  }
   }
 }
 
@@ -645,6 +651,11 @@ void ExampleAIModule::onUnitDestroy(BWAPI::Unit unit)
 			unit->getPlayer() == Broodwar->self())
 		{
 			game_state.addFactory(-1);
+		}
+		else if (unit->getType() == UnitTypes::Terran_Bunker &&
+			unit->getPlayer() == Broodwar->self())
+		{
+			game_state.addBunker(-1);
 		}
 	}
 	catch (const std::exception & e)

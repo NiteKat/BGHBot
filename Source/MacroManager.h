@@ -2,6 +2,7 @@
 #define MACROMANAGER
 
 #include<vector>
+#include<math.h>
 #include"GameState.h"
 #include"Object.h"
 #include"AIBase.h"

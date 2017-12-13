@@ -411,6 +411,27 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 					building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode);
 					building_list_iterator++;
 				}
+				else if (building_list_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Bunker)
+				{
+					if (building_list_iterator->getUnit()->getLoadedUnits().size() != 4)
+						game_state.loadBunker(&(*building_list_iterator));
+					double enemy_strength = game_state.getEnemyLocalStrength((*building_list_iterator));
+					if (enemy_strength > 0)
+					{
+						int scvs_needed = (int)ceil(enemy_strength / 0.7);
+						int scvs_assigned = game_state.getAssignedRepairWorkers((*building_list_iterator));
+						if (scvs_assigned < scvs_needed)
+							game_state.assignRepairWorkers(&(*building_list_iterator), scvs_needed - scvs_assigned);
+						else if (scvs_assigned > scvs_needed)
+							game_state.removeRepairWorkers(&(*building_list_iterator), scvs_assigned - scvs_needed);
+					}
+					else
+					{
+						if (building_list_iterator->getUnit()->getHitPoints() == building_list_iterator->getUnit()->getType().maxHitPoints())
+							game_state.removeRepairWorkers(&(*building_list_iterator), game_state.getAssignedRepairWorkers(*building_list_iterator));
+					}
+					building_list_iterator++;
+				}
 				else
 				{
 					building_list_iterator++;
@@ -1314,17 +1335,85 @@ game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
 					game_state.addMineralsCommitted(100);
 				}
 			}
-			if ((game_state.getBarracks() < 2 &&
-				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150) ||
-				(game_state.getBarracks() >= 2 &&
-				game_state.getFactory() >= 1 &&
-				game_state.getBarracks() < 3 * game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Command_Center) - 1&&
-				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 + 50 * game_state.getBarracks()))
+			if ((BWAPI::Broodwar->enemies().size() == 1 &&
+				BWAPI::Broodwar->enemy()->getRace() != BWAPI::Races::Terran) ||
+				BWAPI::Broodwar->enemies().size() > 1)
 			{
-				if (worker_manager->build(BWAPI::UnitTypes::Terran_Barracks, 3, game_state))
+				if ((game_state.getBarracks() < 1 &&
+					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150) ||
+					(game_state.getBarracks() < 2 &&
+					game_state.getBunker() == 1 &&
+					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150) ||
+					(game_state.getBarracks() >= 2 &&
+					game_state.getFactory() >= 1 &&
+					game_state.getBarracks() < 3 * game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Command_Center) - 1 &&
+					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 + 50 * game_state.getBarracks()))
 				{
-					game_state.addMineralsCommitted(150);
-					game_state.addBarracks(1);
+					if (worker_manager->build(BWAPI::UnitTypes::Terran_Barracks, 3, game_state))
+					{
+						game_state.addMineralsCommitted(150);
+						game_state.addBarracks(1);
+					}
+				}
+				if (game_state.getBarracks() == 1 &&
+					game_state.getBunker() == 0 &&
+					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= BWAPI::UnitTypes::Terran_Bunker.mineralPrice())
+				{
+
+					if (BWAPI::Broodwar->enemies().size() == 1)
+					{
+						AIBase* main_base = game_state.getMainBase();
+						if (main_base != nullptr)
+						{
+							if (BWAPI::Broodwar->enemy()->getRace() == BWAPI::Races::Zerg)
+							{
+								BWAPI::TilePosition position_to_build = (BWAPI::TilePosition)(*main_base->getArea()->Bases().begin()).Location();
+								if (worker_manager->buildNearPositionInBase(BWAPI::UnitTypes::Terran_Bunker, position_to_build, 3, game_state))
+								{
+									game_state.addMineralsCommitted(BWAPI::UnitTypes::Terran_Bunker.mineralPrice());
+									game_state.addBunker(1);
+								}
+							}
+							else
+							{
+								BWAPI::TilePosition position_to_build = (BWAPI::TilePosition)(*main_base->getArea()->ChokePoints().begin())->Center();
+								if (worker_manager->buildNearPositionInBase(BWAPI::UnitTypes::Terran_Bunker, position_to_build, 3, game_state))
+								{
+									game_state.addMineralsCommitted(BWAPI::UnitTypes::Terran_Bunker.mineralPrice());
+									game_state.addBunker(1);
+								}
+							}
+						}
+					}
+					else
+					{
+						AIBase* main_base = game_state.getMainBase();
+						if (main_base != nullptr)
+						{
+							BWAPI::TilePosition position_to_build = (BWAPI::TilePosition)(*main_base->getArea()->ChokePoints().begin())->Center();
+							if (worker_manager->buildNearPositionInBase(BWAPI::UnitTypes::Terran_Bunker, position_to_build, 3, game_state))
+							{
+								game_state.addMineralsCommitted(BWAPI::UnitTypes::Terran_Bunker.mineralPrice());
+								game_state.addBunker(1);
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				if ((game_state.getBarracks() < 2 &&
+					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150) ||
+					(game_state.getBarracks() >= 2 &&
+					game_state.getFactory() >= 1 &&
+					game_state.getBarracks() < 3 * game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Command_Center) - 1 &&
+					BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 + 50 * game_state.getBarracks()))
+				{
+					if (worker_manager->build(BWAPI::UnitTypes::Terran_Barracks, 3, game_state))
+					{
+						game_state.addMineralsCommitted(150);
+						game_state.addBarracks(1);
+					}
 				}
 			}
 			if (game_state.getBarracks() > 1 &&

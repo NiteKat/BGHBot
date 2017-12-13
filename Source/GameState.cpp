@@ -29,6 +29,7 @@ GameState::GameState()
 	supply_built = 4;
 	pylon = 0;
 	factory = 0;
+	bunker = 0;
 }
 
 void GameState::addAIBase(AIBase new_base)
@@ -386,7 +387,8 @@ AIBase* GameState::getClosestEnemyBase()
 		while (enemy_base_iterator != enemy_base_list.end())
 		{
 			distance_to_check = getGroundDistance(BWAPI::Position(main_base->getArea()->Top()), BWAPI::Position((*enemy_base_iterator)->getArea()->Top()));
-			if (distance_to_check < closest_distance)
+			if (distance_to_check < closest_distance &&
+				distance_to_check > 0)
 			{
 				closest_distance = distance_to_check;
 				closest_base = enemy_base_iterator;
@@ -1202,7 +1204,8 @@ AIBase* GameState::getClosestEmptyBase()
 		while (empty_base_iterator != empty_base_list.end())
 		{
 			distance_to_check = getGroundDistance(BWAPI::Position((*empty_base_iterator)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
-			if (distance_to_check < closest_distance)
+			if (distance_to_check < closest_distance &&
+				distance_to_check > 0)
 			{
 				closest_distance = distance_to_check;
 				closest_base = empty_base_iterator;
@@ -1300,7 +1303,8 @@ AIBase* GameState::getClosestEmptyBaseNotSecondaryScouted()
 		while (empty_base_iterator != empty_base_list.end())
 		{
 			distance_to_check = getGroundDistance(BWAPI::Position(main_base->getArea()->Top()), BWAPI::Position((*empty_base_iterator)->getArea()->Top()));
-			if (distance_to_check < closest_distance)
+			if (distance_to_check < closest_distance &&
+				distance_to_check > 0)
 			{
 				closest_distance = distance_to_check;
 				closest_base = empty_base_iterator;
@@ -1373,7 +1377,8 @@ AIBase* GameState::getClosestEmptyStartLocationNotSecondaryScouted()
 		while (empty_base_iterator != empty_base_list.end())
 		{
 			distance_to_check = getGroundDistance(BWAPI::Position((*empty_base_iterator)->getArea()->Top()), BWAPI::Position(main_base->getArea()->Top()));
-			if (distance_to_check < closest_distance)
+			if (distance_to_check < closest_distance &&
+				distance_to_check > 0)
 			{
 				closest_distance = distance_to_check;
 				closest_base = empty_base_iterator;
@@ -1403,6 +1408,10 @@ int GameState::getGroundDistance(BWAPI::Position point_a, BWAPI::Position point_
 	int distance = 0;
 	
 	auto path = BWEM::Map::Instance().GetPath(point_a, point_b);
+
+	if (path.size() == 0 &&
+		BWEM::Map::Instance().GetNearestArea((BWAPI::TilePosition)point_a) != BWEM::Map::Instance().GetNearestArea((BWAPI::TilePosition)point_b))
+		return -1;
 
 	for (auto cpp : path)
 	{
@@ -1475,7 +1484,8 @@ AIBase* GameState::getMainBase()
 	auto main_base = base_list_iterator;
 	while (base_list_iterator != base_list.end())
 	{
-		if (base_list_iterator->getBaseClass() == 3)
+		if (base_list_iterator->getBaseClass() == 3 &&
+			base_list_iterator->getArea()->Bases().size() > 0)
 		{
 			return &(*base_list_iterator);
 		}
@@ -1756,4 +1766,147 @@ int GameState::getUnderConstructionMacroBuildings()
 			count++;
 	}
 	return count;
+}
+
+void GameState::addBunker(int additional_bunker)
+{
+	bunker += additional_bunker;
+}
+
+int GameState::getBunker()
+{
+	return bunker;
+}
+
+void GameState::loadBunker(Object* bunker_to_load)
+{
+	int number_loaded = bunker_to_load->getUnit()->getLoadedUnits().size();
+	if (number_loaded < 4)
+	{
+		for (auto unit_iterator : *objective_list.begin()->getUnits())
+		{
+			if (unit_iterator.getUnit()->exists())
+			{
+				if (unit_iterator.getUnit()->getType() == BWAPI::UnitTypes::Terran_Marine &&
+					!unit_iterator.getUnit()->isLoaded())
+				{
+					unit_iterator.getUnit()->rightClick(bunker_to_load->getUnit());
+					number_loaded++;
+				}
+			}
+			if (number_loaded == 4)
+				break;
+		}
+	}
+}
+
+double GameState::getEnemyLocalStrength(Object my_unit)
+{
+	double enemy_strength = 0;
+	for (auto current_unit : BWAPI::Broodwar->getUnitsInRadius(my_unit.getUnit()->getPosition(), my_unit.getUnit()->getType().sightRange(), BWAPI::Filter::IsEnemy))
+	{
+		if (current_unit->getType().groundWeapon() != BWAPI::WeaponTypes::None &&
+			current_unit->getType().groundWeapon() != BWAPI::WeaponTypes::Unknown &&
+			current_unit->getType() != BWAPI::UnitTypes::Terran_SCV &&
+			current_unit->getType() != BWAPI::UnitTypes::Protoss_Probe &&
+			current_unit->getType() != BWAPI::UnitTypes::Zerg_Drone)
+		{
+			if (current_unit->getType() == BWAPI::UnitTypes::Protoss_Reaver)
+			{
+				enemy_strength += (((double)(BWAPI::UnitTypes::Protoss_Scarab.groundWeapon().damageAmount() * BWAPI::UnitTypes::Protoss_Scarab.maxGroundHits() * BWAPI::UnitTypes::Protoss_Scarab.groundWeapon().damageFactor()) / (double)60) * pow(current_unit->getType().groundWeapon().maxRange(), 1 / 3)) / 4;
+			}
+			else if (current_unit->getType() == BWAPI::UnitTypes::Protoss_Scarab)
+			{
+
+			}
+			else
+				enemy_strength += ((double)(current_unit->getType().groundWeapon().damageAmount() * current_unit->getType().maxGroundHits() * current_unit->getType().groundWeapon().damageFactor()) / (double)current_unit->getType().groundWeapon().damageCooldown()) * pow(current_unit->getType().groundWeapon().maxRange(), 1 / 3);
+		}
+	}
+	return enemy_strength;
+}
+
+std::vector<Object>* GameState::getRepairWorkers()
+{
+	return &repair_workers;
+}
+
+int GameState::getAssignedRepairWorkers(Object repair_target)
+{
+	int assigned_workers = 0;
+	auto repair_worker_iterator = repair_workers.begin();
+	while (repair_worker_iterator != repair_workers.end())
+	{
+		if (repair_worker_iterator->getRepairTarget() == repair_target.getUnit())
+			assigned_workers++;
+		repair_worker_iterator++;
+	}
+	return assigned_workers;
+}
+
+void GameState::assignRepairWorkers(Object* repair_target, int number_of_workers)
+{
+	AIBase* target_base = getNearestContainingBase(repair_target->getUnit());
+	int workers_in_base = 0;
+	auto mineral_worker_iterator = mineral_workers.begin();
+	while (mineral_worker_iterator != mineral_workers.end())
+	{
+		if (mineral_worker_iterator->getBase() == target_base)
+			workers_in_base++;
+		mineral_worker_iterator++;
+	}
+	int assigned_workers = 0;
+	mineral_worker_iterator = mineral_workers.begin();
+	while (assigned_workers != number_of_workers &&
+		workers_in_base - assigned_workers > 4 &&
+		mineral_worker_iterator != mineral_workers.end())
+	{
+		if (mineral_worker_iterator->getBase() == target_base)
+		{
+			Object new_repair_worker(*mineral_worker_iterator);
+			new_repair_worker.setRepairTarget(repair_target->getUnit());
+			repair_workers.push_back(new_repair_worker);
+			auto erase_iterator = mineral_worker_iterator;
+			mineral_worker_iterator = mineral_workers.erase(erase_iterator);
+		}
+		else
+			mineral_worker_iterator++;
+	}
+}
+
+AIBase* GameState::getNearestContainingBase(BWAPI::Unit unit)
+{
+	auto base_list_iterator = base_list.begin();
+	while (base_list_iterator != base_list.end())
+	{
+		if (base_list_iterator->getArea() == BWEM::Map::Instance().GetNearestArea(unit->getTilePosition()))
+		{
+			return &(*base_list_iterator);
+		}
+		else
+		{
+			base_list_iterator++;
+		}
+	}
+	return nullptr;
+}
+
+void GameState::removeRepairWorkers(Object* repair_target, int number_of_workers)
+{
+	int workers_removed = 0;
+	auto repair_worker_iterator = repair_workers.begin();
+	while (workers_removed != number_of_workers &&
+		repair_worker_iterator != repair_workers.end())
+	{
+		if (repair_worker_iterator->getRepairTarget() == repair_target->getUnit())
+		{
+			Object new_mineral_worker(*repair_worker_iterator);
+			mineral_workers.push_back(new_mineral_worker);
+			auto erase_iterator = repair_worker_iterator;
+			repair_worker_iterator = repair_workers.erase(erase_iterator);
+			workers_removed++;
+		}
+		else
+			repair_worker_iterator++;
+	}
 }

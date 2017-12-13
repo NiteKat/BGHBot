@@ -72,6 +72,10 @@ public:
 	void addSupplyBuilt(int new_supply);
 	void addPylon(int additional_pylon);
 	void addFactory(int additional_factory);
+	void addBunker(int additional_bunker);
+	void loadBunker(Object* bunker_to_load);
+	void assignRepairWorkers(Object* repair_target, int number_of_workers);
+	void removeRepairWorkers(Object* repair_target, int number_of_workers);
 
 
 	AIBase *getContainingBase(BWAPI::Unit);
@@ -134,6 +138,11 @@ public:
 	int getFactory();
 	int getCompletedMacroBuildings();
 	int getUnderConstructionMacroBuildings();
+	int getBunker();
+	double getEnemyLocalStrength(Object my_unit);
+	std::vector<Object> *getRepairWorkers();
+	int getAssignedRepairWorkers(Object repair_target);
+	AIBase* getNearestContainingBase(BWAPI::Unit unit);
 	
 private:
 	std::vector<Object> building_list;
@@ -147,6 +156,7 @@ private:
 	std::vector<Object> detectors;
 	std::vector<Objective> objective_list;
 	std::vector<std::pair<TileFlags, int>> build_position_map;
+	std::vector<Object> repair_workers;
 	
 	double supply_used;
 	double supply_total;
@@ -174,6 +184,7 @@ private:
 	int supply_built;
 	int pylon;
 	int factory;
+	int bunker;
 };
 
 #endif

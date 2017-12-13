@@ -148,3 +148,13 @@ BWAPI::TilePosition Object::getTargetBuildLocation()
 {
 	return target_build_location;
 }
+
+void Object::setRepairTarget(BWAPI::Unit new_repair_target)
+{
+	my_repair_target = new_repair_target;
+}
+
+BWAPI::Unit Object::getRepairTarget()
+{
+	return my_repair_target;
+}
