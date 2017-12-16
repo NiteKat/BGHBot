@@ -10,6 +10,7 @@ Object::Object(BWAPI::Unit new_unit, AIBase *new_base)
 	is_building = false;
 	elapsed_time_order_given = 0;
 	target_base = nullptr;
+	my_resource = nullptr;
 }
 
 Object::Object(BWAPI::Unit new_unit)
@@ -22,6 +23,7 @@ Object::Object(BWAPI::Unit new_unit)
 	is_building = false;
 	elapsed_time_order_given = 0;
 	target_base = nullptr;
+	my_resource = nullptr;
 }
 
 Object::Object()
@@ -34,6 +36,7 @@ Object::Object()
 	is_building = false;
 	elapsed_time_order_given = 0;
 	target_base = nullptr;
+	my_resource = nullptr;
 }
 
 void Object::setBuildType(BWAPI::UnitType new_build_type)
@@ -157,4 +160,25 @@ void Object::setRepairTarget(BWAPI::Unit new_repair_target)
 BWAPI::Unit Object::getRepairTarget()
 {
 	return my_repair_target;
+}
+
+BWAPI::Unit Object::getResourceTarget()
+{
+	if (my_resource != nullptr)
+	{
+		if (my_resource->exists())
+			return my_resource;
+		else
+		{
+			my_resource = nullptr;
+			return nullptr;
+		}
+	}
+	else
+		return nullptr;
+}
+
+void Object::setResourceTarget(BWAPI::Unit resource)
+{
+	my_resource = resource;
 }

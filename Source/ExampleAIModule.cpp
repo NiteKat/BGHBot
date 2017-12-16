@@ -81,6 +81,13 @@ void ExampleAIModule::onStart()
 					new_base.toggleScouted();
 				game_state.addAIBase(new_base);
 			}
+			for (auto unit : Broodwar->getStaticNeutralUnits())
+			{
+				Resource new_mineral(unit);
+				if (unit->getType().isMineralField() &&
+					unit->getInitialResources() > 0)
+					game_state.getContainingBase(unit)->addMineral(new_mineral);
+			}
 			auto base_list_iterator = game_state.getBaseList()->begin();
 			while (base_list_iterator != game_state.getBaseList()->end())
 			{
@@ -157,6 +164,7 @@ void ExampleAIModule::onFrame()
 	try
 	{
 		std::clock_t start_clock;
+		//game_state.drawMineralLockLines();
 		// Called once every game frame
 		//Debug code for drawing the map and listing base classes.
 		/*BWEM::utils::drawMap(theMap);
@@ -208,7 +216,6 @@ void ExampleAIModule::onFrame()
 		Broodwar->drawTextScreen(0, 100, "Check Military Time: %f", check_military_time);
 		Broodwar->drawTextScreen(0, 110, "My army strength: %f", game_state.getMyTotalStrength());
 		Broodwar->drawTextScreen(0, 120, "Enemy army strength: %f", game_state.getEnemyTotalStrength());
-
 
 
 		/*for (const auto &area : theMap.Areas())
@@ -541,6 +548,29 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
 		  game_state.addBuilding(new_building);
 		  game_state.addMineralsCommitted(-100);
 	  }
+	  else if (unit->getType() == UnitTypes::Terran_Engineering_Bay &&
+		  unit->getPlayer() == Broodwar->self())
+	  {
+		  Object new_building(unit, game_state.getContainingBase(unit));
+		  game_state.addBuilding(new_building);
+		  game_state.addMineralsCommitted(-125);
+	  }
+	  else if (unit->getType() == UnitTypes::Terran_Starport &&
+		  unit->getPlayer() == Broodwar->self())
+	  {
+		  Object new_building(unit, game_state.getContainingBase(unit));
+		  game_state.addBuilding(new_building);
+		  game_state.addMineralsCommitted(-1 * unit->getType().mineralPrice());
+		  game_state.addGasCommitted(-1 * unit->getType().gasPrice());
+	  }
+	  else if (unit->getType() == UnitTypes::Terran_Science_Facility &&
+		  unit->getPlayer() == Broodwar->self())
+	  {
+		  Object new_building(unit, game_state.getContainingBase(unit));
+		  game_state.addBuilding(new_building);
+		  game_state.addMineralsCommitted(-1 * unit->getType().mineralPrice());
+		  game_state.addGasCommitted(-1 * unit->getType().gasPrice());
+	  }
   }
 }
 
@@ -562,6 +592,7 @@ void ExampleAIModule::onUnitDestroy(BWAPI::Unit unit)
 		if (unit->getType().isMineralField())
 		{
 			theMap.OnMineralDestroyed(unit);
+			game_state.removeMineral(unit);
 		}
 		else if (unit->getType().isSpecialBuilding())
 		{
@@ -656,6 +687,26 @@ void ExampleAIModule::onUnitDestroy(BWAPI::Unit unit)
 			unit->getPlayer() == Broodwar->self())
 		{
 			game_state.addBunker(-1);
+		}
+		else if (unit->getType() == UnitTypes::Terran_Engineering_Bay &&
+			unit->getPlayer() == Broodwar->self())
+		{
+			game_state.addEngineeringBay(-1);
+		}
+		else if (unit->getType() == UnitTypes::Terran_Armory &&
+			unit->getPlayer() == Broodwar->self())
+		{
+			game_state.addArmory(-1);
+		}
+		else if (unit->getType() == UnitTypes::Terran_Starport &&
+			unit->getPlayer() == Broodwar->self())
+		{
+			game_state.addStarport(-1);
+		}
+		else if (unit->getType() == UnitTypes::Terran_Science_Facility &&
+			unit->getPlayer() == Broodwar->self())
+		{
+			game_state.addScienceFacility(-1);
 		}
 	}
 	catch (const std::exception & e)
@@ -784,27 +835,7 @@ void ExampleAIModule::onUnitComplete(BWAPI::Unit unit)
 		game_state.addSupplyTotal(10);
 		if (Broodwar->elapsedTime() > 5)
 		{
-			int number_workers_at_main = 0;
-			auto mineral_worker_iterator = game_state.getMineralWorkers()->begin();
-			while (mineral_worker_iterator != game_state.getMineralWorkers()->end())
-			{
-				if (mineral_worker_iterator->getBase()->getBaseClass() == 3)
-					number_workers_at_main++;
-				mineral_worker_iterator++;
-			}
-			int workers_moved = 0;
-			int number_workers_to_move = floor(number_workers_at_main / 2);
-			mineral_worker_iterator = game_state.getMineralWorkers()->begin();
-			while (mineral_worker_iterator != game_state.getMineralWorkers()->end() &&
-				workers_moved <= number_workers_to_move)
-			{
-				if (mineral_worker_iterator->getBase()->getBaseClass() == 3)
-				{
-					mineral_worker_iterator->setBase(new_building.getBase());
-					workers_moved++;
-				}
-				mineral_worker_iterator++;
-			}
+			game_state.transferWorkersToNewBase(game_state.getContainingBase(unit));
 		}
 	}
 	else if (unit->getType() == UnitTypes::Protoss_Nexus &&
@@ -815,27 +846,7 @@ void ExampleAIModule::onUnitComplete(BWAPI::Unit unit)
 		game_state.addSupplyTotal(9);
 		if (Broodwar->elapsedTime() > 5)
 		{
-			int number_workers_at_main = 0;
-			auto mineral_worker_iterator = game_state.getMineralWorkers()->begin();
-			while (mineral_worker_iterator != game_state.getMineralWorkers()->end())
-			{
-				if (mineral_worker_iterator->getBase()->getBaseClass() == 3)
-					number_workers_at_main++;
-				mineral_worker_iterator++;
-			}
-			int workers_moved = 0;
-			int number_workers_to_move = floor(number_workers_at_main / 2);
-			mineral_worker_iterator = game_state.getMineralWorkers()->begin();
-			while (mineral_worker_iterator != game_state.getMineralWorkers()->end() &&
-				workers_moved <= number_workers_to_move)
-			{
-				if (mineral_worker_iterator->getBase()->getBaseClass() == 3)
-				{
-					mineral_worker_iterator->setBase(new_building.getBase());
-					workers_moved++;
-				}
-				mineral_worker_iterator++;
-			}
+			game_state.transferWorkersToNewBase(game_state.getContainingBase(unit));
 		}
 	}
 	else if ((unit->getType() == UnitTypes::Terran_Supply_Depot ||

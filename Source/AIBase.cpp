@@ -72,3 +72,29 @@ bool AIBase::getSecondaryScouted()
 {
 	return secondary_scouted;
 }
+
+void AIBase::addMineral(Resource new_mineral)
+{
+	minerals.push_back(new_mineral);
+}
+
+bool AIBase::removeMineral(Resource mineral)
+{
+	auto mineral_iterator = minerals.begin();
+	while (mineral_iterator != minerals.end())
+	{
+		if (*mineral_iterator == mineral)
+		{
+			minerals.erase(mineral_iterator);
+			return true;
+		}
+		else
+			mineral_iterator++;
+	}
+	return false;
+}
+
+std::vector<Resource>* AIBase::getMinerals()
+{
+	return &minerals;
+}

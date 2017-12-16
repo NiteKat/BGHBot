@@ -124,6 +124,7 @@
     <ClCompile Include="Source\MilitaryManager.cpp" />
     <ClCompile Include="Source\Object.cpp" />
     <ClCompile Include="Source\Objective.cpp" />
+    <ClCompile Include="Source\Resource.cpp" />
     <ClCompile Include="Source\WorkerManager.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -152,6 +153,7 @@
     <ClInclude Include="Source\MilitaryManager.h" />
     <ClInclude Include="Source\Object.h" />
     <ClInclude Include="Source\Objective.h" />
+    <ClInclude Include="Source\Resource.h" />
     <ClInclude Include="Source\WorkerManager.h" />
   </ItemGroup>
   <ItemGroup>

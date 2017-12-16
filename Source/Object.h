@@ -24,6 +24,7 @@ public:
 	void setBase(AIBase *new_base);
 	void setTargetBuildLocation(BWAPI::TilePosition new_target_build_location);
 	void setRepairTarget(BWAPI::Unit new_repair_target);
+	void setResourceTarget(BWAPI::Unit resource);
 
 	BWAPI::Unit getUnit();
 	AIBase *getBase();
@@ -35,6 +36,7 @@ public:
 	AIBase *getTargetBase();
 	BWAPI::TilePosition getTargetBuildLocation();
 	BWAPI::Unit getRepairTarget();
+	BWAPI::Unit getResourceTarget();
 
 private:
 	BWAPI::Unit my_unit;
@@ -48,6 +50,7 @@ private:
 	AIBase *target_base;
 	BWAPI::TilePosition target_build_location;
 	BWAPI::Unit my_repair_target;
+	BWAPI::Unit my_resource;
 };
 
 #endif

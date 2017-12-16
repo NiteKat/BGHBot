@@ -76,8 +76,14 @@ public:
 	void loadBunker(Object* bunker_to_load);
 	void assignRepairWorkers(Object* repair_target, int number_of_workers);
 	void removeRepairWorkers(Object* repair_target, int number_of_workers);
-
-
+	void removeMineral(BWAPI::Unit mineral);
+	void drawMineralLockLines();
+	void transferWorkersToNewBase(AIBase* new_base);
+	void addEngineeringBay(int new_engineering_bay);
+	void addStarport(int additional_starport);
+	void addScienceFacility(int additional_science_facility);
+	void addArmory(int additional_armory);
+	
 	AIBase *getContainingBase(BWAPI::Unit);
 	AIBase *getContainingBase(BWAPI::TilePosition tile_position);
 	std::vector<AIBase> *getBaseList();
@@ -143,6 +149,13 @@ public:
 	std::vector<Object> *getRepairWorkers();
 	int getAssignedRepairWorkers(Object repair_target);
 	AIBase* getNearestContainingBase(BWAPI::Unit unit);
+	bool assignWorkerToMineral(Object* worker);
+	bool unassignWorkerFromMineral(Object* worker);
+	bool assignWorkerToMineralAtBase(Object* worker, AIBase* target_base);
+	int getEngineeringBay();
+	int getStarport();
+	int getScienceFacility();
+	int getArmory();
 	
 private:
 	std::vector<Object> building_list;
@@ -185,6 +198,10 @@ private:
 	int pylon;
 	int factory;
 	int bunker;
+	int engineering_bay;
+	int starport;
+	int science_facility;
+	int armory;
 };
 
 #endif

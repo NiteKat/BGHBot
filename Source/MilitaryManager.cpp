@@ -614,7 +614,7 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 							unit_iterator->getUnit()->attack((BWAPI::Position)game_state.getTargetExpansion()->getArea()->Top());
 							unit_iterator++;
 						}
-						else if (unit_iterator->getUnit()->getDistance((BWAPI::Position)game_state.getTargetExpansion()->getArea()->Top()) < 100 &&
+						else if (unit_iterator->getUnit()->getDistance((BWAPI::Position)game_state.getTargetExpansion()->getArea()->Top()) < game_state.getGroundDistance((BWAPI::Position)game_state.getTargetExpansion()->getArea()->Top(), farthest_chokepoint) &&
 							unit_iterator->getUnit()->isIdle())
 						{
 							unit_iterator->getUnit()->attack(farthest_chokepoint);
@@ -939,6 +939,8 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 	}
 	if (scout_unit.getUnit() != nullptr)
 	{
+		if (scout_unit.getResourceTarget() != nullptr)
+			game_state.unassignWorkerFromMineral(&scout_unit);
 		if (scout_target != BWAPI::Positions::Invalid)
 		{
 			if (scout_unit.getUnit()->getDistance(scout_target) < 200)

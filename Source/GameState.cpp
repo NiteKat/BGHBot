@@ -30,6 +30,10 @@ GameState::GameState()
 	pylon = 0;
 	factory = 0;
 	bunker = 0;
+	engineering_bay = 0;
+	starport = 0;
+	science_facility = 0;
+	armory = 0;
 }
 
 void GameState::addAIBase(AIBase new_base)
@@ -1410,7 +1414,7 @@ int GameState::getGroundDistance(BWAPI::Position point_a, BWAPI::Position point_
 	auto path = BWEM::Map::Instance().GetPath(point_a, point_b);
 
 	if (path.size() == 0 &&
-		BWEM::Map::Instance().GetNearestArea((BWAPI::TilePosition)point_a) != BWEM::Map::Instance().GetNearestArea((BWAPI::TilePosition)point_b))
+		BWEM::Map::Instance().GetNearestArea((BWAPI::WalkPosition)point_a) != BWEM::Map::Instance().GetNearestArea((BWAPI::WalkPosition)point_b))
 		return -1;
 
 	for (auto cpp : path)
@@ -1864,6 +1868,8 @@ void GameState::assignRepairWorkers(Object* repair_target, int number_of_workers
 		if (mineral_worker_iterator->getBase() == target_base)
 		{
 			Object new_repair_worker(*mineral_worker_iterator);
+			if (new_repair_worker.getResourceTarget() != nullptr)
+				unassignWorkerFromMineral(&new_repair_worker);
 			new_repair_worker.setRepairTarget(repair_target->getUnit());
 			repair_workers.push_back(new_repair_worker);
 			auto erase_iterator = mineral_worker_iterator;
@@ -1909,4 +1915,203 @@ void GameState::removeRepairWorkers(Object* repair_target, int number_of_workers
 		else
 			repair_worker_iterator++;
 	}
+}
+
+void GameState::removeMineral(BWAPI::Unit mineral)
+{
+	auto base_list_iterator = base_list.begin();
+	while (base_list_iterator != base_list.end())
+	{
+		if (base_list_iterator->removeMineral(mineral))
+			return;
+		else
+			base_list_iterator++;
+	}
+}
+
+bool GameState::assignWorkerToMineral(Object* worker)
+{
+	AIBase* containing_base = getNearestContainingBase(worker->getUnit());
+	const std::vector<Resource> *minerals = containing_base->getMinerals();
+	Resource* lowest_assigned = nullptr;
+	if ((containing_base->getBaseClass() == 3 ||
+		containing_base->getBaseClass() == 4) &&
+		minerals->size() > 0)
+	{
+		for (auto &current_mineral : *containing_base->getMinerals())
+		{
+			if (lowest_assigned == nullptr)
+				lowest_assigned = &current_mineral;
+			else
+			{
+				int lowest_workers = lowest_assigned->getNumberAssigned();
+				int possible_lowest = current_mineral.getNumberAssigned();
+				if (possible_lowest < lowest_workers)
+					lowest_assigned = &current_mineral;
+			}
+		}
+			worker->setResourceTarget(lowest_assigned->getUnit());
+			lowest_assigned->addWorker(worker->getUnit());
+			return true;
+	}
+	else
+	{
+		for (auto &base : base_list)
+		{
+			minerals = base.getMinerals();
+			if ((base.getBaseClass() == 3 ||
+				base.getBaseClass() == 4 ) &&
+				minerals->size() > 0)
+			{
+				for (auto &current_mineral : *base.getMinerals())
+				{
+					if (lowest_assigned == nullptr)
+						lowest_assigned = &current_mineral;
+					else
+					{
+						int lowest_workers = lowest_assigned->getNumberAssigned();
+						int possible_lowest = current_mineral.getNumberAssigned();
+						if (possible_lowest < lowest_workers)
+							lowest_assigned = &current_mineral;
+					}
+				}
+				worker->setResourceTarget(lowest_assigned->getUnit());
+				lowest_assigned->addWorker(worker->getUnit());
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool GameState::unassignWorkerFromMineral(Object* worker)
+{
+	AIBase* mineral_base = getContainingBase(worker->getResourceTarget());
+	BWAPI::Unit worker_target = worker->getResourceTarget();
+	for (auto &current_mineral : *mineral_base->getMinerals())
+	{
+		if (current_mineral.getUnit() == worker_target)
+		{
+			current_mineral.removeWorker(worker->getUnit());
+			worker->setResourceTarget(nullptr);
+			return true;
+		}
+	}
+	return false;
+}
+
+void GameState::drawMineralLockLines()
+{
+	for (auto base : base_list)
+	{
+		for (auto mineral : *base.getMinerals())
+		{
+			for (auto worker : mineral.getAssignedWorkers())
+			{
+				BWAPI::Broodwar->drawLineMap(worker->getPosition(), mineral.getUnit()->getPosition(), BWAPI::Colors::Yellow);
+			}
+		}
+	}
+}
+
+void GameState::transferWorkersToNewBase(AIBase* new_base)
+{
+	int mineral_count = new_base->getMinerals()->size();
+	int max_workers = mineral_count * 2;
+	AIBase* main_base = nullptr;
+	std::vector<Object*> workers_to_reassign;
+	for (auto &base : base_list)
+	{
+		if (base.getBaseClass() == 3 &&
+			base.getArea()->Minerals().size() > 0)
+		{
+			main_base = &base;
+			break;
+		}
+	}
+	int total_workers = 0;
+	for (auto &worker : mineral_workers)
+	{
+		AIBase* containing_base = getContainingBase(worker.getUnit());
+		if (containing_base != nullptr)
+		{
+			if (containing_base == main_base)
+			{
+				total_workers++;
+				workers_to_reassign.push_back(&worker);
+			}
+		}
+	}
+	int number_reassign = std::floor((double)total_workers / (double)2);
+	for (int current_worker = 1; current_worker <= number_reassign; current_worker++)
+	{
+		assignWorkerToMineralAtBase(workers_to_reassign[current_worker - 1], new_base);
+	}
+}
+
+bool GameState::assignWorkerToMineralAtBase(Object* worker, AIBase* target_base)
+{
+	const std::vector<Resource> *minerals = target_base->getMinerals();
+	Resource* lowest_assigned = nullptr;
+	if (minerals->size() > 0)
+	{
+		for (auto &current_mineral : *target_base->getMinerals())
+		{
+			if (lowest_assigned == nullptr)
+				lowest_assigned = &current_mineral;
+			else
+			{
+				int lowest_workers = lowest_assigned->getNumberAssigned();
+				int possible_lowest = current_mineral.getNumberAssigned();
+				if (possible_lowest < lowest_workers)
+					lowest_assigned = &current_mineral;
+			}
+		}
+		unassignWorkerFromMineral(worker);
+		worker->setBase(target_base);
+		worker->setResourceTarget(lowest_assigned->getUnit());
+		lowest_assigned->addWorker(worker->getUnit());
+		return true;
+	}
+	else
+		return false;
+}
+
+void GameState::addEngineeringBay(int new_engineering_bay)
+{
+	engineering_bay += new_engineering_bay;
+}
+
+int GameState::getEngineeringBay()
+{
+	return engineering_bay;
+}
+
+void GameState::addStarport(int additional_starport)
+{
+	starport += additional_starport;
+}
+void GameState::addScienceFacility(int additional_science_facility)
+{
+	science_facility += additional_science_facility;
+}
+
+int GameState::getStarport()
+{
+	return starport;
+}
+
+int GameState::getScienceFacility()
+{
+	return science_facility;
+}
+
+void GameState::addArmory(int additional_armory)
+{
+	armory = additional_armory;
+}
+
+int GameState::getArmory()
+{
+	return armory;
 }
