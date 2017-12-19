@@ -76,19 +76,24 @@ void GameState::toggleAcademy()
 
 AIBase* GameState::getContainingBase(BWAPI::Unit unit)
 {
-	auto base_list_iterator = base_list.begin();
-	while (base_list_iterator != base_list.end())
+	if (BWEM::Map::Instance().GetArea(unit->getTilePosition()) != nullptr)
 	{
-		if (base_list_iterator->getArea() == BWEM::Map::Instance().GetArea(unit->getTilePosition()))
+		auto base_list_iterator = base_list.begin();
+		while (base_list_iterator != base_list.end())
 		{
-			return &(*base_list_iterator);
+			if (base_list_iterator->getArea() == BWEM::Map::Instance().GetArea(unit->getTilePosition()))
+			{
+				return &(*base_list_iterator);
+			}
+			else
+			{
+				base_list_iterator++;
+			}
 		}
-		else
-		{
-			base_list_iterator++;
-		}
+		return nullptr;
 	}
-	return nullptr;
+	else
+		return nullptr;
 }
 
 AIBase* GameState::getContainingBase(BWAPI::TilePosition tile_position)
@@ -1988,16 +1993,22 @@ bool GameState::unassignWorkerFromMineral(Object* worker)
 {
 	AIBase* mineral_base = getContainingBase(worker->getResourceTarget());
 	BWAPI::Unit worker_target = worker->getResourceTarget();
-	for (auto &current_mineral : *mineral_base->getMinerals())
+	if (mineral_base != nullptr &&
+		worker_target != nullptr)
 	{
-		if (current_mineral.getUnit() == worker_target)
+		for (auto &current_mineral : *mineral_base->getMinerals())
 		{
-			current_mineral.removeWorker(worker->getUnit());
-			worker->setResourceTarget(nullptr);
-			return true;
+			if (current_mineral.getUnit() == worker_target)
+			{
+				current_mineral.removeWorker(worker->getUnit());
+				worker->setResourceTarget(nullptr);
+				return true;
+			}
 		}
+		return false;
 	}
-	return false;
+	else
+		return false;
 }
 
 void GameState::drawMineralLockLines()
