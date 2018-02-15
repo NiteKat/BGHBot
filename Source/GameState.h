@@ -5,6 +5,9 @@
 #include"AIBase.h"
 #include"Objective.h"
 #include<math.h>
+#include<random>
+#include<chrono>
+#include<fstream>
 
 struct TileFlags
 {
@@ -22,7 +25,30 @@ enum class BuildOrder
 	P4GateGoonOpening,
 	P4GateGoonMid,
 	P4GateGoonLate,
-	PForgeFastExpand9poolOpening
+	PForgeFastExpand9poolOpening,
+	FivePool
+};
+
+enum class BlockType
+{
+	TLargeAddonMacro,
+	TMediumAddonMacro,
+	TSmallAddonMacro,
+	TMacro4Block,
+	T4x4SupplyBlock,
+	T2x1TurretBlock,
+	TMediumMacroV,
+	TMediumMacroH,
+	TSmallMacro,
+	TTvZBunkerStart,
+	TBunkerTurret,
+	PLargeMacroTech,
+	PWideMacroTech,
+	P4Macro,
+	PSingleMacro,
+	P4Tech,
+	P2Tech,
+	PSinglePylon
 };
 
 class GameState
@@ -83,6 +109,22 @@ public:
 	void addStarport(int additional_starport);
 	void addScienceFacility(int additional_science_facility);
 	void addArmory(int additional_armory);
+	void addUsedPosition(BWAPI::TilePosition new_position);
+	void setScouted(bool new_value);
+	void setAssignScout(bool new_value);
+	void setAssignScout(bool new_value, Object new_intended_scout);
+	void setIntendedScout(Object new_intended_scout);
+	void addPhotonCannon(int new_photon_cannon);
+	void addSpawningPool(int new_spawning_pool);
+	void updateUnits();
+	void addHatchery(int new_hatchery);
+	void readConfigFile();
+	void initDefenseGrid();
+	void printDefenseGrid();
+	void printReservedTilePositions();
+	void addPositionToQueue(BWAPI::Unit unit);
+	void addTimesRetreated(int new_times_retreated);
+	void addTemplarArchives(int new_templar_archive);
 	
 	AIBase *getContainingBase(BWAPI::Unit);
 	AIBase *getContainingBase(BWAPI::TilePosition tile_position);
@@ -149,6 +191,7 @@ public:
 	std::vector<Object> *getRepairWorkers();
 	int getAssignedRepairWorkers(Object repair_target);
 	AIBase* getNearestContainingBase(BWAPI::Unit unit);
+	AIBase* getNearestContainingBase(BWAPI::TilePosition tile_position);
 	bool assignWorkerToMineral(Object* worker);
 	bool unassignWorkerFromMineral(Object* worker);
 	bool assignWorkerToMineralAtBase(Object* worker, AIBase* target_base);
@@ -156,6 +199,22 @@ public:
 	int getStarport();
 	int getScienceFacility();
 	int getArmory();
+	int getRandomInteger(int min, int max);
+	std::set<BWAPI::TilePosition> *getUsedPositions();
+	bool getScouted();
+	bool getAssignScout();
+	Object getIntendedScout();
+	int getPhotonCannon();
+	int getSpawningPool();
+	AIBase* getSafeEmptyBaseClosestToEnemy();
+	int getHatchery();
+	AIBase* getBaseforArea(const BWEM::Area* area);
+	int getDefenseGroundScore(BWAPI::TilePosition position_score);
+	BWAPI::TilePosition getBuildLocation(BWAPI::UnitType build_type, Object build_worker);
+	bool placeBlock(const BWEM::Area* area, std::pair<int, int> block_size, BlockType block_type, BWAPI::TilePosition search_center);
+	int getTimesRetreated();
+	int getTemplarArchives();
+	
 	
 private:
 	std::vector<Object> building_list;
@@ -170,6 +229,13 @@ private:
 	std::vector<Objective> objective_list;
 	std::vector<std::pair<TileFlags, int>> build_position_map;
 	std::vector<Object> repair_workers;
+	std::set<BWAPI::TilePosition> used_positions;
+	std::vector<BWAPI::TilePosition> six_by_three_positions;
+	std::vector<BWAPI::TilePosition> four_by_three_positions;
+	std::vector<BWAPI::TilePosition> three_by_two_positions;
+	std::vector<BWAPI::TilePosition> two_by_two_positions;
+	std::vector<BWAPI::TilePosition> three_by_two_defense_positions;
+	std::vector<std::pair<int, int>> defense_grid;
 	
 	double supply_used;
 	double supply_total;
@@ -202,6 +268,21 @@ private:
 	int starport;
 	int science_facility;
 	int armory;
+	std::mt19937 mt;
+	bool scouted;
+	bool assign_scout;
+	Object intended_scout;
+	int photon_cannon;
+	int spawning_pool;
+	int hatchery;
+	int times_retreated;
+	bool pylon_building;
+	int templar_archives;
+
+	bool checkRegionBuildable(BWAPI::TilePosition top_left, std::pair<int, int> size);
+	BWAPI::TilePosition getPositionFromVector(const BWEM::Area* area, std::vector<BWAPI::TilePosition>* position_vector);
+	BWAPI::TilePosition getPositionFromVectorWithPower(const BWEM::Area* area, std::vector<BWAPI::TilePosition>* position_vector, BWAPI::UnitType build_type);
+	bool tryPlacingBlocks(const BWEM::Area* area, BWAPI::UnitType build_type);
 };
 
 #endif

@@ -191,6 +191,11 @@ int WorkerManager::manageWorkers(GameState &game_state)
 				game_state.addGasCommitted(-1 * build_worker_iterator->getBuildType().gasPrice());
 				game_state.addScienceFacility(-1);
 			}
+			else if (build_worker_iterator->getBuildType() == BWAPI::UnitTypes::Zerg_Spawning_Pool)
+			{
+				game_state.addMineralsCommitted(-1 * build_worker_iterator->getBuildType().mineralPrice());
+				game_state.addSpawningPool(-1);
+			}
 			if (build_worker_iterator->getBuildType().getRace() == BWAPI::Races::Protoss)
 				game_state.updateBuildMap(build_worker_iterator->getTargetBuildLocation().x, build_worker_iterator->getTargetBuildLocation().y, build_worker_iterator->getBuildType(), false);
 			auto erase_iterator = build_worker_iterator;
@@ -226,14 +231,14 @@ int WorkerManager::manageWorkers(GameState &game_state)
 							}
 							if (building_found == true)
 							{
-								Object new_mineral_worker(*build_worker_iterator);
-								new_mineral_worker.setBuildType(BWAPI::UnitTypes::Unknown);
-								new_mineral_worker.setBaseClass(4);
-								new_mineral_worker.setBase(new_mineral_worker.getTargetBase());
-								new_mineral_worker.setTargetBase(nullptr);
-								game_state.getMineralWorkers()->push_back(new_mineral_worker);
-								auto erase_iterator = build_worker_iterator;
-								build_worker_iterator = game_state.getBuildWorkers()->erase(erase_iterator);
+									Object new_mineral_worker(*build_worker_iterator);
+									new_mineral_worker.setBuildType(BWAPI::UnitTypes::Unknown);
+									new_mineral_worker.setBaseClass(4);
+									new_mineral_worker.setBase(new_mineral_worker.getTargetBase());
+									new_mineral_worker.setTargetBase(nullptr);
+									game_state.getMineralWorkers()->push_back(new_mineral_worker);
+									auto erase_iterator = build_worker_iterator;
+									build_worker_iterator = game_state.getBuildWorkers()->erase(erase_iterator);
 							}
 							else if (build_worker_iterator->getUnit()->getDistance((BWAPI::Position)build_worker_iterator->getTargetBase()->getArea()->Bases().begin()->Location()) <= 5 * 32)
 							{
@@ -326,14 +331,20 @@ int WorkerManager::manageWorkers(GameState &game_state)
 				if (build_worker_iterator->getBuildType() != BWAPI::UnitTypes::Terran_Refinery &&
 					build_worker_iterator->getBuildType() != BWAPI::UnitTypes::Protoss_Assimilator)
 				{
-					BWAPI::TilePosition build_position = getBuildLocation(*build_worker_iterator, build_worker_iterator->getBuildType(), game_state);
-					if (BWAPI::Broodwar->canBuildHere(build_position, build_worker_iterator->getBuildType(), build_worker_iterator->getUnit()))
+					BWAPI::Position top_left = (BWAPI::Position)build_worker_iterator->getTargetBuildLocation();
+					BWAPI::Position bottom_right = (BWAPI::Position)(build_worker_iterator->getTargetBuildLocation() + build_worker_iterator->getBuildType().tileSize());
+					BWAPI::Unitset units_in_area = BWAPI::Broodwar->getUnitsInRectangle(top_left, bottom_right);
+					for (auto unit : units_in_area)
 					{
-						build_worker_iterator->getUnit()->build(build_worker_iterator->getBuildType(), build_position);
-						build_worker_iterator++;
+						if (unit->isIdle() &&
+							unit != build_worker_iterator->getUnit())
+						{
+							BWAPI::Position choke = (BWAPI::Position)(*game_state.getNearestContainingBase(unit)->getArea()->ChokePoints().begin())->Center();
+							unit->move(choke);
+						}
 					}
-					else
-						build_worker_iterator++;
+					build_worker_iterator->getUnit()->build(build_worker_iterator->getBuildType(), build_worker_iterator->getTargetBuildLocation());
+					build_worker_iterator++;
 				}
 				else
 				{
@@ -380,16 +391,19 @@ int WorkerManager::manageWorkers(GameState &game_state)
 				}
 				else
 				{
-					game_state.updateBuildMap(build_worker_iterator->getTargetBuildLocation().x, build_worker_iterator->getTargetBuildLocation().y, build_worker_iterator->getBuildType(), false);
-					BWAPI::TilePosition build_position = getBuildLocation(*build_worker_iterator, build_worker_iterator->getBuildType(), game_state);
-					if (BWAPI::Broodwar->canBuildHere(build_position, build_worker_iterator->getBuildType(), build_worker_iterator->getUnit()))
+					BWAPI::Position top_left = (BWAPI::Position)build_worker_iterator->getTargetBuildLocation();
+					BWAPI::Position bottom_right = (BWAPI::Position)(build_worker_iterator->getTargetBuildLocation() + build_worker_iterator->getBuildType().tileSize());
+					BWAPI::Unitset units_in_area = BWAPI::Broodwar->getUnitsInRectangle(top_left, bottom_right);
+					for (auto unit : units_in_area)
 					{
-						build_worker_iterator->getUnit()->build(build_worker_iterator->getBuildType(), build_position);
-						game_state.updateBuildMap(build_position.x, build_position.y, build_worker_iterator->getBuildType(), false);
+						if (unit->isIdle() &&
+							unit != build_worker_iterator->getUnit())
+						{
+							BWAPI::Position choke = (BWAPI::Position)(*game_state.getNearestContainingBase(unit)->getArea()->ChokePoints().begin())->Center();
+							unit->move(choke);
+						}
 					}
-					else
-						build_worker_iterator->getUnit()->move((BWAPI::Position)build_position);
-					build_worker_iterator->setTargetBuildLocation(build_position);
+					build_worker_iterator->getUnit()->build(build_worker_iterator->getBuildType(), build_worker_iterator->getTargetBuildLocation());
 					build_worker_iterator++;
 				}
 			}
@@ -573,6 +587,8 @@ int WorkerManager::manageWorkers(GameState &game_state)
 
 bool WorkerManager::build(BWAPI::UnitType building_type, int base_class, GameState &game_state)
 {
+	auto start_time = std::chrono::high_resolution_clock::now();
+	std::vector<const BWEM::Area*> bad_areas;
 	auto mineral_worker_iterator = game_state.getMineralWorkers()->begin();
 	while (mineral_worker_iterator != game_state.getMineralWorkers()->end())
 	{
@@ -589,74 +605,47 @@ bool WorkerManager::build(BWAPI::UnitType building_type, int base_class, GameSta
 				BWAPI::Broodwar->canMake(building_type, mineral_worker_iterator->getUnit()) &&
 				game_state.getContainingBase(mineral_worker_iterator->getUnit()->getTilePosition())->getBaseClass() == base_class)
 			{
-				Object new_build_worker(*mineral_worker_iterator);
-				if (temp_change_base_class == true)
-					base_class = 1;
-				if ((building_type == BWAPI::UnitTypes::Terran_Command_Center ||
-					building_type == BWAPI::UnitTypes::Protoss_Nexus ||
-					building_type == BWAPI::UnitTypes::Zerg_Hatchery) &&
-					base_class == 1)
+				bool proceed = true;
+				for (auto &bad_area : bad_areas)
 				{
-					AIBase* closest_empty_base = game_state.getClosestEmptyBase();
-					if (closest_empty_base != nullptr)
+					if (bad_area == game_state.getContainingBase(mineral_worker_iterator->getUnit()->getTilePosition())->getArea())
 					{
-						new_build_worker.setBuildType(building_type);
-						new_build_worker.setBaseClass(base_class);
-						new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
-						new_build_worker.setTargetBase(closest_empty_base);
-						game_state.getBuildWorkers()->push_back(new_build_worker);
-						game_state.getMineralWorkers()->erase(mineral_worker_iterator);
-						game_state.setTargetExpansion(closest_empty_base);
-						return true;
+						proceed = false;
 					}
-					else
-						return false;
 				}
-				if (building_type != BWAPI::UnitTypes::Terran_Refinery &&
-					building_type != BWAPI::UnitTypes::Protoss_Assimilator &&
-					building_type != BWAPI::UnitTypes::Zerg_Extractor)
+				if (proceed)
 				{
-					BWAPI::TilePosition build_position = this->getBuildLocation(*mineral_worker_iterator, building_type, game_state);
-					//BWAPI::TilePosition build_position = BWAPI::Broodwar->getBuildLocation(building_type, (BWAPI::TilePosition)(*new_build_worker.getBase()->getArea()->Bases().begin()).Center());
-					if (build_position != BWAPI::TilePositions::Invalid)
+					Object new_build_worker(*mineral_worker_iterator);
+					if (temp_change_base_class == true)
+						base_class = 1;
+					if ((building_type == BWAPI::UnitTypes::Terran_Command_Center ||
+						building_type == BWAPI::UnitTypes::Protoss_Nexus ||
+						building_type == BWAPI::UnitTypes::Zerg_Hatchery) &&
+						base_class == 1)
 					{
-						if (new_build_worker.getUnit()->build(building_type, build_position))
+						AIBase* closest_empty_base = game_state.getClosestEmptyBase();
+						if (closest_empty_base != nullptr)
 						{
 							new_build_worker.setBuildType(building_type);
 							new_build_worker.setBaseClass(base_class);
 							new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
-							new_build_worker.setTargetBuildLocation(build_position);
+							new_build_worker.setTargetBase(closest_empty_base);
 							game_state.getBuildWorkers()->push_back(new_build_worker);
 							game_state.getMineralWorkers()->erase(mineral_worker_iterator);
-							if (building_type.getRace() == BWAPI::Races::Protoss)
-								game_state.updateBuildMap(build_position.x, build_position.y, building_type, true);
+							game_state.setTargetExpansion(closest_empty_base);
 							return true;
 						}
 						else
-						{
-							new_build_worker.getUnit()->move((BWAPI::Position)build_position);
-							new_build_worker.setBuildType(building_type);
-							new_build_worker.setBaseClass(base_class);
-							new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
-							new_build_worker.setTargetBuildLocation(build_position);
-							game_state.getBuildWorkers()->push_back(new_build_worker);
-							game_state.getMineralWorkers()->erase(mineral_worker_iterator);
-							if (building_type.getRace() == BWAPI::Races::Protoss)
-								game_state.updateBuildMap(build_position.x, build_position.y, building_type, true);
-							return true;
-						}
+							return false;
 					}
-					else
+					if (building_type != BWAPI::UnitTypes::Terran_Refinery &&
+						building_type != BWAPI::UnitTypes::Protoss_Assimilator &&
+						building_type != BWAPI::UnitTypes::Zerg_Extractor)
 					{
-						mineral_worker_iterator++;
-					}
-				}
-				else
-				{
-					if (game_state.checkValidGasBuildTileLocation(base_class) &&
-						BWEM::Map::Instance().GetArea(new_build_worker.getUnit()->getTilePosition()) != nullptr)
-					{
-						BWAPI::TilePosition build_position = game_state.getGasBuildTileLocation(BWEM::Map::Instance().GetArea(new_build_worker.getUnit()->getTilePosition()));
+						BWAPI::TilePosition build_position;
+						build_position = game_state.getBuildLocation(building_type, *mineral_worker_iterator);
+						//build_position = this->getBuildLocation(*mineral_worker_iterator, building_type, game_state);
+						//BWAPI::TilePosition build_position = BWAPI::Broodwar->getBuildLocation(building_type, (BWAPI::TilePosition)(*new_build_worker.getBase()->getArea()->Bases().begin()).Center());
 						if (build_position != BWAPI::TilePositions::Invalid)
 						{
 							if (new_build_worker.getUnit()->build(building_type, build_position))
@@ -664,8 +653,11 @@ bool WorkerManager::build(BWAPI::UnitType building_type, int base_class, GameSta
 								new_build_worker.setBuildType(building_type);
 								new_build_worker.setBaseClass(base_class);
 								new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
+								new_build_worker.setTargetBuildLocation(build_position);
 								game_state.getBuildWorkers()->push_back(new_build_worker);
 								game_state.getMineralWorkers()->erase(mineral_worker_iterator);
+								if (building_type.getRace() == BWAPI::Races::Protoss)
+									game_state.updateBuildMap(build_position.x, build_position.y, building_type, true);
 								return true;
 							}
 							else
@@ -674,19 +666,64 @@ bool WorkerManager::build(BWAPI::UnitType building_type, int base_class, GameSta
 								new_build_worker.setBuildType(building_type);
 								new_build_worker.setBaseClass(base_class);
 								new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
+								new_build_worker.setTargetBuildLocation(build_position);
 								game_state.getBuildWorkers()->push_back(new_build_worker);
 								game_state.getMineralWorkers()->erase(mineral_worker_iterator);
+								if (building_type.getRace() == BWAPI::Races::Protoss)
+									game_state.updateBuildMap(build_position.x, build_position.y, building_type, true);
 								return true;
 							}
 						}
 						else
+						{
+							bad_areas.push_back(game_state.getContainingBase(mineral_worker_iterator->getUnit()->getTilePosition())->getArea());
+							auto end_time = std::chrono::high_resolution_clock::now();
+							if (std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count() > 20)
+							{
+								return false;
+							}
 							mineral_worker_iterator++;
+						}
 					}
 					else
 					{
-						return false;
+						if (game_state.checkValidGasBuildTileLocation(base_class) &&
+							BWEM::Map::Instance().GetArea(new_build_worker.getUnit()->getTilePosition()) != nullptr)
+						{
+							BWAPI::TilePosition build_position = game_state.getGasBuildTileLocation(BWEM::Map::Instance().GetArea(new_build_worker.getUnit()->getTilePosition()));
+							if (build_position != BWAPI::TilePositions::Invalid)
+							{
+								if (new_build_worker.getUnit()->build(building_type, build_position))
+								{
+									new_build_worker.setBuildType(building_type);
+									new_build_worker.setBaseClass(base_class);
+									new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
+									game_state.getBuildWorkers()->push_back(new_build_worker);
+									game_state.getMineralWorkers()->erase(mineral_worker_iterator);
+									return true;
+								}
+								else
+								{
+									new_build_worker.getUnit()->move((BWAPI::Position)build_position);
+									new_build_worker.setBuildType(building_type);
+									new_build_worker.setBaseClass(base_class);
+									new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
+									game_state.getBuildWorkers()->push_back(new_build_worker);
+									game_state.getMineralWorkers()->erase(mineral_worker_iterator);
+									return true;
+								}
+							}
+							else
+								mineral_worker_iterator++;
+						}
+						else
+						{
+							return false;
+						}
 					}
 				}
+				else
+					mineral_worker_iterator++;
 			}
 			else
 			{
@@ -708,99 +745,118 @@ bool WorkerManager::build(BWAPI::UnitType building_type, int base_class, GameSta
 			if (!mineral_worker_iterator->getUnit()->isCarryingMinerals() &&
 				BWAPI::Broodwar->canMake(building_type, mineral_worker_iterator->getUnit()))
 			{
-				Object new_build_worker(*mineral_worker_iterator);
-				if ((building_type == BWAPI::UnitTypes::Terran_Command_Center ||
-					building_type == BWAPI::UnitTypes::Protoss_Nexus ||
-					building_type == BWAPI::UnitTypes::Zerg_Hatchery))
+				bool proceed = true;
+				for (auto &bad_area : bad_areas)
 				{
-					AIBase* closest_empty_base = game_state.getClosestEmptyBase();
-					if (closest_empty_base != nullptr)
+					if (bad_area == game_state.getContainingBase(mineral_worker_iterator->getUnit()->getTilePosition())->getArea())
 					{
-						new_build_worker.setBuildType(building_type);
-						new_build_worker.setBaseClass(base_class);
-						new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
-						new_build_worker.setTargetBase(closest_empty_base);
-						game_state.getBuildWorkers()->push_back(new_build_worker);
-						game_state.getMineralWorkers()->erase(mineral_worker_iterator);
-						game_state.setTargetExpansion(closest_empty_base);
-						return true;
+						proceed = false;
 					}
-					else
-						return false;
 				}
-				if (building_type != BWAPI::UnitTypes::Terran_Refinery &&
-					building_type != BWAPI::UnitTypes::Protoss_Assimilator &&
-					building_type != BWAPI::UnitTypes::Zerg_Extractor)
+				if (proceed)
 				{
-					BWAPI::TilePosition build_position = this->getBuildLocation(*mineral_worker_iterator, building_type, game_state);
-					//BWAPI::TilePosition build_position = BWAPI::Broodwar->getBuildLocation(building_type, (BWAPI::TilePosition)(*new_build_worker.getBase()->getArea()->Bases().begin()).Center());
-					if (build_position != BWAPI::TilePositions::Invalid)
+					Object new_build_worker(*mineral_worker_iterator);
+					if ((building_type == BWAPI::UnitTypes::Terran_Command_Center ||
+						building_type == BWAPI::UnitTypes::Protoss_Nexus ||
+						building_type == BWAPI::UnitTypes::Zerg_Hatchery))
 					{
-						if (new_build_worker.getUnit()->build(building_type, build_position))
+						AIBase* closest_empty_base = game_state.getClosestEmptyBase();
+						if (closest_empty_base != nullptr)
 						{
 							new_build_worker.setBuildType(building_type);
+							new_build_worker.setBaseClass(base_class);
 							new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
-							new_build_worker.setTargetBuildLocation(build_position);
+							new_build_worker.setTargetBase(closest_empty_base);
 							game_state.getBuildWorkers()->push_back(new_build_worker);
 							game_state.getMineralWorkers()->erase(mineral_worker_iterator);
-							if (building_type.getRace() == BWAPI::Races::Protoss)
-								game_state.updateBuildMap(build_position.x, build_position.y, building_type, true);
+							game_state.setTargetExpansion(closest_empty_base);
 							return true;
 						}
 						else
-						{
-							new_build_worker.getUnit()->move((BWAPI::Position)build_position);
-							new_build_worker.setBuildType(building_type);
-							new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
-							new_build_worker.setTargetBuildLocation(build_position);
-							game_state.getBuildWorkers()->push_back(new_build_worker);
-							game_state.getMineralWorkers()->erase(mineral_worker_iterator);
-							if (building_type.getRace() == BWAPI::Races::Protoss)
-								game_state.updateBuildMap(build_position.x, build_position.y, building_type, true);
-							return true;
-						}
+							return false;
 					}
-					else
+					if (building_type != BWAPI::UnitTypes::Terran_Refinery &&
+						building_type != BWAPI::UnitTypes::Protoss_Assimilator &&
+						building_type != BWAPI::UnitTypes::Zerg_Extractor)
 					{
-						mineral_worker_iterator++;
-					}
-				}
-				else
-				{
-					if (game_state.checkValidGasBuildTileLocation(base_class) &&
-						BWEM::Map::Instance().GetArea(new_build_worker.getUnit()->getTilePosition()) != nullptr)
-					{
-						BWAPI::TilePosition build_position = game_state.getGasBuildTileLocation(BWEM::Map::Instance().GetArea(new_build_worker.getUnit()->getTilePosition()));
+						BWAPI::TilePosition build_position = game_state.getBuildLocation(building_type, *mineral_worker_iterator);
+						//BWAPI::TilePosition build_position = this->getBuildLocation(*mineral_worker_iterator, building_type, game_state);
+						//BWAPI::TilePosition build_position = BWAPI::Broodwar->getBuildLocation(building_type, (BWAPI::TilePosition)(*new_build_worker.getBase()->getArea()->Bases().begin()).Center());
 						if (build_position != BWAPI::TilePositions::Invalid)
 						{
 							if (new_build_worker.getUnit()->build(building_type, build_position))
 							{
 								new_build_worker.setBuildType(building_type);
-								new_build_worker.setBaseClass(base_class);
 								new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
+								new_build_worker.setTargetBuildLocation(build_position);
 								game_state.getBuildWorkers()->push_back(new_build_worker);
 								game_state.getMineralWorkers()->erase(mineral_worker_iterator);
+								if (building_type.getRace() == BWAPI::Races::Protoss)
+									game_state.updateBuildMap(build_position.x, build_position.y, building_type, true);
 								return true;
 							}
 							else
 							{
 								new_build_worker.getUnit()->move((BWAPI::Position)build_position);
 								new_build_worker.setBuildType(building_type);
-								new_build_worker.setBaseClass(base_class);
 								new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
+								new_build_worker.setTargetBuildLocation(build_position);
 								game_state.getBuildWorkers()->push_back(new_build_worker);
 								game_state.getMineralWorkers()->erase(mineral_worker_iterator);
+								if (building_type.getRace() == BWAPI::Races::Protoss)
+									game_state.updateBuildMap(build_position.x, build_position.y, building_type, true);
 								return true;
 							}
 						}
 						else
+						{
+							auto end_time = std::chrono::high_resolution_clock::now();
+							if (std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count() > 20)
+							{
+								return false;
+							}
+							bad_areas.push_back(game_state.getContainingBase(mineral_worker_iterator->getUnit()->getTilePosition())->getArea());
 							mineral_worker_iterator++;
+						}
 					}
 					else
 					{
-						return false;
+						if (game_state.checkValidGasBuildTileLocation(base_class) &&
+							BWEM::Map::Instance().GetArea(new_build_worker.getUnit()->getTilePosition()) != nullptr)
+						{
+							BWAPI::TilePosition build_position = game_state.getGasBuildTileLocation(BWEM::Map::Instance().GetArea(new_build_worker.getUnit()->getTilePosition()));
+							if (build_position != BWAPI::TilePositions::Invalid)
+							{
+								if (new_build_worker.getUnit()->build(building_type, build_position))
+								{
+									new_build_worker.setBuildType(building_type);
+									new_build_worker.setBaseClass(base_class);
+									new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
+									game_state.getBuildWorkers()->push_back(new_build_worker);
+									game_state.getMineralWorkers()->erase(mineral_worker_iterator);
+									return true;
+								}
+								else
+								{
+									new_build_worker.getUnit()->move((BWAPI::Position)build_position);
+									new_build_worker.setBuildType(building_type);
+									new_build_worker.setBaseClass(base_class);
+									new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
+									game_state.getBuildWorkers()->push_back(new_build_worker);
+									game_state.getMineralWorkers()->erase(mineral_worker_iterator);
+									return true;
+								}
+							}
+							else
+								mineral_worker_iterator++;
+						}
+						else
+						{
+							return false;
+						}
 					}
 				}
+				else mineral_worker_iterator++;
 			}
 			else
 			{
@@ -1543,6 +1599,10 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 						}
 					}
 				}
+				if (!try_new_position)
+				{
+					try_new_position = !validateFloodFill(position_to_build, building_type, game_state, game_state.getContainingBase(position_to_build));
+				}
 			}
 			if (!try_new_position &&
 				has_addon)
@@ -1578,6 +1638,10 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 							}
 						}
 					}
+					if (!try_new_position)
+					{
+						try_new_position = !validateFloodFill(position_to_build, building_type, game_state, game_state.getContainingBase(position_to_build));
+					}
 				}
 				else
 				{
@@ -1609,6 +1673,10 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 								}
 							}
 						}
+					}
+					if (!try_new_position)
+					{
+						try_new_position = !validateFloodFill(position_to_build, building_type, game_state, game_state.getContainingBase(position_to_build));
 					}
 				}
 			}
@@ -1719,6 +1787,10 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 							}
 						}
 					}
+					if (!try_new_position)
+					{
+						try_new_position = !validateFloodFill(position_to_build, building_type, game_state, game_state.getContainingBase(position_to_build));
+					}
 				}
 				else
 				{
@@ -1751,6 +1823,10 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 								}
 							}
 						}
+					}
+					if (!try_new_position)
+					{
+						try_new_position = !validateFloodFill(position_to_build, building_type, game_state, game_state.getContainingBase(position_to_build));
 					}
 				}
 				if (!try_new_position)
@@ -1840,6 +1916,10 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 									}
 								}
 							}
+							if (!try_new_position)
+							{
+								try_new_position = !validateFloodFill(position_to_build, building_type, game_state, game_state.getContainingBase(position_to_build));
+							}
 						}
 						else
 						{
@@ -1872,6 +1952,10 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 									}
 								}
 							}
+						}
+						if (!try_new_position)
+						{
+							try_new_position = !validateFloodFill(position_to_build, building_type, game_state, game_state.getContainingBase(position_to_build));
 						}
 					}
 					if (!try_new_position)
@@ -1927,4 +2011,144 @@ BWAPI::TilePosition WorkerManager::getBuildLocation(Object build_worker, BWAPI::
 	{
 		return BWAPI::Broodwar->getBuildLocation(building_type, start_position);
 	}
+}
+
+bool WorkerManager::validateFloodFill(BWAPI::TilePosition build_position, BWAPI::UnitType building_type, GameState &game_state, AIBase* target_base)
+{
+	game_state.updateBuildMap(build_position.x, build_position.y, building_type, true);
+	std::vector<std::pair<TileFlags, int>> copy_of_build_position_map = *game_state.getBuildPositionMap();
+	const BWEM::Area* build_area = BWEM::Map::Instance().GetArea(build_position);
+	BWAPI::TilePosition start_position = build_position;
+	while (!copy_of_build_position_map.at(start_position.x + start_position.y * BWAPI::Broodwar->mapWidth()).first.unobstructed)
+	{
+		start_position.x += game_state.getRandomInteger(-1, 1);
+		start_position.x += game_state.getRandomInteger(-1, 1);
+		start_position.makeValid();
+	}
+	floodFill(start_position, &copy_of_build_position_map, game_state, target_base);
+	BWAPI::TilePosition check_position;
+	int obstructed_count = 0;
+	for (int x = 0; x < BWAPI::Broodwar->mapWidth(); x++)
+	{
+		check_position.x = x;
+		for (int y = 0; y < BWAPI::Broodwar->mapHeight(); y++)
+		{
+			check_position.y = 0;
+			AIBase* current_base = game_state.getContainingBase(check_position);
+			if (current_base == target_base)
+			{
+				if (!copy_of_build_position_map.at(x + y * BWAPI::Broodwar->mapWidth()).first.unobstructed)
+					obstructed_count++;
+			}
+		}
+	}
+	game_state.updateBuildMap(build_position.x, build_position.y, building_type, false);
+	return obstructed_count == target_base->getTileCount();
+}
+
+void WorkerManager::floodFill(BWAPI::TilePosition start_position, std::vector<std::pair<TileFlags, int>>* build_map, GameState &game_state, AIBase* target_base)
+{
+	if (start_position.isValid())
+	{
+		AIBase* position_base = game_state.getContainingBase(start_position);
+		if (position_base != nullptr)
+		{
+			if (position_base == target_base)
+			{
+				TileFlags* current_flags = &build_map->at(start_position.x + start_position.y * BWAPI::Broodwar->mapWidth()).first;
+				if (current_flags->unobstructed = true)
+				{
+					current_flags->unobstructed = false;
+					BWAPI::TilePosition new_position = start_position;
+					new_position.x--;
+					floodFill(new_position, build_map, game_state, target_base);
+					new_position.x++;
+					new_position.y--;
+					floodFill(new_position, build_map, game_state, target_base);
+					new_position.x++;
+					new_position.y++;
+					floodFill(new_position, build_map, game_state, target_base);
+					new_position.x--;
+					new_position.y++;
+					floodFill(new_position, build_map, game_state, target_base);
+				}
+			}
+		}
+	}
+}
+
+bool WorkerManager::buildAtPosition(BWAPI::UnitType building_type, GameState &game_state, BWAPI::TilePosition build_position)
+{
+	auto mineral_worker_iterator = game_state.getMineralWorkers()->begin();
+	while (mineral_worker_iterator != game_state.getMineralWorkers()->end())
+	{
+		if (game_state.getContainingBase(mineral_worker_iterator->getUnit()->getTilePosition()) != nullptr)
+		{
+			if (/*mineral_worker_iterator->getBase()->getBaseClass() == base_class &&*/
+				!mineral_worker_iterator->getUnit()->isCarryingMinerals() &&
+				BWAPI::Broodwar->canMake(building_type, mineral_worker_iterator->getUnit()) &&
+				game_state.getContainingBase(mineral_worker_iterator->getUnit()->getTilePosition()) == game_state.getContainingBase(build_position))
+			{
+				Object new_build_worker(*mineral_worker_iterator);
+				if (new_build_worker.getUnit()->build(building_type, build_position))
+				{
+					new_build_worker.setBuildType(building_type);
+					new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
+					new_build_worker.setTargetBuildLocation(build_position);
+					game_state.getBuildWorkers()->push_back(new_build_worker);
+					game_state.getMineralWorkers()->erase(mineral_worker_iterator);
+					game_state.addUsedPosition(build_position);
+					return true;
+				}
+				else
+				{
+					new_build_worker.getUnit()->move((BWAPI::Position)build_position);
+					new_build_worker.setBuildType(building_type);
+					new_build_worker.setTargetBuildLocation(build_position);
+					new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
+					game_state.getBuildWorkers()->push_back(new_build_worker);
+					game_state.getMineralWorkers()->erase(mineral_worker_iterator);
+					game_state.addUsedPosition(build_position);
+					return true;
+				}
+			}
+		}
+		mineral_worker_iterator++;
+	}
+	mineral_worker_iterator = game_state.getMineralWorkers()->begin();
+	while (mineral_worker_iterator != game_state.getMineralWorkers()->end())
+	{
+		if (game_state.getContainingBase(mineral_worker_iterator->getUnit()->getTilePosition()) != nullptr)
+		{
+			if (/*mineral_worker_iterator->getBase()->getBaseClass() == base_class &&*/
+				!mineral_worker_iterator->getUnit()->isCarryingMinerals() &&
+				BWAPI::Broodwar->canMake(building_type, mineral_worker_iterator->getUnit()))
+			{
+				Object new_build_worker(*mineral_worker_iterator);
+				if (new_build_worker.getUnit()->build(building_type, build_position))
+				{
+					new_build_worker.setBuildType(building_type);
+					new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
+					new_build_worker.setTargetBuildLocation(build_position);
+					game_state.getBuildWorkers()->push_back(new_build_worker);
+					game_state.getMineralWorkers()->erase(mineral_worker_iterator);
+					game_state.addUsedPosition(build_position);
+					return true;
+				}
+				else
+				{
+					new_build_worker.getUnit()->move((BWAPI::Position)build_position);
+					new_build_worker.setBuildType(building_type);
+					new_build_worker.setTargetBuildLocation(build_position);
+					new_build_worker.setElapsedTimeOrderGiven(BWAPI::Broodwar->elapsedTime());
+					game_state.getBuildWorkers()->push_back(new_build_worker);
+					game_state.getMineralWorkers()->erase(mineral_worker_iterator);
+					game_state.addUsedPosition(build_position);
+					return true;
+				}
+			}
+		}
+		mineral_worker_iterator++;
+	}
+	return false;
 }

@@ -8,6 +8,7 @@
 #include"AIBase.h"
 #include<map>
 #include"GameState.h"
+#include"FAP.h"
 
 class MilitaryManager
 {
@@ -16,6 +17,7 @@ public:
 
 	void checkMilitary(WorkerManager &worker_manager, GameState &game_state);
 	void scout(WorkerManager &worker_manager, GameState &game_state);
+	void scout(Object intended_scout, GameState &game_state);
 
 private:
 	Object scout_unit;

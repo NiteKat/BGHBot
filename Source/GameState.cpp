@@ -34,6 +34,20 @@ GameState::GameState()
 	starport = 0;
 	science_facility = 0;
 	armory = 0;
+	mt = std::mt19937(std::chrono::system_clock::now().time_since_epoch().count());
+	scouted = false;
+	assign_scout = false;
+	photon_cannon = 0;
+	forge = 0;
+	citadel_of_adun = 0;
+	spawning_pool = 0;
+	if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Zerg)
+		hatchery = 1;
+	else
+		hatchery = 0;
+	times_retreated = 0;
+	pylon_building = false;
+	templar_archives = 0;
 }
 
 void GameState::addAIBase(AIBase new_base)
@@ -76,6 +90,11 @@ void GameState::toggleAcademy()
 
 AIBase* GameState::getContainingBase(BWAPI::Unit unit)
 {
+	if (unit == nullptr ||
+		unit->getTilePosition() == BWAPI::TilePositions::Invalid ||
+		unit->getTilePosition() == BWAPI::TilePositions::None ||
+		unit->getTilePosition() == BWAPI::TilePositions::Unknown)
+		return nullptr;
 	if (BWEM::Map::Instance().GetArea(unit->getTilePosition()) != nullptr)
 	{
 		auto base_list_iterator = base_list.begin();
@@ -98,6 +117,10 @@ AIBase* GameState::getContainingBase(BWAPI::Unit unit)
 
 AIBase* GameState::getContainingBase(BWAPI::TilePosition tile_position)
 {
+	if (tile_position == BWAPI::TilePositions::Invalid ||
+		tile_position == BWAPI::TilePositions::None ||
+		tile_position == BWAPI::TilePositions::Unknown)
+		return nullptr;
 	if (BWEM::Map::Instance().GetArea(tile_position) != nullptr)
 	{
 		auto base_list_iterator = base_list.begin();
@@ -668,7 +691,57 @@ void GameState::addObjective(Objective new_objective)
 
 void GameState::assessGame()
 {
+	pylon_building = false;
+	for (auto &building_iterator : building_list)
+	{
+		if (building_iterator.getType() == BWAPI::UnitTypes::Protoss_Pylon &&
+			building_iterator.getUnit()->isBeingConstructed())
+			pylon_building = true;
+	}
+	if (times_retreated == 2 &&
+		build_order == BuildOrder::P2Gate1)
+	{
+		build_order = BuildOrder::Default;
+	}
 	checkBaseOwnership();
+	if (BWAPI::Broodwar->getFrameCount() == 0)
+	{
+		if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
+		{
+			BWAPI::TilePosition search_center = BWAPI::Broodwar->self()->getStartLocation();
+			if (BWAPI::Broodwar->enemies().size() == 1 &&
+				BWAPI::Broodwar->enemy()->getRace() == BWAPI::Races::Zerg)
+			{
+				
+				BWAPI::TilePosition direction = search_center - (BWAPI::TilePosition)(*BWEM::Map::Instance().GetArea(search_center)->ChokePoints().begin())->Center();
+				if (abs(direction.x) > abs(direction.y))
+				{
+					if (direction.x < 0)
+					{
+						search_center += BWAPI::TilePosition(6, 0);
+					}
+					else
+						search_center += BWAPI::TilePosition(-8, 0);
+				}
+				else
+				{
+					if (direction.y < 0)
+					{
+						search_center += BWAPI::TilePosition(0, -6);
+					}
+					else
+						search_center -= BWAPI::TilePosition(0, 4);
+				}
+				placeBlock(BWEM::Map::Instance().GetArea(BWAPI::Broodwar->self()->getStartLocation()), std::make_pair<int, int>(8, 6), BlockType::TTvZBunkerStart, search_center);
+			}
+		}
+	}
+	if ((BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran ||
+		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss ) &&
+		!scouted &&
+		!assign_scout &&
+		supply_used == 10)
+		assign_scout = true;
 	if (minerals_committed < 0)
 		minerals_committed = 0;
 	if (objective_list.size() >= 1)
@@ -704,14 +777,14 @@ void GameState::assessGame()
 			auto current_objective = objective_list.begin();
 			while (current_objective != objective_list.end())
 			{
-				if (current_objective->getObjective() == ObjectiveTypes::P2GateAttack)
+				if (current_objective->getObjective() == ObjectiveTypes::AttackWithRegroupPrioritizeWorkers)
 					objective_exists = true;
 				current_objective++;
 			}
 			if (!objective_exists)
 			{
 				Objective new_objective;
-				new_objective.setObjective(ObjectiveTypes::P2GateAttack);
+				new_objective.setObjective(ObjectiveTypes::AttackWithRegroupPrioritizeWorkers);
 				auto current_unit = objective_list.begin()->getUnits()->begin();
 				while (current_unit != objective_list.begin()->getUnits()->end())
 				{
@@ -911,6 +984,58 @@ void GameState::assessGame()
 				}
 				objective_list.begin()->getUnits()->clear();
 				objective_list.push_back(new_objective);
+			}
+			else if (build_order == BuildOrder::FivePool &&
+				objective_list.begin()->getUnits()->size() > 0)
+			{
+				if (objective_list.size() == 1)
+				{
+					Objective new_objective;
+					new_objective.setObjective(ObjectiveTypes::AttackWithRegroupPrioritizeWorkers);
+					auto current_unit = objective_list.begin()->getUnits()->begin();
+					while (current_unit != objective_list.begin()->getUnits()->end())
+					{
+						new_objective.addUnit(*current_unit);
+						current_unit++;
+					}
+					objective_list.begin()->getUnits()->clear();
+					objective_list.push_back(new_objective);
+				}
+			}
+		}
+	}
+
+	initDefenseGrid();
+	for (auto &current_base : base_list)
+	{
+		//I own this base, so evaluate positions.
+		if (current_base.getBaseClass() == 3 ||
+			current_base.getBaseClass() == 4)
+		{
+			for (auto &current_chokepoint : current_base.getArea()->ChokePoints())
+			{
+				if (!current_chokepoint->Blocked())
+				{
+					auto areas = current_chokepoint->GetAreas();
+					if (areas.first != nullptr &&
+						areas.second != nullptr)
+					{
+						AIBase* base_to_review_first = getBaseforArea(areas.first);
+						AIBase* base_to_review_second = getBaseforArea(areas.second);
+						int class_first = base_to_review_first->getBaseClass();
+						int class_second = base_to_review_second->getBaseClass();
+						if ((base_to_review_first->getBaseClass() != 3 &&
+							base_to_review_first->getBaseClass() != 4 &&
+							base_to_review_first->getBaseClass() != 5) ||
+							(base_to_review_second->getBaseClass() != 3 &&
+							base_to_review_second->getBaseClass() != 4 &&
+							base_to_review_second->getBaseClass() != 5))
+						{
+							BWAPI::TilePosition position_to_add_score = (BWAPI::TilePosition)current_chokepoint->Center();
+							defense_grid[position_to_add_score.y * BWAPI::Broodwar->mapWidth() + position_to_add_score.x].first += 9;
+						}
+					}
+				}
 			}
 		}
 	}
@@ -1415,7 +1540,13 @@ int GameState::getLastTimeExpanded()
 int GameState::getGroundDistance(BWAPI::Position point_a, BWAPI::Position point_b)
 {
 	int distance = 0;
-	
+	if (point_a == BWAPI::Positions::Invalid ||
+		point_a == BWAPI::Positions::Unknown ||
+		point_a == BWAPI::Positions::None ||
+		point_b == BWAPI::Positions::Invalid ||
+		point_b == BWAPI::Positions::Unknown ||
+		point_b == BWAPI::Positions::None)
+		return -1;
 	auto path = BWEM::Map::Instance().GetPath(point_a, point_b);
 
 	if (path.size() == 0 &&
@@ -1902,6 +2033,23 @@ AIBase* GameState::getNearestContainingBase(BWAPI::Unit unit)
 	return nullptr;
 }
 
+AIBase* GameState::getNearestContainingBase(BWAPI::TilePosition tile_position)
+{
+	auto base_list_iterator = base_list.begin();
+	while (base_list_iterator != base_list.end())
+	{
+		if (base_list_iterator->getArea() == BWEM::Map::Instance().GetNearestArea(tile_position))
+		{
+			return &(*base_list_iterator);
+		}
+		else
+		{
+			base_list_iterator++;
+		}
+	}
+	return nullptr;
+}
+
 void GameState::removeRepairWorkers(Object* repair_target, int number_of_workers)
 {
 	int workers_removed = 0;
@@ -1912,6 +2060,7 @@ void GameState::removeRepairWorkers(Object* repair_target, int number_of_workers
 		if (repair_worker_iterator->getRepairTarget() == repair_target->getUnit())
 		{
 			Object new_mineral_worker(*repair_worker_iterator);
+			assignWorkerToMineral(&new_mineral_worker);
 			mineral_workers.push_back(new_mineral_worker);
 			auto erase_iterator = repair_worker_iterator;
 			repair_worker_iterator = repair_workers.erase(erase_iterator);
@@ -2125,4 +2274,1232 @@ void GameState::addArmory(int additional_armory)
 int GameState::getArmory()
 {
 	return armory;
+}
+
+int GameState::getRandomInteger(int min, int max)
+{
+	std::uniform_int_distribution<int> random_number(min, max);
+	return random_number(mt);
+}
+
+void GameState::addUsedPosition(BWAPI::TilePosition new_position)
+{
+	used_positions.insert(new_position);
+}
+
+std::set<BWAPI::TilePosition>* GameState::getUsedPositions()
+{
+	return &used_positions;
+}
+
+void GameState::setScouted(bool new_value)
+{
+	scouted = new_value;
+}
+
+bool GameState::getScouted()
+{
+	return scouted;
+}
+
+void GameState::setAssignScout(bool new_value)
+{
+	assign_scout = new_value;
+}
+
+bool GameState::getAssignScout()
+{
+	return assign_scout;
+}
+
+void GameState::setAssignScout(bool new_value, Object new_intended_scout)
+{
+	assign_scout = new_value;
+	intended_scout = new_intended_scout;
+}
+
+Object GameState::getIntendedScout()
+{
+	return intended_scout;
+}
+
+void GameState::setIntendedScout(Object new_intended_scout)
+{
+	intended_scout = new_intended_scout;
+}
+
+void GameState::addPhotonCannon(int new_photon_cannon)
+{
+	photon_cannon += new_photon_cannon;
+}
+
+int GameState::getPhotonCannon()
+{
+	return photon_cannon;
+}
+
+void GameState::addSpawningPool(int new_spawning_pool)
+{
+	spawning_pool += new_spawning_pool;
+}
+
+int GameState::getSpawningPool()
+{
+	return spawning_pool;
+}
+
+void GameState::updateUnits()
+{
+	for (auto &objective : objective_list)
+	{
+		for (auto &unit : *objective.getUnits())
+		{
+			unit.updateObject();
+		}
+	}
+	for (auto &unit : enemy_units)
+	{
+		unit.second.updateObject();
+	}
+}
+
+AIBase* GameState::getSafeEmptyBaseClosestToEnemy()
+{
+	std::vector<AIBase*> bases_with_enemy_units;
+	for (auto &unit : enemy_units)
+	{
+		AIBase* containing_base = getContainingBase((BWAPI::TilePosition)unit.second.getCurrentPosition());
+		if (containing_base == nullptr)
+			continue;
+		if (std::find(bases_with_enemy_units.begin(), bases_with_enemy_units.end(), containing_base) == bases_with_enemy_units.end())
+		{
+			bases_with_enemy_units.push_back(containing_base);
+		}
+	}
+	if (bases_with_enemy_units.size() == 0)
+		return nullptr;
+	auto base_iterator = bases_with_enemy_units.begin();
+	AIBase* main_base = getMainBase();
+	AIBase* closest_base = *base_iterator;
+	int closest_ground_distance = getGroundDistance((BWAPI::Position)closest_base->getArea()->Top(), (BWAPI::Position)main_base->getArea()->Top());
+	base_iterator++;
+	while (base_iterator != bases_with_enemy_units.end())
+	{
+		int distance_to_check = getGroundDistance((BWAPI::Position)(*base_iterator)->getArea()->Top(), (BWAPI::Position)main_base->getArea()->Top());
+		if (distance_to_check < closest_ground_distance)
+		{
+			closest_base = *base_iterator;
+			closest_ground_distance = distance_to_check;
+		}
+		base_iterator++;
+	}
+	
+	BWEM::CPPath path_from_main = BWEM::Map::Instance().GetPath((BWAPI::Position)main_base->getArea()->Top(), (BWAPI::Position)closest_base->getArea()->Top());
+	if (path_from_main.size() == 0)
+		return nullptr;
+	std::pair<const BWEM::Area*, const BWEM::Area*> possible_areas = (*std::prev(path_from_main.end()))->GetAreas();
+	if (possible_areas.first == closest_base->getArea())
+	{
+		for (auto &base : base_list)
+		{
+			if (base.getArea() == possible_areas.second)
+				return &base;
+		}
+		return nullptr;
+	}
+	else
+	{
+		for (auto &base : base_list)
+		{
+			if (base.getArea() == possible_areas.first)
+				return &base;
+		}
+		return nullptr;
+	}
+}
+
+void GameState::addHatchery(int new_hatchery)
+{
+	hatchery += new_hatchery;
+}
+
+int GameState::getHatchery()
+{
+	return hatchery;
+}
+
+void GameState::readConfigFile()
+{
+	std::ifstream config("bwapi-data/read/config.txt");
+	if (!config)
+	{
+		//do stuff
+	}
+	else
+	{
+		//do stuff
+	}
+	config.close();
+}
+
+void GameState::initDefenseGrid()
+{
+	int map_cell_count = BWAPI::Broodwar->mapHeight() * BWAPI::Broodwar->mapWidth();
+	std::pair<int, int> data = std::make_pair(0, 0);
+	bool empty = true;
+	if (defense_grid.size() > 0)
+		empty = false;
+	for (int index = 0; index < map_cell_count; index++)
+	{
+		if (empty)
+			defense_grid.push_back(data);
+		else
+		{
+			defense_grid[index] = data;
+		}
+	}
+}
+
+AIBase* GameState::getBaseforArea(const BWEM::Area* area)
+{
+	for (auto &base : base_list)
+	{
+		if (base.getArea() == area)
+			return &base;
+	}
+	return nullptr;
+}
+
+void GameState::printDefenseGrid()
+{
+	for (int x = 0; x < BWAPI::Broodwar->mapWidth(); x++)
+	{
+		for (int y = 0; y < BWAPI::Broodwar->mapHeight(); y++)
+		{
+			BWAPI::Broodwar->drawBoxMap(x * 32, y * 32, x * 32 + 32, y * 32 + 32, BWAPI::Colors::Blue);
+			BWAPI::Broodwar->drawTextMap(x * 32 + 16, y * 32 + 16, "%d", defense_grid[y * BWAPI::Broodwar->mapWidth() + x].first);
+		}
+	}
+}
+
+int GameState::getDefenseGroundScore(BWAPI::TilePosition position_score)
+{
+	if (position_score.isValid())
+		return defense_grid[position_score.y * BWAPI::Broodwar->mapWidth() + position_score.x].first;
+	else
+		return -9000;
+}
+
+BWAPI::TilePosition GameState::getBuildLocation(BWAPI::UnitType build_type, Object build_worker)
+{
+	const BWEM::Area* worker_area = BWEM::Map::Instance().GetArea((BWAPI::TilePosition)build_worker.getCurrentPosition());
+	
+	BWAPI::TilePosition return_position = BWAPI::TilePositions::Invalid;
+	//Is the worker in a valid area?
+	if (!worker_area)
+	{
+		//Worker is not in a valid area, return invalid position.
+		return return_position;
+	}
+	
+	//Get base for the area.
+	AIBase* worker_base = getBaseforArea(worker_area);
+	if (worker_base->getCanSearch() &&
+		worker_base->getTimesSearched() > 3)
+	{
+		worker_base->setCanSearch(false);
+	}
+
+	//6x3 build location
+	if (build_type.canBuildAddon())
+	{
+		if (six_by_three_positions.size() == 0)
+		{
+			//Check if this area is one we want to try to place blocks in.
+			if (!worker_base->getCanSearch())
+			{
+				//Cannot search this area.
+				return return_position;
+			}
+			//No positions stored, attempt to place a block.
+			if (tryPlacingBlocks(worker_area, build_type))
+			{
+				//We were able to place a block, so there will be a position to return.
+				return_position = getPositionFromVector(worker_area, &six_by_three_positions);
+				return return_position;
+			}
+			else
+			{
+				worker_base->addTimesSearched(1);
+				return return_position;
+			}
+		}
+		else
+		{
+			//Attempt to fetch a position from the vector.
+			return_position = getPositionFromVector(worker_area, &six_by_three_positions);
+			if (return_position != BWAPI::TilePositions::Invalid)
+			{
+				//found a position, return it.
+				return return_position;
+			}
+			else
+			{
+				//Check if this area is one we want to try to place blocks in.
+				if (!worker_base->getCanSearch())
+				{
+					//Cannot search this area.
+					return return_position;
+				}
+				//No position found, try placing a block and returning a position from the placed block.
+				if (tryPlacingBlocks(worker_area, build_type))
+				{
+					//We were able to place a block, so there will be a position to return.
+					return_position = getPositionFromVector(worker_area, &six_by_three_positions);
+					return return_position;
+				}
+				else
+				{
+					worker_base->addTimesSearched(1);
+					return return_position;
+				}
+			}
+		}
+	}
+	//Defensive Position
+	else if (build_type == BWAPI::UnitTypes::Terran_Bunker)
+	{
+		if (three_by_two_defense_positions.size() == 0)
+		{
+			//Check if this area is one we want to try to place blocks in.
+			if (!worker_base->getCanSearch())
+			{
+				//Cannot search this area.
+				return return_position;
+			}
+			//No positions stored, attempt to place a block.
+			if (tryPlacingBlocks(worker_area, build_type))
+			{
+				//We were able to place a block, so there will be a position to return.
+				return_position = getPositionFromVector(worker_area, &three_by_two_defense_positions);
+				return return_position;
+			}
+			else
+			{
+				worker_base->addTimesSearched(1);
+				return return_position;
+			}
+		}
+		else
+		{
+			return_position = getPositionFromVector(worker_area, &three_by_two_defense_positions);
+			if (return_position != BWAPI::TilePositions::Invalid)
+			{
+				//found a position, return it.
+				return return_position;
+			}
+			else
+			{
+				//Check if this area is one we want to try to place blocks in.
+				if (!worker_base->getCanSearch())
+				{
+					//Cannot search this area.
+					return return_position;
+				}
+				//No position found, try placing a block and returning a position from the placed block.
+				if (tryPlacingBlocks(worker_area, build_type))
+				{
+					//We were able to place a block, so there will be a position to return.
+					return_position = getPositionFromVector(worker_area, &three_by_two_defense_positions);
+					return return_position;
+				}
+				else
+				{
+					worker_base->addTimesSearched(1);
+					return return_position;
+				}
+			}
+		}
+	}
+	//4x3 build location
+	else if (build_type.tileWidth() == 4)
+	{
+		if (four_by_three_positions.size() == 0)
+		{
+			//Check if this area is one we want to try to place blocks in.
+			if (!worker_base->getCanSearch())
+			{
+				//Cannot search this area.
+				return return_position;
+			}
+			//No positions stored, attempt to place a block.
+			if (tryPlacingBlocks(worker_area, build_type))
+			{
+				//We were able to place a block, so there will be a position to return.
+				//If the building requires power, we need to use the power checking version,
+				//as there may not be a position with power available.
+				if (build_type.requiresPsi())
+					return_position = getPositionFromVectorWithPower(worker_area, &four_by_three_positions, build_type);
+				else
+					return_position = getPositionFromVector(worker_area, &four_by_three_positions);
+				return return_position;
+			}
+			else
+			{
+				worker_base->addTimesSearched(1);
+				return return_position;
+			}
+		}
+		else
+		{
+			//Attempt to fetch a position from the vector.
+			//If the building requires power, we need to use the power checking version,
+			//as there may not be a position with power available.
+			if (build_type.requiresPsi())
+				return_position = getPositionFromVectorWithPower(worker_area, &four_by_three_positions, build_type);
+			else
+				return_position = getPositionFromVector(worker_area, &four_by_three_positions);
+			if (return_position != BWAPI::TilePositions::Invalid)
+			{
+				//found a position, return it.
+				return return_position;
+			}
+			else
+			{
+				//Check if this area is one we want to try to place blocks in.
+				if (!worker_base->getCanSearch())
+				{
+					//Cannot search this area.
+					return return_position;
+				}
+				//No position found, try placing a block if building does not require Psi and returning a position from the placed block.
+				if (!build_type.requiresPsi())
+				{
+					//Check if this area is one we want to try to place blocks in. If it is,
+					//increment the search counter. If search counter is more than 4, mark
+					//it for no further searching.
+					if (!worker_base->getCanSearch())
+					{
+						//Cannot search this area.
+						return return_position;
+					}
+					if (tryPlacingBlocks(worker_area, build_type))
+					{
+						//We were able to place a block, so there will be a position to return.
+						//If the building requires power, we need to use the power checking version,
+						//as there may not be a position with power available.
+						if (build_type.requiresPsi())
+							return_position = getPositionFromVectorWithPower(worker_area, &four_by_three_positions, build_type);
+						else
+							return_position = getPositionFromVector(worker_area, &four_by_three_positions);
+						return return_position;
+					}
+					else
+					{
+						worker_base->addTimesSearched(1);
+						return return_position;
+					}
+				}
+				else
+					return return_position;
+			}
+		}
+	}
+	//3x2 build location
+	else if (build_type.tileWidth() == 3)
+	{
+		if (three_by_two_positions.size() == 0)
+		{
+			//Check if this area is one we want to try to place blocks in.
+			if (!worker_base->getCanSearch())
+			{
+				//Cannot search this area.
+				return return_position;
+			}
+			//No positions stored, attempt to place a block.
+			if (tryPlacingBlocks(worker_area, build_type))
+			{
+				//We were able to place a block, so there will be a position to return.
+				//If the building requires power, we need to use the power checking version,
+				//as there may not be a position with power available.
+				if (build_type.requiresPsi())
+					return_position = getPositionFromVectorWithPower(worker_area, &three_by_two_positions, build_type);
+				else
+					return_position = getPositionFromVector(worker_area, &three_by_two_positions);
+				return return_position;
+			}
+			else
+			{
+				worker_base->addTimesSearched(1);
+				return return_position;
+			}
+		}
+		else
+		{
+			//Attempt to fetch a position from the vector.
+			//If the building requires power, we need to use the power checking version,
+			//as there may not be a position with power available.
+			if (build_type.requiresPsi())
+				return_position = getPositionFromVectorWithPower(worker_area, &three_by_two_positions, build_type);
+			else
+				return_position = getPositionFromVector(worker_area, &three_by_two_positions);
+			if (return_position != BWAPI::TilePositions::Invalid)
+			{
+				//found a position, return it.
+				return return_position;
+			}
+			else
+			{
+				//No position found, try placing a block if building does not require Psi and returning a position from the placed block.
+				if (!build_type.requiresPsi())
+				{
+					//Check if this area is one we want to try to place blocks in.
+					if (!worker_base->getCanSearch())
+					{
+						//Cannot search this area.
+						return return_position;
+					}
+					if (tryPlacingBlocks(worker_area, build_type))
+					{
+						//We were able to place a block, so there will be a position to return.
+						//If the building requires power, we need to use the power checking version,
+						//as there may not be a position with power available.
+						if (build_type.requiresPsi())
+							return_position = getPositionFromVectorWithPower(worker_area, &three_by_two_positions, build_type);
+						else
+							return_position = getPositionFromVector(worker_area, &three_by_two_positions);
+						return return_position;
+					}
+					else
+					{
+						worker_base->addTimesSearched(1);
+						return return_position;
+					}
+				}
+				else
+					return return_position;
+			}
+		}
+	}
+	//2x2 build location
+	else
+	{
+		if (two_by_two_positions.size() == 0)
+		{
+			//Check if this area is one we want to try to place blocks in.
+			if (!worker_base->getCanSearch())
+			{
+				//Cannot search this area.
+				return return_position;
+			}
+			//No positions stored, attempt to place a block.
+			if (tryPlacingBlocks(worker_area, build_type))
+			{
+				//We were able to place a block, so there will be a position to return.
+				//If the building requires power, we need to use the power checking version,
+				//as there may not be a position with power available.
+				if (build_type.requiresPsi())
+					return_position = getPositionFromVectorWithPower(worker_area, &two_by_two_positions, build_type);
+				else
+					return_position = getPositionFromVector(worker_area, &two_by_two_positions);
+				return return_position;
+			}
+			else
+			{
+				worker_base->addTimesSearched(1);
+				return return_position;
+			}
+		}
+		else
+		{
+			//Attempt to fetch a position from the vector.
+			//If the building requires power, we need to use the power checking version,
+			//as there may not be a position with power available.
+			if (build_type.requiresPsi())
+				return_position = getPositionFromVectorWithPower(worker_area, &two_by_two_positions, build_type);
+			else
+				return_position = getPositionFromVector(worker_area, &two_by_two_positions);
+			if (return_position != BWAPI::TilePositions::Invalid)
+			{
+				//found a position, return it.
+				return return_position;
+			}
+			else
+			{
+				//No position found, try placing a block if building does not require Psi and returning a position from the placed block.
+				if (!build_type.requiresPsi())
+				{
+					//Check if this area is one we want to try to place blocks in.
+					if (!worker_base->getCanSearch())
+					{
+						//Cannot search this area.
+						return return_position;
+					}
+					if (tryPlacingBlocks(worker_area, build_type))
+					{
+						//We were able to place a block, so there will be a position to return.
+						//If the building requires power, we need to use the power checking version,
+						//as there may not be a position with power available.
+						if (build_type.requiresPsi())
+							return_position = getPositionFromVectorWithPower(worker_area, &two_by_two_positions, build_type);
+						else
+							return_position = getPositionFromVector(worker_area, &two_by_two_positions);
+						return return_position;
+					}
+					else
+					{
+						worker_base->addTimesSearched(1);
+						return return_position;
+					}
+				}
+				else
+					return return_position;
+			}
+		}
+	}
+}
+
+bool GameState::checkRegionBuildable(BWAPI::TilePosition top_left, std::pair<int, int> size)
+{
+	//check that the region defined in the parameters is clear in the buildmap.
+	for (int x = top_left.x - 1; x < top_left.x + size.first + 1; x++)
+	{
+		if (x > BWAPI::Broodwar->mapWidth())
+			return false;
+		for (int y = top_left.y - 1; y < top_left.y + size.second + 1; y++)
+		{
+			if (y > BWAPI::Broodwar->mapHeight())
+				return false;
+			if (y * BWAPI::Broodwar->mapWidth() + x < build_position_map.size())
+			{
+				if (!build_position_map.at(y * BWAPI::Broodwar->mapWidth() + x).first.unobstructed)
+				{
+					return false;
+				}
+			}
+			else
+				return false;
+		}
+	}
+	return true;
+}
+
+bool GameState::placeBlock(const BWEM::Area* area, std::pair<int, int> block_size, BlockType block_type, BWAPI::TilePosition search_center = BWAPI::TilePositions::Invalid)
+{
+	//Place block that contains a spot for the unittype passed. If placed, return true, if not, return false.
+	bool block_placed = false;
+	bool out_of_area = false;
+	BWAPI::TilePosition position_to_check;
+	if (search_center == BWAPI::TilePositions::Invalid)
+	{
+		if (block_type == BlockType::TBunkerTurret)
+		{
+			if (area->Bases().size() == 0)
+				search_center = (BWAPI::TilePosition)area->Top();
+			else
+			{
+				search_center = area->Bases().begin()->Location();
+				BWAPI::TilePosition forward_choke = BWAPI::TilePositions::Invalid;
+				for (auto choke_point : area->ChokePoints())
+				{
+					if (!choke_point->Blocked())
+					{
+						int base_class_1 = getBaseforArea(choke_point->GetAreas().first)->getBaseClass();
+						int base_class_2 = getBaseforArea(choke_point->GetAreas().second)->getBaseClass();
+						if ((base_class_1 != 3 &&
+							base_class_1 != 4) ||
+							(base_class_2 != 3 &&
+							base_class_2 != 4))
+						{
+							forward_choke = (BWAPI::TilePosition)choke_point->Center();
+						}
+					}
+				}
+				if (forward_choke != BWAPI::TilePositions::Invalid)
+				{
+					BWAPI::TilePosition direction = forward_choke - search_center;
+					search_center += BWAPI::TilePosition(direction.x / 1.2, direction.y / 1.2);
+				}
+			}
+		}
+		else
+		{
+			search_center = (BWAPI::TilePosition)area->Top();
+		}
+	}
+	position_to_check = search_center;
+	auto start_time = std::chrono::high_resolution_clock::now();
+	const BWEM::Area* area_to_check;
+	while (!block_placed)
+	{
+		if (checkRegionBuildable(position_to_check, block_size))
+		{
+			area_to_check = BWEM::Map::Instance().GetArea(position_to_check);
+			if (area_to_check == area)
+			{
+				area_to_check = BWEM::Map::Instance().GetArea(position_to_check + BWAPI::TilePosition(block_size.first, block_size.second));
+				if (area_to_check == area)
+				{
+					//This region is clear, and in the intended area, add build locations for this block and update buildmap.
+					BWAPI::TilePosition position_to_add;
+					position_to_add.x = position_to_check.x;
+					position_to_add.y = position_to_check.y;
+					switch (block_type)
+					{
+					case BlockType::TLargeAddonMacro:
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Factory, true);
+						six_by_three_positions.push_back(position_to_add);
+						position_to_add.y += 3;
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Factory, true);
+						six_by_three_positions.push_back(position_to_add);
+						position_to_add.y += 3;
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Factory, true);
+						six_by_three_positions.push_back(position_to_add);
+						break;
+					case BlockType::TMediumAddonMacro:
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Factory, true);
+						six_by_three_positions.push_back(position_to_add);
+						position_to_add.y += 3;
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Factory, true);
+						six_by_three_positions.push_back(position_to_add);
+						break;
+					case BlockType::TSmallAddonMacro:
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Factory, true);
+						six_by_three_positions.push_back(position_to_add);
+						break;
+					case BlockType::T2x1TurretBlock:
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Missile_Turret, true);
+						two_by_two_positions.push_back(position_to_add);
+						position_to_add.x += 2;
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Missile_Turret, true);
+						two_by_two_positions.push_back(position_to_add);
+						break;
+					case BlockType::T4x4SupplyBlock:
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Supply_Depot, true);
+						three_by_two_positions.push_back(position_to_add);
+						position_to_add.x += 3;
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Supply_Depot, true);
+						three_by_two_positions.push_back(position_to_add);
+						position_to_add.y += 2;
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Supply_Depot, true);
+						three_by_two_positions.push_back(position_to_add);
+						position_to_add.x -= 3;
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Supply_Depot, true);
+						three_by_two_positions.push_back(position_to_add);
+						break;
+					case BlockType::TMacro4Block:
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Barracks, true);
+						four_by_three_positions.push_back(position_to_add);
+						position_to_add.x += 4;
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Barracks, true);
+						four_by_three_positions.push_back(position_to_add);
+						position_to_add.y += 3;
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Barracks, true);
+						four_by_three_positions.push_back(position_to_add);
+						position_to_add.x -= 4;
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Barracks, true);
+						four_by_three_positions.push_back(position_to_add);
+						break;
+					case BlockType::TMediumMacroH:
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Barracks, true);
+						four_by_three_positions.push_back(position_to_add);
+						position_to_add.x += 4;
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Barracks, true);
+						four_by_three_positions.push_back(position_to_add);
+						break;
+					case BlockType::TMediumMacroV:
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Barracks, true);
+						four_by_three_positions.push_back(position_to_add);
+						position_to_add.y += 3;
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Barracks, true);
+						four_by_three_positions.push_back(position_to_add);
+						break;
+					case BlockType::TSmallMacro:
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Barracks, true);
+						four_by_three_positions.push_back(position_to_add);
+						break;
+					case BlockType::TTvZBunkerStart:
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Barracks, true);
+						four_by_three_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(1, 3);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Supply_Depot, true);
+						three_by_two_defense_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(3, -2);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Supply_Depot, true);
+						three_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(0, 2);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Barracks, true);
+						four_by_three_positions.push_back(position_to_add);;
+						break;
+					case BlockType::TBunkerTurret:
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Missile_Turret, true);
+						two_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(2, 0);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Terran_Missile_Turret, true);
+						three_by_two_defense_positions.push_back(position_to_add);
+						break;
+					case BlockType::P2Tech:
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Pylon, true);
+						two_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(2, 0);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Pylon, true);
+						two_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(2, 0);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Pylon, true);
+						two_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(-1, 2);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Robotics_Facility, true);
+						three_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(-3, 0);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Robotics_Facility, true);
+						three_by_two_positions.push_back(position_to_add);
+						break;
+					case BlockType::P4Macro:
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Gateway, true);
+						four_by_three_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(4, 1);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Pylon, true);
+						two_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(2, -1);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Gateway, true);
+						four_by_three_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(0, 3);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Gateway, true);
+						four_by_three_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(-2, 0);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Pylon, true);
+						two_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(-4, 0);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Gateway, true);
+						four_by_three_positions.push_back(position_to_add);
+						break;
+					case BlockType::P4Tech:
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Robotics_Facility, true);
+						three_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(3, 0);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Robotics_Facility, true);
+						three_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(1, 2);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Pylon, true);
+						two_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(-2, 0);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Pylon, true);
+						two_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(-2, 0);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Pylon, true);
+						two_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(0, 2);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Robotics_Facility, true);
+						three_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(3, 0);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Robotics_Facility, true);
+						three_by_two_positions.push_back(position_to_add);
+						break;
+					case BlockType::PLargeMacroTech:
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Gateway, true);
+						four_by_three_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(4, 0);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Pylon, true);
+						two_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(2, 0);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Robotics_Facility, true);
+						three_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(0, 2);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Robotics_Facility, true);
+						three_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(-2, 0);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Pylon, true);
+						two_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(-4, 1);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Gateway, true);
+						four_by_three_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(4, 1);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Pylon, true);
+						two_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(2, 0);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Gateway, true);
+						four_by_three_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(-2, 2);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Pylon, true);
+						two_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(-4, 0);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Gateway, true);
+						four_by_three_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(4, 2);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Pylon, true);
+						two_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(2, -1);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Gateway, true);
+						four_by_three_positions.push_back(position_to_add);
+						break;
+					case BlockType::PSingleMacro:
+						position_to_add += BWAPI::TilePosition(0, 1);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Pylon, true);
+						two_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(2, -1);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Gateway, true);
+						four_by_three_positions.push_back(position_to_add);
+						break;
+					case BlockType::PWideMacroTech:
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Gateway, true);
+						four_by_three_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(4, 0);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Robotics_Facility, true);
+						three_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(4, 0);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Gateway, true);
+						four_by_three_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(-2, 2);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Pylon, true);
+						two_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(-2, 0);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Pylon, true);
+						two_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(-4, 1);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Gateway, true);
+						four_by_three_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(4, 1);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Pylon, true);
+						two_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(2, 0);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Pylon, true);
+						two_by_two_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(2, -1);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Gateway, true);
+						four_by_three_positions.push_back(position_to_add);
+						position_to_add += BWAPI::TilePosition(-4, 3);
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Robotics_Facility, true);
+						three_by_two_positions.push_back(position_to_add);
+						break;
+					case BlockType::PSinglePylon:
+						updateBuildMap(position_to_add.x, position_to_add.y, BWAPI::UnitTypes::Protoss_Pylon, true);
+						two_by_two_positions.push_back(position_to_add);
+					}
+					block_placed = true;
+				}
+				else
+					out_of_area = true;
+			}
+			else
+				out_of_area = true;
+		}
+		if (!block_placed)
+		{
+			auto end_time = std::chrono::high_resolution_clock::now();
+			if (std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count() > 1)
+			{
+				return false;
+			}
+			if (out_of_area)
+			{
+				//Out of the area we want to build in.
+				position_to_check = search_center;
+				out_of_area = false;
+			}
+			else
+			{
+				//This region is not clear, pick a new position and try again.
+				position_to_check.x += getRandomInteger(-3, 3);
+				position_to_check.y += getRandomInteger(-3, 3);
+			}
+		}
+	}
+	return true;
+}
+
+BWAPI::TilePosition GameState::getPositionFromVector(const BWEM::Area* area, std::vector<BWAPI::TilePosition>* position_vector)
+{
+	//Return the first found position in the designated area.
+	auto position_iterator = position_vector->begin();
+	while (position_iterator != position_vector->end())
+	{
+		const BWEM::Area* position_area = BWEM::Map::Instance().GetArea(*position_iterator);
+		if (position_area)
+		{
+			if (position_area == area)
+			{
+				BWAPI::TilePosition return_position = *position_iterator;
+				*position_iterator = position_vector->back();
+				position_vector->pop_back();
+				return return_position;
+			}
+		}
+		position_iterator++;
+	}
+	return BWAPI::TilePositions::Invalid;
+}
+
+bool GameState::tryPlacingBlocks(const BWEM::Area* area, BWAPI::UnitType build_type)
+{
+	if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
+	{
+		if (build_type.canBuildAddon())
+		{
+			if (placeBlock(area, std::make_pair<int, int>(6, 9), BlockType::TLargeAddonMacro))
+				return true;
+			else
+			{
+				//No block placed. Try a different block type.
+				if (placeBlock(area, std::make_pair<int, int>(6, 6), BlockType::TMediumAddonMacro))
+					return true;
+				else
+				{
+					//No block placed. Try a different block type.
+					if (placeBlock(area, std::make_pair<int, int>(6, 3), BlockType::TSmallAddonMacro))
+						return true;
+					else
+					{
+						//No block placed, out of block types.
+						return false;
+					}
+				}
+			}
+		}
+		else if (build_type == BWAPI::UnitTypes::Terran_Bunker)
+		{
+			if (placeBlock(area, std::make_pair<int, int>(5, 2), BlockType::TBunkerTurret))
+				return true;
+			else
+				//No block placed, out of block types.
+				return false;
+		}
+		else if (build_type.tileWidth() == 4)
+		{
+			if (placeBlock(area, std::make_pair<int, int>(8, 6), BlockType::TMacro4Block))
+				return true;
+			else
+			{
+				//No block placed. Try a different block type.
+				if (placeBlock(area, std::make_pair<int, int>(8, 3), BlockType::TMediumMacroH))
+					return true;
+				else
+				{
+					//No block placed. Try a different block type.
+					if (placeBlock(area, std::make_pair<int, int>(4, 6), BlockType::TMediumMacroV))
+						return true;
+					else
+					{
+						//No block placed. Try a different block type.
+						if (placeBlock(area, std::make_pair<int, int>(4, 3), BlockType::TSmallMacro))
+							return true;
+						else
+						{
+							//No block placed, out of block types.
+							return false;
+						}
+					}
+				}
+			}
+		}
+		else if (build_type.tileWidth() == 3)
+		{
+			if (placeBlock(area, std::make_pair<int, int>(6, 4), BlockType::T4x4SupplyBlock))
+				return true;
+			else
+			{
+				//No block placed, out of block types.
+				return false;
+			}
+		}
+		else if (build_type.tileWidth() == 2)
+		{
+			if (placeBlock(area, std::make_pair<int, int>(4, 2), BlockType::T2x1TurretBlock))
+				return true;
+			else
+			{
+				//No block placed, out of block types.
+				return false;
+			}
+		}
+	}
+	else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss)
+	{
+		if (build_type.tileWidth() == 4)
+		{
+			if (placeBlock(area, std::make_pair<int, int>(10, 10), BlockType::PLargeMacroTech))
+				return true;
+			else
+			{
+				//No block placed. Try a different block type.
+				if (placeBlock(area, std::make_pair<int, int>(12, 8), BlockType::PWideMacroTech))
+					return true;
+				else
+				{
+					//No block placed. Try a different block type.
+					if (placeBlock(area, std::make_pair<int, int>(10, 6), BlockType::P4Macro))
+						return true;
+					else
+					{
+						//No block placed. Try a different block type.
+						if (placeBlock(area, std::make_pair<int, int>(6, 3), BlockType::PSingleMacro))
+							return true;
+						else
+						{
+							//No block placed, out of block types.
+							return false;
+						}
+					}
+				}
+			}
+		}
+		else if (build_type.tileWidth() == 3)
+		{
+			if (placeBlock(area, std::make_pair<int, int>(6, 6), BlockType::P4Tech))
+				return true;
+			else
+			{
+				//No block placed. Try a different block type.
+				if (placeBlock(area, std::make_pair<int, int>(6, 4), BlockType::P2Tech))
+					return true;
+				else
+				{
+					//No block placed, out of block types.
+					return false;
+				}
+			}
+		}
+		else if (build_type.tileWidth() == 2)
+		{
+			if (placeBlock(area, std::make_pair<int, int>(10, 10), BlockType::PLargeMacroTech))
+				return true;
+			else
+			{
+				//No block placed. Try a different block type.
+				if (placeBlock(area, std::make_pair<int, int>(12, 8), BlockType::PWideMacroTech))
+					return true;
+				else
+				{
+					//No block placed. Try a different block type.
+					if (placeBlock(area, std::make_pair<int, int>(10, 6), BlockType::P4Macro))
+						return true;
+					else
+					{
+						//No block placed. Try a different block type.
+						if (placeBlock(area, std::make_pair<int, int>(6, 3), BlockType::PSingleMacro))
+							return true;
+						else
+						{
+							//No block placed. Try a different block type.
+							if (placeBlock(area, std::make_pair<int, int>(10, 6), BlockType::PSinglePylon))
+								return true;
+							else
+							{
+								//No block placed, out of block types.
+								return false;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+void GameState::printReservedTilePositions()
+{
+	for (auto &current_position : six_by_three_positions)
+	{
+		BWAPI::Position top_left = (BWAPI::Position)current_position;
+		BWAPI::Position bottom_right;
+		bottom_right.x = top_left.x + 6 * 32;
+		bottom_right.y = top_left.y + 3 * 32;
+		BWAPI::Broodwar->drawBoxMap(top_left, bottom_right, BWAPI::Broodwar->self()->getColor());
+	}
+	for (auto &current_position : four_by_three_positions)
+	{
+		BWAPI::Position top_left = (BWAPI::Position)current_position;
+		BWAPI::Position bottom_right;
+		bottom_right.x = top_left.x + 4 * 32;
+		bottom_right.y = top_left.y + 3 * 32;
+		BWAPI::Broodwar->drawBoxMap(top_left, bottom_right, BWAPI::Broodwar->self()->getColor());
+	}
+	for (auto &current_position : three_by_two_positions)
+	{
+		BWAPI::Position top_left = (BWAPI::Position)current_position;
+		BWAPI::Position bottom_right;
+		bottom_right.x = top_left.x + 3 * 32;
+		bottom_right.y = top_left.y + 2 * 32;
+		BWAPI::Broodwar->drawBoxMap(top_left, bottom_right, BWAPI::Broodwar->self()->getColor());
+	}
+	for (auto &current_position : two_by_two_positions)
+	{
+		BWAPI::Position top_left = (BWAPI::Position)current_position;
+		BWAPI::Position bottom_right;
+		bottom_right.x = top_left.x + 2 * 32;
+		bottom_right.y = top_left.y + 2 * 32;
+		BWAPI::Broodwar->drawBoxMap(top_left, bottom_right, BWAPI::Broodwar->self()->getColor());
+	}
+	for (auto &current_position : three_by_two_defense_positions)
+	{
+		BWAPI::Position top_left = (BWAPI::Position)current_position;
+		BWAPI::Position bottom_right;
+		bottom_right.x = top_left.x + 3 * 32;
+		bottom_right.y = top_left.y + 2 * 32;
+		BWAPI::Broodwar->drawBoxMap(top_left, bottom_right, BWAPI::Broodwar->self()->getColor());
+	}
+}
+
+void GameState::addPositionToQueue(BWAPI::Unit unit)
+{
+	switch (unit->getType().tileWidth())
+	{
+	case 4:
+		if (unit->getType() == BWAPI::UnitTypes::Terran_Bunker)
+			three_by_two_defense_positions.push_back(unit->getTilePosition());
+		else
+			four_by_three_positions.push_back(unit->getTilePosition());
+		break;
+	case 3:
+		three_by_two_positions.push_back(unit->getTilePosition());
+		break;
+	case 2:
+		two_by_two_positions.push_back(unit->getTilePosition());
+		break;
+	}
+}
+
+void GameState::addTimesRetreated(int new_times_retreated)
+{
+	times_retreated += new_times_retreated;
+}
+
+int GameState::getTimesRetreated()
+{
+	return times_retreated;
+}
+
+BWAPI::TilePosition GameState::getPositionFromVectorWithPower(const BWEM::Area* area, std::vector<BWAPI::TilePosition>* position_vector, BWAPI::UnitType build_type)
+{
+	//Return the first found position in the designated area.
+	//If building requires power, check for power at the location.
+	auto position_iterator = position_vector->begin();
+	while (position_iterator != position_vector->end())
+	{
+		if (BWAPI::Broodwar->hasPower(*position_iterator, build_type))
+		{
+			const BWEM::Area* position_area = BWEM::Map::Instance().GetArea(*position_iterator);
+			if (position_area)
+			{
+				if (position_area == area)
+				{
+					BWAPI::TilePosition return_position = *position_iterator;
+					*position_iterator = position_vector->back();
+					position_vector->pop_back();
+					return return_position;
+				}
+			}
+		}
+		position_iterator++;
+	}
+	return BWAPI::TilePositions::Invalid;
+}
+
+void GameState::addTemplarArchives(int new_templar_archive)
+{
+	templar_archives += new_templar_archive;
+}
+
+int GameState::getTemplarArchives()
+{
+	return templar_archives;
 }

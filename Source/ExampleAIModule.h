@@ -10,6 +10,7 @@
 #include"Objective.h"
 #include"Resource.h"
 
+
 // Remember not to use "Broodwar" in any global class constructor!
 
 class ExampleAIModule : public BWAPI::AIModule
@@ -39,7 +40,6 @@ public:
   WorkerManager worker_manager;
   MacroManager macro_manager;
   MilitaryManager military_manager;
-  bool scouted;
   double assess_game_time;
   double manage_workers_time;
   double check_macro_time;

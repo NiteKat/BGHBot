@@ -83,6 +83,7 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
     </ClCompile>
     <PreLinkEvent />
     <Link>
@@ -119,6 +120,7 @@
     <ClCompile Include="Source\BWEM 1.3.1\src\winutils.cpp" />
     <ClCompile Include="Source\Dll.cpp" />
     <ClCompile Include="Source\ExampleAIModule.cpp" />
+    <ClCompile Include="Source\FAP.cpp" />
     <ClCompile Include="Source\GameState.cpp" />
     <ClCompile Include="Source\MacroManager.cpp" />
     <ClCompile Include="Source\MilitaryManager.cpp" />
@@ -148,6 +150,7 @@
     <ClInclude Include="Source\BWEM 1.3.1\src\utils.h" />
     <ClInclude Include="Source\BWEM 1.3.1\src\winutils.h" />
     <ClInclude Include="Source\ExampleAIModule.h" />
+    <ClInclude Include="Source\FAP.h" />
     <ClInclude Include="Source\GameState.h" />
     <ClInclude Include="Source\MacroManager.h" />
     <ClInclude Include="Source\MilitaryManager.h" />

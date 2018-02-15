@@ -16,6 +16,8 @@ public:
 	void toggleScouted();
 	void toggleSecondaryScouted();
 	void addMineral(Resource new_mineral);
+	void addTimesSearched(int new_times_searched);
+	void setCanSearch(bool new_can_search);
 
 	const BWEM::Area *getArea();
 	int getBaseClass();
@@ -24,6 +26,9 @@ public:
 	bool getSecondaryScouted();
 	bool removeMineral(Resource mineral);
 	std::vector<Resource> *getMinerals();
+	int getTileCount();
+	int getTimesSearched();
+	bool getCanSearch();
 
 private:
 	const BWEM::Area *my_area;
@@ -32,6 +37,9 @@ private:
 	bool scouted;
 	bool secondary_scouted;
 	std::vector<Resource> minerals;
+	int number_tile_positions;
+	int times_searched;
+	bool can_search;
 };
 
 #endif

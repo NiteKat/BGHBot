@@ -7,6 +7,9 @@ AIBase::AIBase()
 	distance = 0;
 	scouted = false;
 	secondary_scouted = false;
+	number_tile_positions = 0;
+	times_searched = 0;
+	can_search = true;
 }
 
 AIBase::AIBase(const BWEM::Area *new_area, int new_base_class)
@@ -15,6 +18,24 @@ AIBase::AIBase(const BWEM::Area *new_area, int new_base_class)
 	base_class = new_base_class;
 	scouted = false;
 	secondary_scouted = false;
+	BWAPI::TilePosition current_position;
+	number_tile_positions = 0;
+	for (int x = 0; x < BWAPI::Broodwar->mapWidth(); x++)
+	{
+		current_position.x = x;
+		for (int y = 0; y < BWAPI::Broodwar->mapHeight(); y++)
+		{
+			current_position.y = y;
+			const BWEM::Area* area_to_check = BWEM::Map::Instance().GetArea(current_position);
+			if (area_to_check != nullptr)
+			{
+				if (area_to_check = new_area)
+					number_tile_positions++;
+			}
+		}
+	}
+	times_searched = 0;
+	can_search = true;
 }
 
 void AIBase::setArea(const BWEM::Area *new_area)
@@ -97,4 +118,29 @@ bool AIBase::removeMineral(Resource mineral)
 std::vector<Resource>* AIBase::getMinerals()
 {
 	return &minerals;
+}
+
+int AIBase::getTileCount()
+{
+	return number_tile_positions;
+}
+
+void AIBase::addTimesSearched(int new_times_searched)
+{
+	times_searched += new_times_searched;
+}
+
+void AIBase::setCanSearch(bool new_can_search)
+{
+	can_search = new_can_search;
+}
+
+int AIBase::getTimesSearched()
+{
+	return times_searched;
+}
+
+bool AIBase::getCanSearch()
+{
+	return can_search;
 }

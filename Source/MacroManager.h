@@ -8,12 +8,13 @@
 #include"AIBase.h"
 #include"WorkerManager.h"
 
+
 class MacroManager
 {
 public:
 	MacroManager();
 
-	void checkMacro(WorkerManager* worker_manager, GameState &game_state);
+	void checkMacro(WorkerManager* worker_manager, GameState &game_statem);
 
 private:
 };

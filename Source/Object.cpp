@@ -1,4 +1,5 @@
 #include"Object.h"
+#include"FAP.h"
 
 Object::Object(BWAPI::Unit new_unit, AIBase *new_base)
 {
@@ -11,6 +12,14 @@ Object::Object(BWAPI::Unit new_unit, AIBase *new_base)
 	elapsed_time_order_given = 0;
 	target_base = nullptr;
 	my_resource = nullptr;
+	my_type = new_unit->getType();
+	current_hit_points = new_unit->getHitPoints();
+	max_hit_points = my_type.maxHitPoints();
+	current_position = new_unit->getPosition();
+	current_shields = new_unit->getShields();
+	max_shields = my_type.maxShields();
+	remaining_attack_cooldown = new_unit->getGroundWeaponCooldown();
+	my_player = new_unit->getPlayer();
 }
 
 Object::Object(BWAPI::Unit new_unit)
@@ -24,6 +33,35 @@ Object::Object(BWAPI::Unit new_unit)
 	elapsed_time_order_given = 0;
 	target_base = nullptr;
 	my_resource = nullptr;
+	my_type = new_unit->getType();
+	current_hit_points = new_unit->getHitPoints();
+	max_hit_points = my_type.maxHitPoints();
+	current_position = new_unit->getPosition();
+	current_shields = new_unit->getShields();
+	max_shields = my_type.maxShields();
+	remaining_attack_cooldown = new_unit->getGroundWeaponCooldown();
+	my_player = new_unit->getPlayer();
+}
+
+Object::Object(const Neolib::FAPUnit &fu)
+{
+	my_unit = nullptr;
+	my_base = nullptr;
+	build_type = BWAPI::UnitTypes::Unknown;
+	base_class = 0;
+	my_discovered_position = BWAPI::TilePositions::Invalid;
+	is_building = false;
+	elapsed_time_order_given = 0;
+	target_base = nullptr;
+	my_resource = nullptr;
+	my_type = fu.unitType;
+	current_hit_points = fu.health;
+	max_hit_points = fu.maxHealth;
+	current_position = {fu.x, fu.y};
+	current_shields = fu.shields;
+	max_shields = fu.maxShields;
+	remaining_attack_cooldown = fu.groundCooldown;
+	my_player = fu.player;
 }
 
 Object::Object()
@@ -37,6 +75,14 @@ Object::Object()
 	elapsed_time_order_given = 0;
 	target_base = nullptr;
 	my_resource = nullptr;
+	my_type = BWAPI::UnitTypes::None;
+	current_hit_points = 0;
+	max_hit_points = 0;
+	current_position = BWAPI::Position(0, 0);
+	current_shields = 0;
+	max_shields = 0;
+	remaining_attack_cooldown = 0;
+	my_player = nullptr;
 }
 
 void Object::setBuildType(BWAPI::UnitType new_build_type)
@@ -181,4 +227,73 @@ BWAPI::Unit Object::getResourceTarget()
 void Object::setResourceTarget(BWAPI::Unit resource)
 {
 	my_resource = resource;
+}
+
+int Object::getCurrentHitPoints()
+{
+	return current_hit_points;
+}
+
+int Object::getMaxHitPoints()
+{
+	return max_hit_points;
+}
+
+BWAPI::Position Object::getCurrentPosition()
+{
+	return current_position;
+}
+
+int Object::getCurrentShields()
+{
+	return current_shields;
+}
+
+int Object::getMaxShields()
+{
+	return max_shields;
+}
+
+BWAPI::UnitType Object::getType()
+{
+	return my_type;
+}
+
+int Object::getRemainingAttackCooldown()
+{
+	return remaining_attack_cooldown;
+}
+
+bool Object::expired()
+{
+	if (BWAPI::Broodwar->getFrameCount() - last_frame_seen >= 1920)
+		return true;
+	else
+		return false;
+}
+
+void Object::updateObject()
+{
+	if (my_unit->exists())
+	{
+		current_hit_points = my_unit->getHitPoints();
+		max_hit_points = my_type.maxHitPoints();
+		current_position = my_unit->getPosition();
+		current_shields = my_unit->getShields();
+		max_shields = my_type.maxShields();
+		remaining_attack_cooldown = my_unit->getGroundWeaponCooldown();
+		my_player = my_unit->getPlayer();
+	}
+	else
+	{
+		if (BWAPI::Broodwar->isVisible((BWAPI::TilePosition)current_position))
+		{
+			current_position = BWAPI::Positions::Unknown;
+		}
+	}
+}
+
+BWAPI::Player Object::getPlayer()
+{
+	return my_player;
 }

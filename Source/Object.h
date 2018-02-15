@@ -5,11 +5,17 @@
 #include "AIBase.h"
 #include<vector>
 
+namespace Neolib {
+	struct FAPUnit;
+
+}
+
 class Object
 {
 public:
 	Object(BWAPI::Unit new_unit, AIBase *my_base);
 	Object(BWAPI::Unit new_unit);
+	Object(const Neolib::FAPUnit &fu);
 	Object();
 
 	void setBuildType(BWAPI::UnitType new_build_type);
@@ -25,6 +31,7 @@ public:
 	void setTargetBuildLocation(BWAPI::TilePosition new_target_build_location);
 	void setRepairTarget(BWAPI::Unit new_repair_target);
 	void setResourceTarget(BWAPI::Unit resource);
+	void updateObject();
 
 	BWAPI::Unit getUnit();
 	AIBase *getBase();
@@ -37,6 +44,15 @@ public:
 	BWAPI::TilePosition getTargetBuildLocation();
 	BWAPI::Unit getRepairTarget();
 	BWAPI::Unit getResourceTarget();
+	int getCurrentHitPoints();
+	int getMaxHitPoints();
+	BWAPI::Position getCurrentPosition();
+	int getCurrentShields();
+	int getMaxShields();
+	BWAPI::UnitType getType();
+	int getRemainingAttackCooldown();
+	bool expired();
+	BWAPI::Player getPlayer();
 
 private:
 	BWAPI::Unit my_unit;
@@ -51,6 +67,15 @@ private:
 	BWAPI::TilePosition target_build_location;
 	BWAPI::Unit my_repair_target;
 	BWAPI::Unit my_resource;
+	int current_hit_points;
+	int max_hit_points;
+	BWAPI::Position current_position;
+	int current_shields;
+	int max_shields;
+	BWAPI::UnitType my_type;
+	int remaining_attack_cooldown;
+	int last_frame_seen;
+	BWAPI::Player my_player;
 };
 
 #endif
