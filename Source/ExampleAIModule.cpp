@@ -778,6 +778,12 @@ void ExampleAIModule::onUnitMorph(BWAPI::Unit unit)
 	}
 	else
 	{
+		if (unit->getType() == BWAPI::UnitTypes::Resource_Vespene_Geyser)
+		{
+			auto dead_enemy = game_state.getEnemyUnits()->find(unit->getID());
+			if (dead_enemy != game_state.getEnemyUnits()->end())
+				game_state.getEnemyUnits()->erase(dead_enemy);
+		}
 		if (unit->getBuildType() == BWAPI::UnitTypes::Zerg_Overlord &&
 			unit->getPlayer() == Broodwar->self())
 		{

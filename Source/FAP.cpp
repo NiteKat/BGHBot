@@ -497,6 +497,7 @@ namespace Neolib {
 		}
 		else if (ed.getType() == BWAPI::UnitTypes::Protoss_Reaver)
 		{
+			groundCooldown = 60;
 			groundDamage = ed.getPlayer()->damage(BWAPI::WeaponTypes::Scarab);
 		}
 

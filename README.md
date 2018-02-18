@@ -1,7 +1,11 @@
-BGH Bot Version 1.11a
+BGH Bot Version 1.12a
 This is a Broodwar AI developed in C++ using Visual Studio Community 2013, BWAPI, the BWEM library, and the BWEB library. This bot is designed for normal money maps and for all races.
 
 Version History:
+1.12a
+Changes:
+-Fixed Protoss bug related to Zerg Extractors.
+
 1.12
 Changes:
 -Added BWEB library.
