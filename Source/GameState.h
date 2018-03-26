@@ -8,6 +8,7 @@
 #include<random>
 #include<chrono>
 #include<fstream>
+#include<set>
 
 struct TileFlags
 {
@@ -26,7 +27,9 @@ enum class BuildOrder
 	P4GateGoonMid,
 	P4GateGoonLate,
 	PForgeFastExpand9poolOpening,
-	FivePool
+	FivePool,
+	TAyumiBuildOpening,
+	TeamMeleeorFFA
 };
 
 enum class BlockType
@@ -59,9 +62,12 @@ public:
 	void addAIBase(AIBase new_base);
 	void addBuilding(Object new_building);
 	void addSupplyUsed(double new_supply);
+	void addSupplyUsed(double new_supply, BWAPI::Race race);
 	void addSupplyTotal(int new_supply);
+	void addSupplyTotal(int new_supply, BWAPI::Race race);
 	void addMineralsCommitted(int new_minerals);
 	void addSupplyExpected(int new_supply);
+	void addSupplyExpected(int new_supply, BWAPI::Race race);
 	void toggleAcademy();
 	void addMineralWorker(Object new_worker);
 	void addBarracks(int new_barracks);
@@ -125,18 +131,32 @@ public:
 	void addPositionToQueue(BWAPI::Unit unit);
 	void addTimesRetreated(int new_times_retreated);
 	void addTemplarArchives(int new_templar_archive);
+	void setTerran(bool new_terran);
+	void setProtoss(bool new_protoss);
+	void setZerg(bool new_zerg);
+	void addCommandCenter(int new_command_center);
+	void addNexus(int new_nexus);
+	void addGateway(int new_gateway);
+	void setNoPoweredPositions(bool new_no_powered_positions);
+	void setPylonBuilding(bool new_pylon_building);
+	void addHydraliskDen(int new_hydralisk_den);
+	void addPositionToQueue(BWAPI::UnitType build_type, BWAPI::TilePosition position);
+	void printExpansionScores();
 	
 	AIBase *getContainingBase(BWAPI::Unit);
 	AIBase *getContainingBase(BWAPI::TilePosition tile_position);
 	std::vector<AIBase> *getBaseList();
 	double getSupplyUsed();
+	double getSupplyUsed(BWAPI::Race race);
 	Object getScout();
 	int getMineralWorkerCount();
 	std::vector<Object> *getBuildingList();
 	int getMineralsCommitted();
 	double getSupplyTotal();
+	double getSupplyTotal(BWAPI::Race race);
 	int getBarracks();
 	double getSupplyExpected();
+	double getSupplyExpected(BWAPI::Race race);
 	std::map<int, Object> *getEnemyUnits();
 	std::vector<Object> *getMineralWorkers();
 	std::vector<Object> *getBuildWorkers();
@@ -214,7 +234,18 @@ public:
 	bool placeBlock(const BWEM::Area* area, std::pair<int, int> block_size, BlockType block_type, BWAPI::TilePosition search_center);
 	int getTimesRetreated();
 	int getTemplarArchives();
-	
+	bool getTerran();
+	bool getProtoss();
+	bool getZerg();
+	int getCommandCenter();
+	int getNexus();
+	int getGateway();
+	bool getNoPoweredPositions();
+	bool getPylonBuilding();
+	int getMiningBaseCount();
+	bool hasUnitTypeRequirement(BWAPI::UnitType unit_type);
+	int getHydraliskDen();
+	AIBase* getBaseForExpansion();
 	
 private:
 	std::vector<Object> building_list;
@@ -235,11 +266,17 @@ private:
 	std::vector<BWAPI::TilePosition> three_by_two_positions;
 	std::vector<BWAPI::TilePosition> two_by_two_positions;
 	std::vector<BWAPI::TilePosition> three_by_two_defense_positions;
-	std::vector<std::pair<int, int>> defense_grid;
+	std::vector<std::pair<double, int>> defense_grid;
 	
-	double supply_used;
-	double supply_total;
-	double supply_expected;
+	double supply_used_terran;
+	double supply_used_protoss;
+	double supply_used_zerg;
+	double supply_total_terran;
+	double supply_total_protoss;
+	double supply_total_zerg;
+	double supply_expected_terran;
+	double supply_expected_protoss;
+	double supply_expected_zerg;
 	int minerals_committed;
 	int barracks;
 	bool academy;
@@ -278,11 +315,21 @@ private:
 	int times_retreated;
 	bool pylon_building;
 	int templar_archives;
+	int command_center;
+	int nexus;
+	int gateway;
+	bool no_powered_positions;
+	int hydralisk_den;
 
 	bool checkRegionBuildable(BWAPI::TilePosition top_left, std::pair<int, int> size);
-	BWAPI::TilePosition getPositionFromVector(const BWEM::Area* area, std::vector<BWAPI::TilePosition>* position_vector);
+	BWAPI::TilePosition getPositionFromVector(const BWEM::Area* area, std::vector<BWAPI::TilePosition>* position_vector, bool is_resource_center = false);
 	BWAPI::TilePosition getPositionFromVectorWithPower(const BWEM::Area* area, std::vector<BWAPI::TilePosition>* position_vector, BWAPI::UnitType build_type);
 	bool tryPlacingBlocks(const BWEM::Area* area, BWAPI::UnitType build_type);
+
+	//team Melee related variables
+	bool terran;
+	bool protoss;
+	bool zerg;
 };
 
 #endif

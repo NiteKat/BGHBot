@@ -9,6 +9,8 @@ MilitaryManager::MilitaryManager()
 void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &game_state)
 {
 	AIBase* target_base = game_state.getClosestEnemyBase();
+	bool defense_target_aquired = false;
+	BWAPI::Position defense_target_position;
 	/*if (global_strategy == 0 &&
 		game_state.getMilitary()->size() > 50 &&
 		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran &&
@@ -368,6 +370,33 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 						}
 					}
 				}
+				auto enemy_iterator = game_state.getEnemyUnits()->begin();
+				while (enemy_iterator != game_state.getEnemyUnits()->end())
+				{
+					if (enemy_iterator->second.getUnit()->exists())
+					{
+						AIBase* base_to_check = game_state.getContainingBase(enemy_iterator->second.getUnit());
+						int base_class = -1;
+						if (base_to_check != nullptr)
+							base_class = base_to_check->getBaseClass();
+						if (base_class == 3 ||
+							base_class == 4 ||
+							base_class == 5)
+						{
+							defense_target_position = enemy_iterator->second.getUnit()->getPosition();
+							defense_target_aquired = true;
+							enemy_iterator = game_state.getEnemyUnits()->end();
+						}
+						else
+						{
+							enemy_iterator++;
+						}
+					}
+					else
+					{
+						enemy_iterator++;
+					}
+				}
 			}
 
 
@@ -423,33 +452,47 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 					if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode &&
 						BWAPI::Broodwar->self()->hasResearched(BWAPI::TechTypes::Tank_Siege_Mode))
 					{
-						auto scanned_units = unit_iterator->getUnit()->getUnitsInRadius(BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode.groundWeapon().maxRange());
-						for (auto check_unit : scanned_units)
+						int max_range = BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode.groundWeapon().maxRange();
+						if (game_state.getGroundDistance(unit_iterator->getUnit()->getPosition(), (BWAPI::Position)idlePosition) <= max_range / 2 &&
+							!defense_target_aquired)
 						{
-							if (check_unit->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
-								!check_unit->isFlying())
+							unit_iterator->getUnit()->useTech(BWAPI::TechTypes::Tank_Siege_Mode);
+						}
+						else
+						{
+							auto scanned_units = unit_iterator->getUnit()->getUnitsInRadius(BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode.groundWeapon().maxRange());
+							for (auto check_unit : scanned_units)
 							{
-								unit_iterator->getUnit()->useTech(BWAPI::TechTypes::Tank_Siege_Mode);
-								break;
+								if (check_unit->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
+									!check_unit->isFlying())
+								{
+									unit_iterator->getUnit()->useTech(BWAPI::TechTypes::Tank_Siege_Mode);
+									break;
+								}
 							}
 						}
 					}
 					else if (unit_iterator->getUnit()->getType() == BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode)
 					{
-						bool nearby_enemy = false;
-						auto scanned_units = unit_iterator->getUnit()->getUnitsInRadius(BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode.groundWeapon().maxRange());
-						for (auto check_unit : scanned_units)
+						int max_range = BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode.groundWeapon().maxRange();
+						if (defense_target_aquired ||
+							game_state.getGroundDistance(unit_iterator->getUnit()->getPosition(), (BWAPI::Position)idlePosition) > max_range / 2)
 						{
-							if (check_unit->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
-								!check_unit->isFlying())
+							bool nearby_enemy = false;
+							auto scanned_units = unit_iterator->getUnit()->getUnitsInRadius(BWAPI::UnitTypes::Terran_Siege_Tank_Siege_Mode.groundWeapon().maxRange());
+							for (auto check_unit : scanned_units)
 							{
-								nearby_enemy = true;
-								break;
+								if (check_unit->getPlayer()->isEnemy(BWAPI::Broodwar->self()) &&
+									!check_unit->isFlying())
+								{
+									nearby_enemy = true;
+									break;
+								}
 							}
-						}
-						if (nearby_enemy == false)
-						{
-							unit_iterator->getUnit()->useTech(BWAPI::TechTypes::Tank_Siege_Mode);
+							if (nearby_enemy == false)
+							{
+								unit_iterator->getUnit()->useTech(BWAPI::TechTypes::Tank_Siege_Mode);
+							}
 						}
 					}
 					AIBase* my_current_area = game_state.getContainingBase(unit_iterator->getUnit());
@@ -470,58 +513,16 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 					if (unit_iterator->getUnit()->isIdle() ||
 						unit_iterator->getUnit()->getOrder() == BWAPI::Orders::Move)
 					{
-						bool target_aquired = false;
-						auto enemy_iterator = game_state.getEnemyUnits()->begin();
-						while (enemy_iterator != game_state.getEnemyUnits()->end())
+						if (defense_target_aquired)
 						{
-							if (enemy_iterator->second.getUnit()->exists())
-							{
-								AIBase* base_to_check = game_state.getContainingBase(enemy_iterator->second.getUnit());
-								int base_class = -1;
-								if (base_to_check != nullptr)
-									base_class = base_to_check->getBaseClass();
-								if (base_class == 3 ||
-									base_class == 4 ||
-									base_class == 5)
-								{
-									if (unit_iterator->getUnit()->getType() != BWAPI::UnitTypes::Protoss_High_Templar)
-									{
-										if (enemy_iterator->second.getUnit()->getType().isFlyer() &&
-											(unit_iterator->getUnit()->getType().airWeapon() != BWAPI::WeaponTypes::None ||
-											unit_iterator->getUnit()->getType().airWeapon() != BWAPI::WeaponTypes::Unknown))
-										{
-											unit_iterator->getUnit()->attack(enemy_iterator->second.getUnit()->getPosition());
-											target_aquired = true;
-											enemy_iterator = game_state.getEnemyUnits()->end();
-										}
-										else if (!enemy_iterator->second.getUnit()->getType().isFlyer())
-										{
-											unit_iterator->getUnit()->attack(enemy_iterator->second.getUnit()->getPosition());
-											target_aquired = true;
-											enemy_iterator = game_state.getEnemyUnits()->end();
-										}
-										else
-											enemy_iterator++;
-									}
-									else
-									{
-										unit_iterator->getUnit()->move(enemy_iterator->second.getUnit()->getPosition());
-										enemy_iterator = game_state.getEnemyUnits()->end();
-									}
-								}
-								else
-								{
-									enemy_iterator++;
-								}
-							}
+							if (unit_iterator->getType() != BWAPI::UnitTypes::Protoss_High_Templar)
+								unit_iterator->getUnit()->attack(defense_target_position);
 							else
-							{
-								enemy_iterator++;
-							}
+								unit_iterator->getUnit()->move(defense_target_position);
 						}
 						int max_ground_range = unit_iterator->getUnit()->getType().groundWeapon().maxRange();
 						int ground_distance_from_idle_position = game_state.getGroundDistance(unit_iterator->getUnit()->getPosition(), (BWAPI::Position)idlePosition);
-						if (!target_aquired &&
+						if (!defense_target_aquired &&
 							max_ground_range < 33)
 						{
 							if (ground_distance_from_idle_position > 100)
@@ -532,13 +533,16 @@ void MilitaryManager::checkMilitary(WorkerManager &worker_manager, GameState &ga
 						}
 						else
 						{
-							if (!target_aquired &&
+							if (!defense_target_aquired &&
 								ground_distance_from_idle_position > max_ground_range)
 								unit_iterator->getUnit()->move((BWAPI::Position)idlePosition);
-							else if (!target_aquired &&
+							else if (!defense_target_aquired &&
 								unit_iterator->getUnit()->getOrder() == BWAPI::Orders::Move &&
 								ground_distance_from_idle_position <= max_ground_range)
-								unit_iterator->getUnit()->stop();
+							{
+								if (unit_iterator->getType() != BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode)
+									unit_iterator->getUnit()->stop();
+							}	
 						}
 					}
 					

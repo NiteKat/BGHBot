@@ -87,7 +87,8 @@ void ExampleAIModule::onStart()
 			{
 				Resource new_mineral(unit);
 				if (unit->getType().isMineralField() &&
-					unit->getInitialResources() > 0)
+					unit->getInitialResources() > 0 &&
+					theMap.GetArea(unit->getTilePosition()) != nullptr)
 					game_state.getContainingBase(unit)->addMineral(new_mineral);
 			}
 			auto base_list_iterator = game_state.getBaseList()->begin();
@@ -128,6 +129,7 @@ void ExampleAIModule::onStart()
 		}*/
 		if (Broodwar->self()->getRace() == Races::Protoss)
 		{
+			//game_state.setBuildOrder(BuildOrder::P2Gate1);
 			if (Broodwar->enemies().size() == 1 &&
 				Broodwar->enemy()->getRace() == BWAPI::Races::Terran)
 				game_state.setBuildOrder(BuildOrder::P2Gate1);
@@ -140,16 +142,44 @@ void ExampleAIModule::onStart()
 		}
 		else if (Broodwar->self()->getRace() == Races::Zerg)
 		{
-			if (Broodwar->enemies().size())
+			if (Broodwar->enemies().size() == 1)
 				game_state.setBuildOrder(BuildOrder::FivePool);
 		}
+		/*else
+		{
+			game_state.setBuildOrder(BuildOrder::TAyumiBuildOpening);
+		}*/
 		game_state.initializeGasLocations();
 		Broodwar << game_state.getEnemyUnits()->size() << std::endl;
+		Broodwar << BWAPI::Broodwar->getGameType() << std::endl;
 		assess_game_time = 0;
 		manage_workers_time = 0;
 		check_macro_time = 0;
 		check_military_time = 0;
 		game_state.initDefenseGrid();
+		if (BWAPI::Broodwar->getGameType() == BWAPI::GameTypes::Team_Free_For_All ||
+			BWAPI::Broodwar->getGameType() == BWAPI::GameTypes::Team_Melee)
+		{
+			game_state.setBuildOrder(BuildOrder::TeamMeleeorFFA);
+			for (auto& unit : BWAPI::Broodwar->self()->getUnits())
+			{
+				if (unit->getType().getRace() == BWAPI::Races::Terran)
+					game_state.setTerran(true);
+				else if (unit->getType().getRace() == BWAPI::Races::Protoss)
+					game_state.setProtoss(true);
+				else if (unit->getType().getRace() == BWAPI::Races::Zerg)
+					game_state.setZerg(true);
+				switch (unit->getType())
+				{
+				case UnitTypes::Terran_Command_Center:
+					game_state.addCommandCenter(1);
+					break;
+				case UnitTypes::Protoss_Nexus:
+					game_state.addNexus(1);
+					break;
+				}
+			}
+		}
 	}
 	catch (const std::exception & e)
 	{
@@ -175,7 +205,7 @@ void ExampleAIModule::onFrame()
 			Broodwar->drawTextScreen(0, 20, "x=%i y=%i", (*Broodwar->getSelectedUnits().begin())->getTilePosition().x, (*Broodwar->getSelectedUnits().begin())->getTilePosition().y);
 			Broodwar->drawTextScreen(0, 30, "Order: %s, current cooldown: %d", (*Broodwar->getSelectedUnits().begin())->getOrder().c_str(), (*Broodwar->getSelectedUnits().begin())->getGroundWeaponCooldown());
 		}*/
-		
+		//game_state.printExpansionScores();
 		std::clock_t start_clock;
 		//game_state.printReservedTilePositions();
 		//game_state.printDefenseGrid();
@@ -224,17 +254,20 @@ void ExampleAIModule::onFrame()
 		else if (game_state.getBuildOrder() == BuildOrder::PForgeFastExpand9poolOpening)
 			Broodwar->drawTextScreen(0, 30, "Build Order is PForgeFastExpand9poolOpening");
 		else if (game_state.getBuildOrder() == BuildOrder::FivePool)
-			Broodwar->drawTextScreen(0, 30, "Build Order is FivePool");
-		Broodwar->drawTextScreen(0, 40, "Minerals Committed: %i", game_state.getMineralsCommitted());
-		Broodwar->drawTextScreen(0, 60, "Gas Committed: %i", game_state.getGasCommitted());
-		Broodwar->drawTextScreen(0, 70, "Assess Game Time: %f", assess_game_time);
+			Broodwar->drawTextScreen(0, 30, "Build Order is FivePool");*/
+		//Broodwar->drawTextScreen(0, 40, "Minerals Committed: %i", game_state.getMineralsCommitted());
+		//Broodwar->drawTextScreen(0, 60, "Gas Committed: %i", game_state.getGasCommitted());
+		/*Broodwar->drawTextScreen(0, 70, "Assess Game Time: %f", assess_game_time);
 		Broodwar->drawTextScreen(0, 80, "Manage Worker Time: %f", manage_workers_time);
 		Broodwar->drawTextScreen(0, 90, "Check Macro Time: %f", check_macro_time);
 		Broodwar->drawTextScreen(0, 100, "Check Military Time: %f", check_military_time);
 		Broodwar->drawTextScreen(0, 110, "My army strength: %f", game_state.getMyTotalStrength());
 		Broodwar->drawTextScreen(0, 120, "Enemy army strength: %f", game_state.getEnemyTotalStrength());*/
 
-
+		/*Broodwar->drawTextScreen(0, 40, "Terran Supply Used: %f", game_state.getSupplyUsed(Races::Terran));
+		Broodwar->drawTextScreen(0, 50, "Protoss Supply Used: %f", game_state.getSupplyUsed(Races::Protoss));
+		Broodwar->drawTextScreen(0, 60, "Zerg Supply Used: %f", game_state.getSupplyUsed(Races::Zerg));*/
+		
 		/*for (const auto &area : theMap.Areas())
 		{
 			Broodwar->drawTextMap((Position)area.BottomRight(), "%i", area.Id());
@@ -415,30 +448,30 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
 	  if (unit->getType() == UnitTypes::Terran_SCV &&
 		  unit->getPlayer() == Broodwar->self())
 	  {
-		  game_state.addSupplyUsed(1);
+		  game_state.addSupplyUsed(1, Races::Terran);
 	  }
 	  else if (unit->getType() == UnitTypes::Protoss_Probe &&
 		  unit->getPlayer() == Broodwar->self())
 	  {
-		  game_state.addSupplyUsed(1);
+		  game_state.addSupplyUsed(1, Races::Protoss);
 	  }
 	  else if (unit->getType() == UnitTypes::Zerg_Drone &&
 		  unit->getPlayer() == Broodwar->self())
 	  {
-		  game_state.addSupplyUsed(1);
+		  game_state.addSupplyUsed(1, Races::Zerg);
 	  }
 	  else if ((unit->getType() == UnitTypes::Terran_Marine ||
 		  unit->getType() == UnitTypes::Terran_Medic )&&
 		  unit->getPlayer() == Broodwar->self())
 	  {
-		  game_state.addSupplyUsed(1);
+		  game_state.addSupplyUsed(1, Races::Terran);
 	  }
 	  else if ((unit->getType() == UnitTypes::Protoss_Zealot ||
 		  unit->getType() == UnitTypes::Protoss_Dragoon ||
 		  unit->getType() == UnitTypes::Protoss_High_Templar) &&
 		  unit->getPlayer() == Broodwar->self())
 	  {
-		  game_state.addSupplyUsed(2);
+		  game_state.addSupplyUsed(2, Races::Protoss);
 	  }
 	  else if (unit->getType() == UnitTypes::Terran_Supply_Depot &&
 		  unit->getPlayer() == Broodwar->self())
@@ -502,13 +535,13 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
 	  {
 		  Object new_detector(unit, game_state.getContainingBase(unit));
 		  game_state.addDetector(new_detector);
-		  game_state.addSupplyExpected(8);
+		  game_state.addSupplyExpected(8, Races::Zerg);
 	  }
 	  else if (unit->getType() == UnitTypes::Zerg_Hatchery &&
 		  unit->getPlayer() == Broodwar->self())
 	  {
 		  Object new_building(unit, game_state.getContainingBase(unit));
-		  game_state.addSupplyExpected(1);
+		  game_state.addSupplyExpected(1, Races::Zerg);
 		  game_state.addBuilding(new_building);
 	  }
 	  else if ((unit->getType() == BWAPI::UnitTypes::Protoss_Forge ||
@@ -527,16 +560,16 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
 		  unit->getPlayer() == Broodwar->self())
 	  {
 		  Object new_detector(unit, game_state.getContainingBase(unit));
-		  game_state.addSupplyUsed(1);
+		  game_state.addSupplyUsed(1, BWAPI::Races::Protoss);
 		  game_state.addDetector(new_detector);
 	  }
 	  else if (unit->getType() == BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode)
 	  {
-		  game_state.addSupplyUsed(2);
+		  game_state.addSupplyUsed(2, Races::Terran);
 	  }
 	  else if (unit->getType() == BWAPI::UnitTypes::Terran_Goliath)
 	  {
-		  game_state.addSupplyUsed(2);
+		  game_state.addSupplyUsed(2, Races::Terran);
 	  }
 	  else if (unit->getType() == BWAPI::UnitTypes::Terran_Factory)
 	  {
@@ -562,7 +595,7 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
 	  {
 		  Object new_building(unit, game_state.getContainingBase(unit));
 		  game_state.addBuilding(new_building);
-		  game_state.addSupplyExpected(10);
+		  game_state.addSupplyExpected(10, Races::Terran);
 		  game_state.addMineralsCommitted(-400);
 		  if (game_state.getExpanding())
 		  {
@@ -575,7 +608,7 @@ void ExampleAIModule::onUnitCreate(BWAPI::Unit unit)
 	  {
 		  Object new_building(unit, game_state.getContainingBase(unit));
 		  game_state.addBuilding(new_building);
-		  game_state.addSupplyExpected(9);
+		  game_state.addSupplyExpected(9, Races::Protoss);
  		  game_state.addMineralsCommitted(-400);
 		  if (game_state.getExpanding())
 		  {
@@ -622,7 +655,8 @@ void ExampleAIModule::onUnitDestroy(BWAPI::Unit unit)
 		if (unit->getType().isBuilding() &&
 			unit->getPlayer() == Broodwar->self() &&
 			!unit->getType().isAddon() &&
-			!unit->getType().isResourceDepot())
+			!unit->getType().isResourceDepot() &&
+			!unit->getType().isRefinery())
 		{
 			//game_state.updateBuildMap(unit->getTilePosition().x, unit->getTilePosition().y, unit->getType(), false);
 			game_state.addPositionToQueue(unit);
@@ -650,7 +684,17 @@ void ExampleAIModule::onUnitDestroy(BWAPI::Unit unit)
 			unit->getType() == UnitTypes::Protoss_Observer) &&
 			unit->getPlayer() == Broodwar->self())
 		{
-			game_state.addSupplyUsed(-1);
+			switch (unit->getType().getRace())
+			{
+			case Races::Terran:
+				game_state.addSupplyUsed(-1, Races::Terran);
+				break;
+			case Races::Protoss:
+				game_state.addSupplyUsed(-1, Races::Protoss);
+				break;
+			default:
+				game_state.addSupplyUsed(-1, Races::Zerg);
+			}
 		}
 		else if ((unit->getType() == UnitTypes::Protoss_Zealot ||
 			unit->getType() == UnitTypes::Protoss_Dragoon ||
@@ -660,7 +704,14 @@ void ExampleAIModule::onUnitDestroy(BWAPI::Unit unit)
 			unit->getType() == UnitTypes::Protoss_High_Templar) &&
 			unit->getPlayer() == Broodwar->self())
 		{
-			game_state.addSupplyUsed(-2);
+			switch (unit->getType().getRace())
+			{
+			case Races::Terran:
+				game_state.addSupplyUsed(-2, Races::Terran);
+				break;
+			default:
+				game_state.addSupplyUsed(-2, Races::Protoss);
+			}
 		}
 		else if ((unit->getType() == UnitTypes::Terran_Supply_Depot ||
 			unit->getType() == UnitTypes::Protoss_Pylon ||
@@ -668,8 +719,31 @@ void ExampleAIModule::onUnitDestroy(BWAPI::Unit unit)
 			unit->getPlayer() == Broodwar->self())
 		{
 			if (unit->isCompleted())
-				game_state.addSupplyTotal(-8);
-			game_state.addSupplyExpected(-8);
+			{
+				switch (unit->getType().getRace())
+				{
+				case Races::Terran:
+					game_state.addSupplyTotal(-8, Races::Terran);
+					break;
+				case Races::Protoss:
+					game_state.addSupplyTotal(-8, Races::Protoss);
+					break;
+				default:
+					game_state.addSupplyTotal(-8, Races::Zerg);
+				}
+			}
+			switch (unit->getType().getRace())
+			{
+			case Races::Terran:
+				game_state.addSupplyExpected(-8, Races::Terran);
+				break;
+			case Races::Protoss:
+				game_state.addSupplyExpected(-8, Races::Protoss);
+				break;
+			default:
+				game_state.addSupplyExpected(-8, Races::Zerg);
+			}
+			
 		}
 		else if ((unit->getType() == UnitTypes::Terran_Barracks ||
 			unit->getType() == UnitTypes::Protoss_Gateway) &&
@@ -693,12 +767,12 @@ void ExampleAIModule::onUnitDestroy(BWAPI::Unit unit)
 		else if (unit->getType() == UnitTypes::Zerg_Zergling &&
 			unit->getPlayer() == Broodwar->self())
 		{
-			game_state.addSupplyUsed(-.5);
+			game_state.addSupplyUsed(-.5, Races::Zerg);
 		}
 		else if (unit->getType() == UnitTypes::Zerg_Hydralisk &&
 			unit->getPlayer() == Broodwar->self())
 		{
-			game_state.addSupplyUsed(-1);
+			game_state.addSupplyUsed(-1, Races::Zerg);
 		}
 		else if (unit->getType() == UnitTypes::Protoss_Observatory &&
 			unit->getPlayer() == Broodwar->self())
@@ -756,6 +830,11 @@ void ExampleAIModule::onUnitDestroy(BWAPI::Unit unit)
 		{
 			game_state.addTemplarArchives(-1);
 		}
+		else if (unit->getType() == UnitTypes::Zerg_Hydralisk_Den &&
+			unit->getPlayer() == Broodwar->self())
+		{
+			game_state.addHydraliskDen(-1);
+		}
 	}
 	catch (const std::exception & e)
 	{
@@ -789,16 +868,16 @@ void ExampleAIModule::onUnitMorph(BWAPI::Unit unit)
 		{
 			Object new_detector(unit, game_state.getContainingBase(unit));
 			game_state.addDetector(new_detector);
-			game_state.addSupplyExpected(8);
+			game_state.addSupplyExpected(8, Races::Zerg);
 		}
 		else if (unit->getType() == BWAPI::UnitTypes::Zerg_Hatchery &&
 			unit->getPlayer() == Broodwar->self())
 		{
 			Object new_building(unit, game_state.getContainingBase(unit));
 			game_state.addBuilding(new_building);
-			game_state.addSupplyExpected(1);
+			game_state.addSupplyExpected(1, Races::Zerg);
 			game_state.addMineralsCommitted(-300);
-			game_state.addSupplyUsed(-1);
+			game_state.addSupplyUsed(-1, Races::Zerg);
 		}
 		else if (unit->getType() == BWAPI::UnitTypes::Zerg_Spawning_Pool &&
 			unit->getPlayer() == Broodwar->self())
@@ -806,7 +885,7 @@ void ExampleAIModule::onUnitMorph(BWAPI::Unit unit)
 			Object new_building(unit, game_state.getContainingBase(unit));
 			game_state.addBuilding(new_building);
 			game_state.addMineralsCommitted(-200);
-			game_state.addSupplyUsed(-1);
+			game_state.addSupplyUsed(-1, Races::Zerg);
 		}
 		else if (unit->getType() == BWAPI::UnitTypes::Zerg_Evolution_Chamber &&
 			unit->getPlayer() == Broodwar->self())
@@ -814,7 +893,7 @@ void ExampleAIModule::onUnitMorph(BWAPI::Unit unit)
 			Object new_building(unit, game_state.getContainingBase(unit));
 			game_state.addBuilding(new_building);
 			game_state.addMineralsCommitted(-75);
-			game_state.addSupplyUsed(-1);
+			game_state.addSupplyUsed(-1, Races::Zerg);
 		}
 		else if (unit->getType() == BWAPI::UnitTypes::Zerg_Creep_Colony &&
 			unit->getPlayer() == Broodwar->self())
@@ -822,7 +901,7 @@ void ExampleAIModule::onUnitMorph(BWAPI::Unit unit)
 			game_state.addMineralsCommitted(-75);
 			Object new_building(unit, game_state.getContainingBase(unit));
 			game_state.addBuilding(new_building);
-			game_state.addSupplyUsed(-1);
+			game_state.addSupplyUsed(-1, Races::Zerg);
 		}
 		else if (unit->getType() == BWAPI::UnitTypes::Zerg_Extractor &&
 			unit->getPlayer() == Broodwar->self())
@@ -831,7 +910,7 @@ void ExampleAIModule::onUnitMorph(BWAPI::Unit unit)
 			game_state.addBuilding(new_building);
 			game_state.addMineralsCommitted(-50);
 			game_state.setGeyserUsed(unit->getTilePosition());
-			game_state.addSupplyUsed(-1);
+			game_state.addSupplyUsed(-1, Races::Zerg);
 		}
 		else if (unit->getType() == BWAPI::UnitTypes::Zerg_Hydralisk_Den &&
 			unit->getPlayer() == Broodwar->self())
@@ -840,7 +919,7 @@ void ExampleAIModule::onUnitMorph(BWAPI::Unit unit)
 			game_state.addBuilding(new_building);
 			game_state.addMineralsCommitted(-150);
 			game_state.addGasCommitted(-50);
-			game_state.addSupplyUsed(-1);
+			game_state.addSupplyUsed(-1, Races::Zerg);
 		}
 	}
 }
@@ -868,7 +947,7 @@ void ExampleAIModule::onUnitComplete(BWAPI::Unit unit)
 	{
 		Object new_building(unit, game_state.getContainingBase(unit));
 		game_state.addBuilding(new_building);
-		game_state.addSupplyTotal(10);
+		game_state.addSupplyTotal(10, Races::Terran);
 		if (Broodwar->elapsedTime() > 5)
 		{
 			game_state.transferWorkersToNewBase(game_state.getContainingBase(unit));
@@ -879,7 +958,7 @@ void ExampleAIModule::onUnitComplete(BWAPI::Unit unit)
 	{
 		Object new_building(unit, game_state.getContainingBase(unit));
 		game_state.addBuilding(new_building);
-		game_state.addSupplyTotal(9);
+		game_state.addSupplyTotal(9, Races::Protoss);
 		if (Broodwar->elapsedTime() > 5)
 		{
 			game_state.transferWorkersToNewBase(game_state.getContainingBase(unit));
@@ -890,12 +969,15 @@ void ExampleAIModule::onUnitComplete(BWAPI::Unit unit)
 		unit->getType() == UnitTypes::Zerg_Overlord) &&
 		unit->getPlayer() == Broodwar->self())
 	{
-		game_state.addSupplyTotal(8);
+		if (unit->getType() == UnitTypes::Protoss_Pylon)
+			game_state.setPylonBuilding(false);
+		auto race = unit->getType().getRace();
+		game_state.addSupplyTotal(8, race);
 	}
 	else if (unit->getType() == UnitTypes::Zerg_Hatchery &&
 		unit->getPlayer() == Broodwar->self())
 	{
-		game_state.addSupplyTotal(1);
+		game_state.addSupplyTotal(1, Races::Zerg);
 	}
 	else if (unit->getPlayer() == BWAPI::Broodwar->self() &&
 		(unit->getType() == UnitTypes::Terran_SCV ||

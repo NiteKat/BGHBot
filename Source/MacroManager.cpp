@@ -2,7 +2,7 @@
 
 MacroManager::MacroManager()
 {
-	
+
 }
 
 void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_state)
@@ -10,7 +10,275 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 	auto building_list_iterator = game_state.getBuildingList()->begin();
 	while (building_list_iterator != game_state.getBuildingList()->end())
 	{
-		if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
+		bool increment = true;
+		if (game_state.getBuildOrder() == BuildOrder::TeamMeleeorFFA)
+		{
+			if (building_list_iterator->getUnit() == nullptr)
+			{
+				auto erase_iterator = building_list_iterator;
+				building_list_iterator = game_state.getBuildingList()->erase(erase_iterator);
+				increment = false;
+			}
+			else if (!building_list_iterator->getUnit()->exists())
+			{
+				auto used_positions = game_state.getUsedPositions();
+				used_positions->erase(building_list_iterator->getUnit()->getTilePosition());
+				auto erase_iterator = building_list_iterator;
+				building_list_iterator = game_state.getBuildingList()->erase(erase_iterator);
+				increment = false;
+			}
+			else if (!building_list_iterator->getUnit()->isCompleted() &&
+				!building_list_iterator->getUnit()->isBeingConstructed() &&
+				building_list_iterator->getUnit()->getType().getRace() == BWAPI::Races::Terran)
+			{
+				worker_manager->getNewBuildWorker(building_list_iterator->getUnit(), game_state);
+			}
+			else
+			{
+				if (building_list_iterator->getUnit()->isCompleted() &&
+					!building_list_iterator->getUnit()->isFlying() &&
+					building_list_iterator->getUnit()->isIdle())
+				{
+					BWAPI::Race race = building_list_iterator->getUnit()->getType().getRace();
+					BWAPI::UnitType unit_to_build;
+					if (race == BWAPI::Races::Terran)
+						unit_to_build = BWAPI::UnitTypes::Terran_SCV;
+					else
+						unit_to_build = BWAPI::UnitTypes::Protoss_Probe;
+					switch (building_list_iterator->getUnit()->getType())
+					{
+					case BWAPI::UnitTypes::Terran_Command_Center:
+						if (building_list_iterator->getUnit()->canBuildAddon() &&
+							BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= BWAPI::UnitTypes::Terran_Comsat_Station.mineralPrice() &&
+							BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= BWAPI::UnitTypes::Terran_Comsat_Station.gasPrice())
+						{
+							building_list_iterator->getUnit()->buildAddon(BWAPI::UnitTypes::Terran_Comsat_Station);
+						}
+					case BWAPI::UnitTypes::Protoss_Nexus:
+						if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
+							game_state.getSupplyUsed(race) < game_state.getSupplyTotal(race))
+						{
+							int worker_count = 0;
+							auto mineral_worker_iterator = game_state.getMineralWorkers()->begin();
+							while (mineral_worker_iterator != game_state.getMineralWorkers()->end())
+							{
+								if (mineral_worker_iterator->getBase()->getArea()->Id() == building_list_iterator->getBase()->getArea()->Id())
+									worker_count++;
+								mineral_worker_iterator++;
+							}
+							if (worker_count < building_list_iterator->getBase()->getArea()->Minerals().size() * 2)
+								building_list_iterator->getUnit()->train(unit_to_build);
+						}
+						break;
+					case BWAPI::UnitTypes::Zerg_Hatchery:
+						for (auto larva : building_list_iterator->getUnit()->getLarva())
+						{
+							if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
+								((game_state.getSupplyUsed(BWAPI::Races::Zerg) >= game_state.getSupplyExpected(BWAPI::Races::Zerg) &&
+								game_state.getSpawningPool() == 0) ||
+								(game_state.getSupplyUsed(BWAPI::Races::Zerg) >= game_state.getSupplyExpected(BWAPI::Races::Zerg) - 4 &&
+								game_state.getSpawningPool() >= 1)))
+							{
+								larva->morph(BWAPI::UnitTypes::Zerg_Overlord);
+								continue;
+							}
+							int worker_count = 0;
+							auto mineral_worker_iterator = game_state.getMineralWorkers()->begin();
+							while (mineral_worker_iterator != game_state.getMineralWorkers()->end())
+							{
+								if (mineral_worker_iterator->getBase()->getArea()->Id() == building_list_iterator->getBase()->getArea()->Id())
+									worker_count++;
+								mineral_worker_iterator++;
+							}
+							if (worker_count < building_list_iterator->getBase()->getArea()->Minerals().size() * 2)
+							{
+								if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
+									game_state.getSupplyUsed(race) < game_state.getSupplyTotal(race))
+								{
+									if (larva->morph(BWAPI::UnitTypes::Zerg_Drone))
+									{
+										game_state.addSupplyUsed(1, race);
+									}
+								}
+							}
+							else
+							{
+								double hydralisk = 0;
+								double zergling = 0;
+								for (auto& objective : *(game_state.getObjectiveList()))
+								{
+									for (auto& unit : *(objective.getUnits()))
+									{
+										switch (unit.getType())
+										{
+										case BWAPI::UnitTypes::Zerg_Zergling:
+											zergling++;
+											break;
+										case BWAPI::UnitTypes::Zerg_Hydralisk:
+											hydralisk++;
+										}
+									}
+								}
+								if (zergling < 3 &&
+									game_state.getSupplyUsed(race) < game_state.getSupplyTotal(race) &&
+									BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
+									game_state.hasUnitTypeRequirement(BWAPI::UnitTypes::Zerg_Zergling))
+								{
+									if (larva->morph(BWAPI::UnitTypes::Zerg_Zergling))
+										game_state.addSupplyUsed(1, race);
+								}
+								else if (hydralisk == 0 &&
+									game_state.getSupplyUsed(race) < game_state.getSupplyTotal(race) - 2 &&
+									BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= BWAPI::UnitTypes::Zerg_Hydralisk.mineralPrice() &&
+									BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= BWAPI::UnitTypes::Zerg_Hydralisk.gasPrice() &&
+									game_state.hasUnitTypeRequirement(BWAPI::UnitTypes::Zerg_Hydralisk))
+								{
+									if (larva->morph(BWAPI::UnitTypes::Zerg_Hydralisk))
+										game_state.addSupplyUsed(2, race);
+								}
+								else if (hydralisk != 0)
+								{
+									if (zergling / hydralisk > 3 &&
+										game_state.getSupplyUsed(race) < game_state.getSupplyTotal(race) - 2 &&
+										BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= BWAPI::UnitTypes::Zerg_Hydralisk.mineralPrice() &&
+										BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= BWAPI::UnitTypes::Zerg_Hydralisk.gasPrice() &&
+										game_state.hasUnitTypeRequirement(BWAPI::UnitTypes::Zerg_Hydralisk))
+									{
+										if (larva->morph(BWAPI::UnitTypes::Zerg_Hydralisk))
+											game_state.addSupplyUsed(2, race);
+									}
+									else if (game_state.getSupplyUsed(race) < game_state.getSupplyTotal(race) &&
+										BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
+										game_state.hasUnitTypeRequirement(BWAPI::UnitTypes::Zerg_Zergling))
+									{
+										if (larva->morph(BWAPI::UnitTypes::Zerg_Zergling))
+											game_state.addSupplyUsed(1, race);
+									}
+								}
+								else
+								{
+									if (game_state.getSupplyUsed(race) < game_state.getSupplyTotal(race) &&
+										BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
+										game_state.hasUnitTypeRequirement(BWAPI::UnitTypes::Zerg_Zergling))
+									{
+										if (larva->morph(BWAPI::UnitTypes::Zerg_Zergling))
+											game_state.addSupplyUsed(1, race);
+									}
+								}
+							}	
+						}
+						break;
+					case BWAPI::UnitTypes::Terran_Barracks:
+						if (!game_state.hasUnitTypeRequirement(BWAPI::UnitTypes::Terran_Medic))
+						{
+							if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
+								game_state.getSupplyUsed(race) < game_state.getSupplyTotal(race) &&
+								!game_state.checkAcademy())
+							{
+								building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_Marine);
+							}
+						}
+						else
+						{
+							if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50)
+							{
+								double marines = game_state.getUnitTypeCount(BWAPI::UnitTypes::Terran_Marine);
+								double medics = game_state.getUnitTypeCount(BWAPI::UnitTypes::Terran_Medic);
+								if (medics > 0)
+								{
+									double ratio = marines / medics;
+									if (BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 25 &&
+										ratio > 5)
+									{
+										if (!building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_Medic))
+											building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_Marine);
+									}
+									else
+										building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_Marine);
+								}
+								else if (marines >= 5 &&
+										BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 25)
+									building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_Medic);
+								else
+									building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_Marine);
+							}
+						}
+						break;
+					case BWAPI::UnitTypes::Protoss_Gateway:
+						if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
+							game_state.getSupplyUsed(race) < game_state.getSupplyTotal(race))
+						{
+							building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Protoss_Zealot);
+						}
+						break;
+					case BWAPI::UnitTypes::Terran_Refinery:
+					case BWAPI::UnitTypes::Protoss_Assimilator:
+					case BWAPI::UnitTypes::Zerg_Extractor:
+						if (building_list_iterator->getUnit()->isCompleted() &&
+							building_list_iterator->getNumberGasWorkers() < 3)
+						{
+							auto mineral_worker_iterator = game_state.getMineralWorkers()->begin();
+							while (mineral_worker_iterator != game_state.getMineralWorkers()->end())
+							{
+								if (!mineral_worker_iterator->getUnit()->isCarryingMinerals())
+								{
+									building_list_iterator->addGasWorker(mineral_worker_iterator->getUnit()->getID());
+									if (mineral_worker_iterator->getResourceTarget() != nullptr)
+										game_state.unassignWorkerFromMineral(&(*mineral_worker_iterator));
+									mineral_worker_iterator->getUnit()->gather(building_list_iterator->getUnit());
+									game_state.getMineralWorkers()->erase(mineral_worker_iterator);
+									mineral_worker_iterator = game_state.getMineralWorkers()->end();
+								}
+								else
+								{
+									mineral_worker_iterator++;
+								}
+							}
+						}
+						break;
+					case BWAPI::UnitTypes::Terran_Academy:
+						if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= BWAPI::TechTypes::Stim_Packs.mineralPrice() &&
+							BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= BWAPI::TechTypes::Stim_Packs.gasPrice() &&
+							!BWAPI::Broodwar->self()->hasResearched(BWAPI::TechTypes::Stim_Packs))
+						{
+							building_list_iterator->getUnit()->research(BWAPI::TechTypes::Stim_Packs);
+						}
+						else if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= BWAPI::UpgradeTypes::U_238_Shells.mineralPrice() &&
+							BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= BWAPI::UpgradeTypes::U_238_Shells.gasPrice() &&
+							BWAPI::Broodwar->self()->hasResearched(BWAPI::TechTypes::Stim_Packs) &&
+							BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::U_238_Shells) < 1)
+						{
+							building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::U_238_Shells);
+						}
+						break;
+					case BWAPI::UnitTypes::Zerg_Spawning_Pool:
+						if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= BWAPI::UpgradeTypes::Metabolic_Boost.mineralPrice() &&
+							BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= BWAPI::UpgradeTypes::Metabolic_Boost.gasPrice() &&
+							BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Metabolic_Boost) == 0)
+						{
+							building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Metabolic_Boost);
+						}
+						break;
+					case BWAPI::UnitTypes::Zerg_Hydralisk_Den:
+						if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= BWAPI::UpgradeTypes::Muscular_Augments.mineralPrice() &&
+							BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= BWAPI::UpgradeTypes::Muscular_Augments.gasPrice() &&
+							BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Muscular_Augments) == 0)
+						{
+							building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Muscular_Augments);
+						}
+						else if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= BWAPI::UpgradeTypes::Grooved_Spines.mineralPrice() &&
+							BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= BWAPI::UpgradeTypes::Grooved_Spines.gasPrice() &&
+							BWAPI::Broodwar->self()->getUpgradeLevel(BWAPI::UpgradeTypes::Grooved_Spines) == 0)
+						{
+							building_list_iterator->getUnit()->upgrade(BWAPI::UpgradeTypes::Grooved_Spines);
+						}
+					}
+				}
+			}
+			if (increment)
+				building_list_iterator++;
+		}
+		else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
 		{
 			if (building_list_iterator->getUnit() == nullptr)
 			{
@@ -251,6 +519,160 @@ void MacroManager::checkMacro(WorkerManager* worker_manager, GameState &game_sta
 				{
 					building_list_iterator++;
 				}
+			}
+			else if (game_state.getBuildOrder() == BuildOrder::TAyumiBuildOpening)
+			{
+				if (building_list_iterator->getUnit()->isCompleted() &&
+					!building_list_iterator->getUnit()->isFlying() &&
+					building_list_iterator->getUnit()->isIdle())
+				{
+					switch (building_list_iterator->getType())
+					{
+					case BWAPI::UnitTypes::Enum::Terran_Command_Center:
+						if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
+							game_state.getSupplyUsed() < game_state.getSupplyTotal())
+						{
+							if (game_state.getSupplyBuilt() < 9)
+							{
+								if (building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_SCV))
+									game_state.addSupplyBuilt(1);
+							}
+							else if (game_state.getSupplyBuilt() < 10 &&
+								game_state.getSupplyExpected() > 10)
+							{
+								if (building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_SCV))
+									game_state.addSupplyBuilt(1);
+							}
+							else if (game_state.getSupplyBuilt() < 14 &&
+								game_state.getSupplyExpected() == 18)
+							{
+								if (building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_SCV))
+									game_state.addSupplyBuilt(1);
+							}
+							else if (game_state.getSupplyBuilt() < 20 &&
+								game_state.getSupplyExpected() == 26)
+							{
+								if (building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_SCV))
+									game_state.addSupplyBuilt(1);
+							}
+							else if (game_state.getSupplyBuilt() < 23 &&
+								game_state.getSupplyExpected() == 36)
+							{
+								if (building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_SCV))
+									game_state.addSupplyBuilt(1);
+							}
+							else if (game_state.getSupplyBuilt() < 29 &&
+								game_state.getSupplyExpected() == 44)
+							{
+								if (building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_SCV))
+									game_state.addSupplyBuilt(1);
+							}
+							else if (game_state.getSupplyBuilt() < 35 &&
+								game_state.getBarracks() == 4)
+							{
+								if (building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_SCV))
+									game_state.addSupplyBuilt(1);
+							}
+							else if (game_state.getSupplyBuilt() < 37 &&
+								game_state.getGas() == 1)
+							{
+								if (building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_SCV))
+									game_state.addSupplyBuilt(1);
+							}
+						}
+						else if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
+							BWAPI::Broodwar->self()->gas() - game_state.getGasCommitted() >= 50 &&
+							game_state.getSupplyBuilt() >= 56 &&
+							building_list_iterator->getUnit()->canBuildAddon())
+							building_list_iterator->getUnit()->buildAddon(BWAPI::UnitTypes::Terran_Comsat_Station);
+						break;
+					case BWAPI::UnitTypes::Enum::Terran_Barracks:
+						if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 50 &&
+							game_state.getSupplyUsed() < game_state.getSupplyTotal())
+						{
+							if (game_state.getSupplyBuilt() < 20 &&
+								game_state.getSupplyExpected() == 26)
+							{
+								if (building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_Marine))
+									game_state.addSupplyBuilt(1);
+							}
+							else if (game_state.getSupplyBuilt() < 23 &&
+								game_state.getSupplyExpected() == 36)
+							{
+								if (building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_Marine))
+									game_state.addSupplyBuilt(1);
+							}
+							else if (game_state.getSupplyBuilt() < 29 &&
+								game_state.getSupplyExpected() == 44)
+							{
+								if (building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_Marine))
+									game_state.addSupplyBuilt(1);
+							}
+							else if (game_state.getSupplyBuilt() < 35 &&
+								game_state.getBarracks() == 4)
+							{
+								if (building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_Marine))
+									game_state.addSupplyBuilt(1);
+							}
+							else if (game_state.getSupplyBuilt() < 35 &&
+								game_state.getBarracks() == 4)
+							{
+								if (building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_Marine))
+									game_state.addSupplyBuilt(1);
+							}
+							else if (game_state.getSupplyBuilt() < 37 &&
+								game_state.getGas() == 1)
+							{
+								if (building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_Marine))
+									game_state.addSupplyBuilt(1);
+							}
+							else if (game_state.getSupplyBuilt() >= 37 &&
+								game_state.getSupplyExpected() >= 52 &&
+								game_state.getSupplyBuilt() < 52)
+							{
+								if (building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_Marine))
+									game_state.addSupplyBuilt(1);
+							}
+							else if (game_state.getSupplyBuilt() >= 52 &&
+								game_state.getSupplyBuilt() < 56)
+							{
+								if (building_list_iterator->getUnit()->train(BWAPI::UnitTypes::Terran_Medic))
+									game_state.addSupplyBuilt(1);
+							}
+						}
+						break;
+					case BWAPI::UnitTypes::Enum::Terran_Academy:
+						if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 &&
+							!BWAPI::Broodwar->self()->hasResearched(BWAPI::TechTypes::Stim_Packs) &&
+							game_state.getSupplyBuilt() >= 52)
+							building_list_iterator->getUnit()->research(BWAPI::TechTypes::Stim_Packs);
+						break;
+					case BWAPI::UnitTypes::Enum::Terran_Refinery:
+						if (building_list_iterator->getUnit()->isCompleted() &&
+							building_list_iterator->getNumberGasWorkers() < 3)
+						{
+							auto mineral_worker_iterator = game_state.getMineralWorkers()->begin();
+							while (mineral_worker_iterator != game_state.getMineralWorkers()->end())
+							{
+								if (!mineral_worker_iterator->getUnit()->isCarryingMinerals())
+								{
+									building_list_iterator->addGasWorker(mineral_worker_iterator->getUnit()->getID());
+									if (mineral_worker_iterator->getResourceTarget() != nullptr)
+										game_state.unassignWorkerFromMineral(&(*mineral_worker_iterator));
+									mineral_worker_iterator->getUnit()->gather(building_list_iterator->getUnit());
+									game_state.getMineralWorkers()->erase(mineral_worker_iterator);
+									mineral_worker_iterator = game_state.getMineralWorkers()->end();
+								}
+								else
+								{
+									mineral_worker_iterator++;
+								}
+							}
+						}
+						break;
+					}
+				}
+				building_list_iterator++;
 			}
 			else
 			{
@@ -1250,7 +1672,8 @@ game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
 		}
 	}
 
-	if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Zerg)
+	if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Zerg &&
+		game_state.getBuildOrder() != BuildOrder::TeamMeleeorFFA)
 	{
 		auto larva_iterator = game_state.getLarva()->begin();
 		while (larva_iterator != game_state.getLarva()->end())
@@ -1445,12 +1868,240 @@ game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
 			}
 		}
 	}
-
-	if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
+	if (game_state.getBuildOrder() == BuildOrder::TeamMeleeorFFA)
 	{
+		auto self = BWAPI::Broodwar->self();
+		if (self->minerals() - game_state.getMineralsCommitted() >= 250 &&
+			game_state.getHatchery() == 0)
+		{
+			if (worker_manager->build(BWAPI::UnitTypes::Zerg_Hatchery, 1, game_state))
+			{
+				game_state.setLastTimeExpanded();
+				game_state.addMineralsCommitted(300);
+				game_state.addHatchery(1);
+				game_state.toggleExpanding();
+			}
+		}
+		if (self->minerals() - game_state.getMineralsCommitted() >= 80 &&
+			game_state.getGas() < game_state.getMiningBaseCount() &&
+			BWAPI::Broodwar->elapsedTime() > 300)
+		{
+			if (worker_manager->build(BWAPI::UnitTypes::Protoss_Assimilator, 3, game_state))
+			{
+				game_state.addGas(1);
+				game_state.addMineralsCommitted(100);
+			}
+			else if (worker_manager->build(BWAPI::UnitTypes::Terran_Refinery, 3, game_state))
+			{
+				game_state.addGas(1);
+				game_state.addMineralsCommitted(100);
+			}
+			else if (worker_manager->build(BWAPI::UnitTypes::Zerg_Extractor, 3, game_state))
+			{
+				game_state.addGas(1);
+				game_state.addMineralsCommitted(100);
+			}
+			else if (worker_manager->build(BWAPI::UnitTypes::Protoss_Assimilator, 4, game_state))
+			{
+				game_state.addGas(1);
+				game_state.addMineralsCommitted(100);
+			}
+			else if (worker_manager->build(BWAPI::UnitTypes::Terran_Refinery, 4, game_state))
+			{
+				game_state.addGas(1);
+				game_state.addMineralsCommitted(100);
+			}
+			else if (worker_manager->build(BWAPI::UnitTypes::Zerg_Extractor, 4, game_state))
+			{
+				game_state.addGas(1);
+				game_state.addMineralsCommitted(100);
+			}
+		}
+		if (self->minerals() - game_state.getMineralsCommitted() >= 400 &&
+			BWAPI::Broodwar->elapsedTime() - game_state.getLastTimeExpanded() > 330 &&
+			!game_state.getExpanding() &&
+			game_state.getBarracks() >= 2 &&
+			game_state.getCommandCenter() >= 1)
+		{
+			if (worker_manager->build(BWAPI::UnitTypes::Terran_Command_Center, 1, game_state))
+			{
+				game_state.setLastTimeExpanded();
+				game_state.addMineralsCommitted(400);
+				game_state.addCommandCenter(1);
+				game_state.toggleExpanding();
+			}
+		}
+		if (self->minerals() - game_state.getMineralsCommitted() >= 350 &&
+			game_state.getNexus() == 0)
+		{
+			if (worker_manager->build(BWAPI::UnitTypes::Protoss_Nexus, 3, game_state))
+			{
+				game_state.addMineralsCommitted(400);
+				game_state.addNexus(1);
+			}
+		}
+		if (self->minerals() - game_state.getMineralsCommitted() >= 350 &&
+			game_state.getCommandCenter() == 0)
+		{
+			if (worker_manager->build(BWAPI::UnitTypes::Terran_Command_Center, 3, game_state))
+			{
+				game_state.addMineralsCommitted(400);
+				game_state.addCommandCenter(1);
+			}
+		}
+		if (self->minerals() - game_state.getMineralsCommitted() >= 100 &&
+			game_state.getCommandCenter() >= 1 &&
+			((game_state.getBarracks() == 0 &&
+			game_state.getSupplyUsed(BWAPI::Races::Terran) >= game_state.getSupplyExpected(BWAPI::Races::Terran) - 2) ||
+			(game_state.getBarracks() > 1 &&
+			game_state.getSupplyUsed(BWAPI::Races::Terran) >= game_state.getSupplyExpected(BWAPI::Races::Terran) - (game_state.getCompletedMacroBuildings() * 2 + game_state.getUnderConstructionMacroBuildings()))))
+		{
+			if (worker_manager->build(BWAPI::UnitTypes::Terran_Supply_Depot, 3, game_state))
+			{
+				game_state.addMineralsCommitted(100);
+				game_state.addSupplyExpected(8, BWAPI::Races::Terran);
+			}
+		}
+		if (self->minerals() - game_state.getMineralsCommitted() >= 100 &&
+			game_state.getNexus() >= 1 &&
+			((game_state.getGateway() == 0 &&
+			game_state.getSupplyUsed(BWAPI::Races::Protoss) >= game_state.getSupplyExpected(BWAPI::Races::Protoss) - 2) ||
+			(game_state.getGateway() >= 1 &&
+			game_state.getSupplyUsed(BWAPI::Races::Protoss) >= game_state.getSupplyExpected(BWAPI::Races::Protoss) - (game_state.getCompletedMacroBuildings() * 2 + game_state.getUnderConstructionMacroBuildings())) ||
+			(!game_state.getPylonBuilding() &&
+			game_state.getNoPoweredPositions())))
+		{
+			if (worker_manager->build(BWAPI::UnitTypes::Protoss_Pylon, 3, game_state))
+			{
+				game_state.setPylonBuilding(true);
+				game_state.addMineralsCommitted(100);
+				game_state.addSupplyExpected(8, BWAPI::Races::Protoss);
+			}
+		}
+		if (self->minerals() - game_state.getMineralsCommitted() >= 200 &&
+			game_state.getSpawningPool() == 0)
+		{
+			if (worker_manager->build(BWAPI::UnitTypes::Zerg_Spawning_Pool, 3, game_state))
+			{
+				game_state.addMineralsCommitted(200);
+				game_state.addSpawningPool(1);
+			}
+		}
+		if (self->minerals() - game_state.getMineralsCommitted() >= 150 &&
+			game_state.getBarracks() < 2)
+		{
+			if (worker_manager->build(BWAPI::UnitTypes::Terran_Barracks, 3, game_state))
+			{
+				game_state.addMineralsCommitted(150);
+				game_state.addBarracks(1);
+			}
+		}
+		if (self->minerals() - game_state.getMineralsCommitted() >= 150 &&
+			game_state.getGateway() < 2)
+		{
+			if (worker_manager->build(BWAPI::UnitTypes::Protoss_Gateway, 3, game_state))
+			{
+				game_state.addMineralsCommitted(150);
+				game_state.addGateway(1);
+			}
+		}
+		if (self->minerals() - game_state.getMineralsCommitted() >= 130 &&
+			game_state.getGas() >= 1 &&
+			game_state.getBarracks() >= 1 &&
+			!game_state.checkAcademy())
+		{
+			if (worker_manager->build(BWAPI::UnitTypes::Terran_Academy, 3, game_state))
+			{
+				game_state.toggleAcademy();
+				game_state.addMineralsCommitted(150);
+			}
+		}
+		if (self->minerals() - game_state.getMineralsCommitted() >= BWAPI::UnitTypes::Zerg_Hydralisk_Den.mineralPrice() - 30 &&
+			self->gas() - game_state.getGasCommitted() >= BWAPI::UnitTypes::Zerg_Hydralisk_Den.gasPrice() - 30 &&
+			game_state.hasUnitTypeRequirement(BWAPI::UnitTypes::Zerg_Hydralisk_Den) &&
+			game_state.getHydraliskDen() == 0)
+		{
+			if (worker_manager->build(BWAPI::UnitTypes::Zerg_Hydralisk_Den, 3, game_state))
+			{
+				game_state.addMineralsCommitted(BWAPI::UnitTypes::Zerg_Hydralisk_Den.mineralPrice());
+				game_state.addGasCommitted(BWAPI::UnitTypes::Zerg_Hydralisk_Den.gasPrice());
+				game_state.addHydraliskDen(1);
+			}
+		}
+	}
+	else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
+	{
+		if (game_state.getBuildOrder() == BuildOrder::TAyumiBuildOpening)
+		{
+			if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
+				((game_state.getSupplyBuilt() >= 9 &&
+				game_state.getSupplyExpected() == 10) ||
+				(game_state.getSupplyBuilt() >= 14 &&
+				game_state.getSupplyExpected() == 18) ||
+				(game_state.getSupplyBuilt() >= 23 &&
+				game_state.getSupplyExpected() == 36) ||
+				(game_state.getSupplyBuilt() >= 37 &&
+				game_state.getSupplyExpected() == 44) ||
+				(game_state.getSupplyBuilt() >= 44 &&
+				game_state.getSupplyExpected() == 52) ||
+				(game_state.getSupplyExpected() >= 52 &&
+				game_state.getSupplyUsed() >= game_state.getSupplyExpected() - 4)))
+			{
+				if (worker_manager->build(BWAPI::UnitTypes::Terran_Supply_Depot, 3, game_state))
+				{
+					game_state.addMineralsCommitted(100);
+					game_state.addSupplyExpected(8);
+				}
+			}
+			if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 &&
+				((game_state.getSupplyBuilt() >= 10 &&
+				game_state.getBarracks() == 0) ||
+				(game_state.getSupplyBuilt() >= 29 &&
+				game_state.getBarracks() < 4)))
+			{
+				if (worker_manager->build(BWAPI::UnitTypes::Terran_Barracks, 3, game_state))
+				{
+					game_state.addMineralsCommitted(150);
+					game_state.addBarracks(1);
+				}
+			}
+			if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 400 &&
+				game_state.getSupplyBuilt() >= 20 &&
+				game_state.getSupplyExpected() == 26)
+			{
+				if (worker_manager->build(BWAPI::UnitTypes::Terran_Command_Center, 1, game_state))
+				{
+					game_state.addMineralsCommitted(400);
+					game_state.toggleExpanding();
+					game_state.setLastTimeExpanded();
+				}
+			}
+			if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100 &&
+				game_state.getSupplyBuilt() >= 35 &&
+				game_state.getGas() == 0)
+			{
+				if (worker_manager->build(BWAPI::UnitTypes::Terran_Refinery, 3, game_state))
+				{
+					game_state.addMineralsCommitted(100);
+					game_state.addGas(1);
+				}
+			}
+			if (BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 150 &&
+				game_state.getSupplyBuilt() >= 38 &&
+				!game_state.checkAcademy())
+			{
+				if (worker_manager->build(BWAPI::UnitTypes::Terran_Academy, 3, game_state))
+				{
+					game_state.addMineralsCommitted(150);
+					game_state.toggleAcademy();
+				}
+			}
+		}
+		else
+		{
 			if (((BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 400 &&
 				!game_state.getExpanding() &&
-				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Command_Center) > 1 ) ||
+				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Command_Center) > 1) ||
 				(BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 400 &&
 				!game_state.getExpanding() &&
 				game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Command_Center) == 1 &&
@@ -1592,7 +2243,7 @@ game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
 				}
 			}
 			if (((game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Barracks) >= 2 &&
-				game_state.getFactory() < 1 ) ||
+				game_state.getFactory() < 1) ||
 				(game_state.getBuildingTypeCount(BWAPI::UnitTypes::Terran_Command_Center) >= 2 &&
 				game_state.getFactory() < 2)) &&
 				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= BWAPI::UnitTypes::Terran_Factory.mineralPrice() &&
@@ -1652,6 +2303,7 @@ game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
 					game_state.addScienceFacility(1);
 				}
 			}
+		}
 	}
 	else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss)
 	{
@@ -1848,8 +2500,8 @@ game_state.getSupplyUsed() < game_state.getSupplyTotal() - 2)
 					game_state.setLastTimeExpanded();
 				}
 			}
-			if ((game_state.getBarracks() == 0 && game_state.getSupplyUsed() >= game_state.getSupplyExpected() - 2 ||
-				game_state.getBarracks() >= 1 && game_state.getSupplyUsed() >= game_state.getSupplyExpected() - 10) &&
+			if (((game_state.getBarracks() == 0 && game_state.getSupplyUsed() >= game_state.getSupplyExpected() - 2 ) ||
+				(game_state.getBarracks() >= 1 && game_state.getSupplyUsed() >= game_state.getSupplyExpected() - 10)) &&
 				BWAPI::Broodwar->self()->minerals() - game_state.getMineralsCommitted() >= 100)
 			{
 				if (worker_manager->build(BWAPI::UnitTypes::Protoss_Pylon, 3, game_state))

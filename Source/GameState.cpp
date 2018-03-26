@@ -2,12 +2,32 @@
 
 GameState::GameState()
 {
-	supply_total = 0;
-	supply_used = 0;
+	supply_total_terran = 0;
+	supply_total_protoss = 0;
+	supply_total_zerg = 0;
+	supply_used_terran = 0;
+	supply_used_protoss = 0;
+	supply_used_zerg = 0;
 	if (BWAPI::Broodwar->self()->getRace() != BWAPI::Races::Zerg)
-		supply_expected = 10;
+	{
+		switch (BWAPI::Broodwar->self()->getRace())
+		{
+		case BWAPI::Races::Terran:
+			supply_expected_terran = 10;
+			supply_expected_protoss = 0;
+			break;
+		default:
+			supply_expected_terran = 0;
+			supply_expected_protoss = 10;
+		}
+		supply_expected_zerg = 0;
+	}
 	else
-		supply_expected = 0;
+	{
+		supply_expected_terran = 0;
+		supply_expected_protoss = 0;
+		supply_expected_zerg = 0;
+	}
 	minerals_committed = 0;
 	barracks = 0;
 	academy = false;
@@ -48,6 +68,12 @@ GameState::GameState()
 	times_retreated = 0;
 	pylon_building = false;
 	templar_archives = 0;
+	terran = false;
+	protoss = false;
+	zerg = false;
+	gateway = 0;
+	no_powered_positions = false;
+	hydralisk_den = 0;
 }
 
 void GameState::addAIBase(AIBase new_base)
@@ -62,12 +88,62 @@ void GameState::addBuilding(Object new_building)
 
 void GameState::addSupplyUsed(double new_supply)
 {
-	supply_used += new_supply;
+	switch (BWAPI::Broodwar->self()->getRace())
+	{
+	case BWAPI::Races::Terran:
+		supply_used_terran += new_supply;
+		break;
+	case BWAPI::Races::Protoss:
+		supply_used_protoss += new_supply;
+		break;
+	default:
+		supply_used_zerg += new_supply;
+	}
+}
+
+void GameState::addSupplyUsed(double new_supply, BWAPI::Race race)
+{
+	switch (race)
+	{
+	case BWAPI::Races::Terran:
+		supply_used_terran += new_supply;
+		break;
+	case BWAPI::Races::Protoss:
+		supply_used_protoss += new_supply;
+		break;
+	default:
+		supply_used_zerg += new_supply;
+	}
 }
 
 void GameState::addSupplyTotal(int new_supply)
 {
-	supply_total += new_supply;
+	switch (BWAPI::Broodwar->self()->getRace())
+	{
+	case BWAPI::Races::Terran:
+		supply_total_terran += new_supply;
+		break;
+	case BWAPI::Races::Protoss:
+		supply_total_protoss += new_supply;
+		break;
+	default:
+		supply_total_zerg += new_supply;
+	}
+}
+
+void GameState::addSupplyTotal(int new_supply, BWAPI::Race race)
+{
+	switch (race)
+	{
+	case BWAPI::Races::Terran:
+		supply_total_terran += new_supply;
+		break;
+	case BWAPI::Races::Protoss:
+		supply_total_protoss += new_supply;
+		break;
+	default:
+		supply_total_zerg += new_supply;
+	}
 }
 
 void GameState::addMineralsCommitted(int new_minerals)
@@ -77,7 +153,32 @@ void GameState::addMineralsCommitted(int new_minerals)
 
 void GameState::addSupplyExpected(int new_supply)
 {
-	supply_expected += new_supply;
+	switch (BWAPI::Broodwar->self()->getRace())
+	{
+	case BWAPI::Races::Terran:
+		supply_expected_terran += new_supply;
+		break;
+	case BWAPI::Races::Protoss:
+		supply_expected_protoss += new_supply;
+		break;
+	default:
+		supply_expected_zerg += new_supply;
+	}
+}
+
+void GameState::addSupplyExpected(int new_supply, BWAPI::Race race)
+{
+	switch (race)
+	{
+	case BWAPI::Races::Terran:
+		supply_expected_terran += new_supply;
+		break;
+	case BWAPI::Races::Protoss:
+		supply_expected_protoss += new_supply;
+		break;
+	default:
+		supply_expected_zerg += new_supply;
+	}
 }
 
 void GameState::toggleAcademy()
@@ -148,7 +249,28 @@ std::vector<AIBase>* GameState::getBaseList()
 
 double GameState::getSupplyUsed()
 {
-	return supply_used;
+	switch (BWAPI::Broodwar->self()->getRace())
+	{
+	case BWAPI::Races::Terran:
+		return supply_used_terran;
+	case BWAPI::Races::Protoss:
+		return supply_used_protoss;
+	default:
+		return supply_used_zerg;
+	}
+}
+
+double GameState::getSupplyUsed(BWAPI::Race race)
+{
+	switch (race)
+	{
+	case BWAPI::Races::Terran:
+		return supply_used_terran;
+	case BWAPI::Races::Protoss:
+		return supply_used_protoss;
+	default:
+		return supply_used_zerg;
+	}
 }
 
 void GameState::addMineralWorker(Object new_worker)
@@ -194,7 +316,28 @@ int GameState::getMineralsCommitted()
 
 double GameState::getSupplyTotal()
 {
-	return supply_total;
+	switch (BWAPI::Broodwar->self()->getRace())
+	{
+	case BWAPI::Races::Terran:
+		return supply_total_terran;
+	case BWAPI::Races::Protoss:
+		return supply_total_protoss;
+	default:
+		return supply_total_zerg;
+	}
+}
+
+double GameState::getSupplyTotal(BWAPI::Race race)
+{
+	switch (race)
+	{
+	case BWAPI::Races::Terran:
+		return supply_total_terran;
+	case BWAPI::Races::Protoss:
+		return supply_total_protoss;
+	default:
+		return supply_total_zerg;
+	}
 }
 
 int GameState::getBarracks()
@@ -204,7 +347,28 @@ int GameState::getBarracks()
 
 double GameState::getSupplyExpected()
 {
-	return supply_expected;
+	switch (BWAPI::Broodwar->self()->getRace())
+	{
+	case BWAPI::Races::Terran:
+		return supply_expected_terran;
+	case BWAPI::Races::Protoss:
+		return supply_expected_protoss;
+	default:
+		return supply_expected_zerg;
+	}
+}
+
+double GameState::getSupplyExpected(BWAPI::Race race)
+{
+	switch (race)
+	{
+	case BWAPI::Races::Terran:
+		return supply_expected_terran;
+	case BWAPI::Races::Protoss:
+		return supply_expected_protoss;
+	default:
+		return supply_expected_zerg;
+	}
 }
 
 void GameState::addBarracks(int new_barracks)
@@ -274,6 +438,7 @@ BWAPI::TilePosition GameState::getGasBuildTileLocation(const BWEM::Area* area)
 	}
 	return BWAPI::TilePositions::Invalid;
 }
+
 bool GameState::checkValidGasBuildTileLocation(int base_class)
 {
 	auto gas_location_iterator = gas_locations.begin();
@@ -691,13 +856,6 @@ void GameState::addObjective(Objective new_objective)
 
 void GameState::assessGame()
 {
-	pylon_building = false;
-	for (auto &building_iterator : building_list)
-	{
-		if (building_iterator.getType() == BWAPI::UnitTypes::Protoss_Pylon &&
-			building_iterator.getUnit()->isBeingConstructed())
-			pylon_building = true;
-	}
 	if (times_retreated == 2 &&
 		build_order == BuildOrder::P2Gate1)
 	{
@@ -740,7 +898,7 @@ void GameState::assessGame()
 		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss ) &&
 		!scouted &&
 		!assign_scout &&
-		supply_used == 10)
+		(supply_used_terran == 10 || supply_used_protoss == 10))
 		assign_scout = true;
 	if (minerals_committed < 0)
 		minerals_committed = 0;
@@ -794,6 +952,21 @@ void GameState::assessGame()
 				objective_list.begin()->getUnits()->clear();
 				objective_list.push_back(new_objective);
 			}
+		}
+		if (build_order == BuildOrder::TAyumiBuildOpening &&
+			getUnitTypeCount(BWAPI::UnitTypes::Terran_Medic) == 4)
+		{
+			Objective new_objective;
+			new_objective.setObjective(ObjectiveTypes::Attack);
+			auto current_unit = objective_list.begin()->getUnits()->begin();
+			while (current_unit != objective_list.begin()->getUnits()->end())
+			{
+				new_objective.addUnit(*current_unit);
+				current_unit++;
+			}
+			objective_list.begin()->getUnits()->clear();
+			objective_list.push_back(new_objective);
+			setBuildOrder(BuildOrder::Default);
 		}
 		else if (build_order == BuildOrder::P4GateGoonOpening &&
 			getUnitTypeCount(BWAPI::UnitTypes::Protoss_Dragoon) >= 6)
@@ -919,7 +1092,27 @@ void GameState::assessGame()
 					current_building++;
 			}
 		}
-		if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
+
+		if (build_order == BuildOrder::TeamMeleeorFFA)
+		{
+			if (objective_list.size() >= 1)
+			{
+				if (objective_list.begin()->getUnits()->size() > 45)
+				{
+					Objective new_objective;
+					new_objective.setObjective(ObjectiveTypes::Attack);
+					auto current_unit = objective_list.begin()->getUnits()->begin();
+					while (current_unit != objective_list.begin()->getUnits()->end())
+					{
+						new_objective.addUnit(*current_unit);
+						current_unit++;
+					}
+					objective_list.begin()->getUnits()->clear();
+					objective_list.push_back(new_objective);
+				}
+			}
+		}
+		else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
 		{
 			if (build_order == BuildOrder::Default &&
 				objective_list.begin()->getUnits()->size() > 50)
@@ -1006,6 +1199,7 @@ void GameState::assessGame()
 	}
 
 	initDefenseGrid();
+	BWAPI::Position main_top_position = (BWAPI::Position)getMainBase()->getArea()->Top();
 	for (auto &current_base : base_list)
 	{
 		//I own this base, so evaluate positions.
@@ -1032,7 +1226,22 @@ void GameState::assessGame()
 							base_to_review_second->getBaseClass() != 5))
 						{
 							BWAPI::TilePosition position_to_add_score = (BWAPI::TilePosition)current_chokepoint->Center();
-							defense_grid[position_to_add_score.y * BWAPI::Broodwar->mapWidth() + position_to_add_score.x].first += 9;
+							double unit_distance_score = 0;
+							for (auto enemy_unit : enemy_units)
+							{
+								if (!enemy_unit.second.isBuilding() &&
+									!enemy_unit.second.expired() &&
+									!enemy_unit.second.getType().isFlyer())
+								{
+									BWAPI::Position unit_position = enemy_unit.second.getCurrentPosition();
+									double distance = getGroundDistance(unit_position, (BWAPI::Position)position_to_add_score);
+									if (distance > 0)
+										unit_distance_score += (1 / distance);
+								}
+							}
+							double main_distance = getGroundDistance(main_top_position, (BWAPI::Position)current_chokepoint->Center());
+							double main_distance_score = (1 / (main_distance / 10));
+							defense_grid[position_to_add_score.y * BWAPI::Broodwar->mapWidth() + position_to_add_score.x].first += 9 + unit_distance_score + main_distance_score;
 						}
 					}
 				}
@@ -2477,7 +2686,7 @@ void GameState::printDefenseGrid()
 		for (int y = 0; y < BWAPI::Broodwar->mapHeight(); y++)
 		{
 			BWAPI::Broodwar->drawBoxMap(x * 32, y * 32, x * 32 + 32, y * 32 + 32, BWAPI::Colors::Blue);
-			BWAPI::Broodwar->drawTextMap(x * 32 + 16, y * 32 + 16, "%d", defense_grid[y * BWAPI::Broodwar->mapWidth() + x].first);
+			BWAPI::Broodwar->drawTextMap(x * 32 + 16, y * 32 + 16, "%.1f", defense_grid[y * BWAPI::Broodwar->mapWidth() + x].first);
 		}
 	}
 }
@@ -2493,7 +2702,7 @@ int GameState::getDefenseGroundScore(BWAPI::TilePosition position_score)
 BWAPI::TilePosition GameState::getBuildLocation(BWAPI::UnitType build_type, Object build_worker)
 {
 	const BWEM::Area* worker_area = BWEM::Map::Instance().GetArea((BWAPI::TilePosition)build_worker.getCurrentPosition());
-	
+
 	BWAPI::TilePosition return_position = BWAPI::TilePositions::Invalid;
 	//Is the worker in a valid area?
 	if (!worker_area)
@@ -2525,7 +2734,7 @@ BWAPI::TilePosition GameState::getBuildLocation(BWAPI::UnitType build_type, Obje
 			if (tryPlacingBlocks(worker_area, build_type))
 			{
 				//We were able to place a block, so there will be a position to return.
-				return_position = getPositionFromVector(worker_area, &six_by_three_positions);
+				return_position = getPositionFromVector(worker_area, &six_by_three_positions, build_type.isResourceDepot());
 				return return_position;
 			}
 			else
@@ -2537,7 +2746,7 @@ BWAPI::TilePosition GameState::getBuildLocation(BWAPI::UnitType build_type, Obje
 		else
 		{
 			//Attempt to fetch a position from the vector.
-			return_position = getPositionFromVector(worker_area, &six_by_three_positions);
+			return_position = getPositionFromVector(worker_area, &six_by_three_positions, build_type.isResourceDepot());
 			if (return_position != BWAPI::TilePositions::Invalid)
 			{
 				//found a position, return it.
@@ -2641,7 +2850,7 @@ BWAPI::TilePosition GameState::getBuildLocation(BWAPI::UnitType build_type, Obje
 				if (build_type.requiresPsi())
 					return_position = getPositionFromVectorWithPower(worker_area, &four_by_three_positions, build_type);
 				else
-					return_position = getPositionFromVector(worker_area, &four_by_three_positions);
+					return_position = getPositionFromVector(worker_area, &four_by_three_positions, build_type.isResourceDepot());
 				return return_position;
 			}
 			else
@@ -2658,7 +2867,7 @@ BWAPI::TilePosition GameState::getBuildLocation(BWAPI::UnitType build_type, Obje
 			if (build_type.requiresPsi())
 				return_position = getPositionFromVectorWithPower(worker_area, &four_by_three_positions, build_type);
 			else
-				return_position = getPositionFromVector(worker_area, &four_by_three_positions);
+				return_position = getPositionFromVector(worker_area, &four_by_three_positions, build_type.isResourceDepot());
 			if (return_position != BWAPI::TilePositions::Invalid)
 			{
 				//found a position, return it.
@@ -2691,7 +2900,7 @@ BWAPI::TilePosition GameState::getBuildLocation(BWAPI::UnitType build_type, Obje
 						if (build_type.requiresPsi())
 							return_position = getPositionFromVectorWithPower(worker_area, &four_by_three_positions, build_type);
 						else
-							return_position = getPositionFromVector(worker_area, &four_by_three_positions);
+							return_position = getPositionFromVector(worker_area, &four_by_three_positions, build_type.isResourceDepot());
 						return return_position;
 					}
 					else
@@ -2864,15 +3073,16 @@ bool GameState::checkRegionBuildable(BWAPI::TilePosition top_left, std::pair<int
 	//check that the region defined in the parameters is clear in the buildmap.
 	for (int x = top_left.x - 1; x < top_left.x + size.first + 1; x++)
 	{
-		if (x > BWAPI::Broodwar->mapWidth())
+		if (x >= BWAPI::Broodwar->mapWidth())
 			return false;
 		for (int y = top_left.y - 1; y < top_left.y + size.second + 1; y++)
 		{
-			if (y > BWAPI::Broodwar->mapHeight())
+			if (y >= BWAPI::Broodwar->mapHeight())
 				return false;
 			if (y * BWAPI::Broodwar->mapWidth() + x < build_position_map.size())
 			{
-				if (!build_position_map.at(y * BWAPI::Broodwar->mapWidth() + x).first.unobstructed)
+				if (!build_position_map.at(y * BWAPI::Broodwar->mapWidth() + x).first.unobstructed ||
+					BWAPI::Broodwar->hasCreep(x, y))
 				{
 					return false;
 				}
@@ -3201,13 +3411,17 @@ bool GameState::placeBlock(const BWEM::Area* area, std::pair<int, int> block_siz
 				//This region is not clear, pick a new position and try again.
 				position_to_check.x += getRandomInteger(-3, 3);
 				position_to_check.y += getRandomInteger(-3, 3);
+				if (position_to_check.x < 0 || position_to_check.y < 0 || position_to_check.x >= BWAPI::Broodwar->mapWidth() || position_to_check.y >= BWAPI::Broodwar->mapHeight())
+				{
+					position_to_check = search_center;
+				}
 			}
 		}
 	}
 	return true;
 }
 
-BWAPI::TilePosition GameState::getPositionFromVector(const BWEM::Area* area, std::vector<BWAPI::TilePosition>* position_vector)
+BWAPI::TilePosition GameState::getPositionFromVector(const BWEM::Area* area, std::vector<BWAPI::TilePosition>* position_vector, bool is_resource_center)
 {
 	//Return the first found position in the designated area.
 	auto position_iterator = position_vector->begin();
@@ -3218,10 +3432,21 @@ BWAPI::TilePosition GameState::getPositionFromVector(const BWEM::Area* area, std
 		{
 			if (position_area == area)
 			{
-				BWAPI::TilePosition return_position = *position_iterator;
-				*position_iterator = position_vector->back();
-				position_vector->pop_back();
-				return return_position;
+				if (is_resource_center &&
+					BWAPI::Broodwar->canBuildHere(*position_iterator, BWAPI::UnitTypes::Terran_Command_Center))
+				{
+					BWAPI::TilePosition return_position = *position_iterator;
+					*position_iterator = position_vector->back();
+					position_vector->pop_back();
+					return return_position;
+				}
+				else if (!is_resource_center)
+				{
+					BWAPI::TilePosition return_position = *position_iterator;
+					*position_iterator = position_vector->back();
+					position_vector->pop_back();
+					return return_position;
+				}
 			}
 		}
 		position_iterator++;
@@ -3231,7 +3456,7 @@ BWAPI::TilePosition GameState::getPositionFromVector(const BWEM::Area* area, std
 
 bool GameState::tryPlacingBlocks(const BWEM::Area* area, BWAPI::UnitType build_type)
 {
-	if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
+	if (build_type.getRace() == BWAPI::Races::Terran)
 	{
 		if (build_type.canBuildAddon())
 		{
@@ -3311,8 +3536,10 @@ bool GameState::tryPlacingBlocks(const BWEM::Area* area, BWAPI::UnitType build_t
 				return false;
 			}
 		}
+		else
+			return false;
 	}
-	else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss)
+	else if (build_type.getRace() == BWAPI::Races::Protoss)
 	{
 		if (build_type.tileWidth() == 4)
 		{
@@ -3392,7 +3619,11 @@ bool GameState::tryPlacingBlocks(const BWEM::Area* area, BWAPI::UnitType build_t
 				}
 			}
 		}
+		else
+			return false;
 	}
+	else
+		return false;
 }
 
 void GameState::printReservedTilePositions()
@@ -3485,12 +3716,15 @@ BWAPI::TilePosition GameState::getPositionFromVectorWithPower(const BWEM::Area* 
 					BWAPI::TilePosition return_position = *position_iterator;
 					*position_iterator = position_vector->back();
 					position_vector->pop_back();
+					no_powered_positions = false;
 					return return_position;
 				}
 			}
 		}
 		position_iterator++;
 	}
+	if (!pylon_building)
+		no_powered_positions = true;
 	return BWAPI::TilePositions::Invalid;
 }
 
@@ -3502,4 +3736,222 @@ void GameState::addTemplarArchives(int new_templar_archive)
 int GameState::getTemplarArchives()
 {
 	return templar_archives;
+}
+
+void GameState::setTerran(bool new_terran)
+{
+	terran = new_terran;
+}
+
+void GameState::setProtoss(bool new_protoss)
+{
+	protoss = new_protoss;
+}
+
+void GameState::setZerg(bool new_zerg)
+{
+	zerg = new_zerg;
+}
+
+bool GameState::getTerran()
+{
+	return terran;
+}
+
+bool GameState::getProtoss()
+{
+	return protoss;
+}
+
+bool GameState::getZerg()
+{
+	return zerg;
+}
+
+void GameState::addCommandCenter(int new_command_center)
+{
+	command_center += new_command_center;
+}
+
+void GameState::addNexus(int new_nexus)
+{
+	nexus += new_nexus;
+}
+
+int GameState::getCommandCenter()
+{
+	return command_center;
+}
+
+int GameState::getNexus()
+{
+	return nexus;
+}
+
+void GameState::addGateway(int new_gateway)
+{
+	gateway += new_gateway;
+}
+
+int GameState::getGateway()
+{
+	return gateway;
+}
+
+void GameState::setNoPoweredPositions(bool new_no_powered_positions)
+{
+	no_powered_positions = new_no_powered_positions;
+}
+
+bool GameState::getNoPoweredPositions()
+{
+	return no_powered_positions;
+}
+
+void GameState::setPylonBuilding(bool new_pylon_building)
+{
+	pylon_building = new_pylon_building;
+}
+
+bool GameState::getPylonBuilding()
+{
+	return pylon_building;
+}
+
+int GameState::getMiningBaseCount()
+{
+	int mining_base_count = 0;
+	for (auto base : base_list)
+	{
+		switch (base.getBaseClass())
+		{
+		case 3:
+		case 4:
+			if (base.getMinerals()->size() > 0)
+				mining_base_count++;
+		}
+	}
+	return mining_base_count;
+}
+
+bool GameState::hasUnitTypeRequirement(BWAPI::UnitType unit_type)
+{
+	auto requirements = unit_type.requiredUnits();
+	for (auto requirement : requirements)
+	{
+		bool found = false;
+		if (requirement.first != BWAPI::UnitTypes::Zerg_Larva &&
+			requirement.first != BWAPI::UnitTypes::Zerg_Drone)
+		{
+			for (auto building : building_list)
+			{
+				if (building.getType() == requirement.first &&
+					building.getUnit()->isCompleted())
+				{
+					found = true;
+				}
+				if (found)
+					break;
+			}
+			if (!found)
+				return false;
+		}
+	}
+	return true;
+}
+
+void GameState::addHydraliskDen(int new_hydralisk_den)
+{
+	hydralisk_den += new_hydralisk_den;
+}
+
+int GameState::getHydraliskDen()
+{
+	return hydralisk_den;
+}
+
+void GameState::addPositionToQueue(BWAPI::UnitType build_type, BWAPI::TilePosition position)
+{
+	switch (build_type.tileWidth())
+	{
+	case 4:
+		if (build_type == BWAPI::UnitTypes::Terran_Bunker)
+			three_by_two_defense_positions.push_back(position);
+		else
+			four_by_three_positions.push_back(position);
+		break;
+	case 3:
+		three_by_two_positions.push_back(position);
+		break;
+	case 2:
+		two_by_two_positions.push_back(position);
+		break;
+	}
+}
+
+AIBase* GameState::getBaseForExpansion()
+{
+	double best_score = 0;
+	AIBase* best_base = nullptr;
+	AIBase* main = getMainBase();
+	for (auto& base : base_list)
+	{
+		if (base.getBaseClass() == 1 &&
+			base.getArea()->Bases().size() > 0 &&
+			base.getArea()->ChokePoints().size() > 0)
+		{
+			BWAPI::Position middle_position((BWAPI::Broodwar->mapWidth() / 2) - 1, (BWAPI::Broodwar->mapHeight() / 2) - 1);
+			double middle_distance_score = 2 * middle_position.getApproxDistance((BWAPI::Position)base.getArea()->Top()) / 100;
+			double geyser_score = 0;
+			for (auto& geyser : base.getArea()->Bases().begin()->Geysers())
+			{
+				geyser_score += (double)geyser->Amount() / 5000.0;
+			}
+			geyser_score = geyser_score * 10;
+			double mineral_score = 0;
+			for (auto& mineral : base.getArea()->Bases().begin()->Minerals())
+			{
+				mineral_score += (double)mineral->Amount() / 1500.0;
+			}
+			double choke_score = -1 * (double)base.getArea()->ChokePoints().size();
+			double main_distance_score = -1 * getGroundDistance((BWAPI::Position)main->getArea()->Top(), (BWAPI::Position)base.getArea()->Top()) / 50;
+			double score = middle_distance_score + geyser_score + mineral_score + choke_score + main_distance_score;
+			if (score > best_score)
+			{
+				best_score = score;
+				best_base = &base;
+			}
+		}
+	}
+	return best_base;
+}
+
+void GameState::printExpansionScores()
+{
+	AIBase* main = getMainBase();
+	for (auto& base : base_list)
+	{
+		if (base.getBaseClass() == 1 &&
+			base.getArea()->Bases().size() > 0 &&
+			base.getArea()->ChokePoints().size() > 0)
+		{
+			BWAPI::Position middle_position((BWAPI::Broodwar->mapWidth() / 2) - 1, (BWAPI::Broodwar->mapHeight() / 2) - 1);
+			double middle_distance_score = 2 * middle_position.getApproxDistance((BWAPI::Position)base.getArea()->Top()) / 100;
+			double geyser_score = 0;
+			for (auto& geyser : base.getArea()->Bases().begin()->Geysers())
+			{
+				geyser_score += (double)geyser->Amount() / 5000.0;
+			}
+			geyser_score = geyser_score * 10;
+			double mineral_score = 0;
+			for (auto& mineral : base.getArea()->Bases().begin()->Minerals())
+			{
+				mineral_score += (double)mineral->Amount() / 1500.0;
+			}
+			double choke_score = -1 * (double)base.getArea()->ChokePoints().size();
+			double main_distance_score = -1 * getGroundDistance((BWAPI::Position)main->getArea()->Top(), (BWAPI::Position)base.getArea()->Top()) / 50;
+			double score = middle_distance_score + geyser_score + mineral_score + choke_score + main_distance_score;
+			BWAPI::Broodwar->drawTextMap((BWAPI::Position)base.getArea()->Top(), "%.2f", score);
+		}
+	}
 }

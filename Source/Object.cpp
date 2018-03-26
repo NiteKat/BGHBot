@@ -283,6 +283,7 @@ void Object::updateObject()
 		max_shields = my_type.maxShields();
 		remaining_attack_cooldown = my_unit->getGroundWeaponCooldown();
 		my_player = my_unit->getPlayer();
+		last_frame_seen = BWAPI::Broodwar->getFrameCount();
 	}
 	else
 	{
