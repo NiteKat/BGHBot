@@ -1,6 +1,6 @@
 #pragma once
 #include <BWAPI.h>
-#include"BWEM 1.3.1/src/bwem.h"
+#include"BWEM 1.4.1/src/bwem.h"
 #include"WorkerManager.h"
 #include<vector>
 #include"AIBase.h"

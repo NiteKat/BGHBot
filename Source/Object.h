@@ -1,7 +1,7 @@
 #ifndef OBJECT
 #define OBJECT
 #include<BWAPI.h>
-#include"BWEM 1.3.1/src/bwem.h"
+#include"BWEM 1.4.1/src/bwem.h"
 #include "AIBase.h"
 #include<vector>
 

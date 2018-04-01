@@ -1,7 +1,7 @@
 #ifndef AIBASE
 #define AIBASE
 
-#include"BWEM 1.3.1/src/bwem.h"
+#include"BWEM 1.4.1/src/bwem.h"
 #include"Resource.h"
 
 class AIBase

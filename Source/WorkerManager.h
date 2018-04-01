@@ -4,7 +4,7 @@
 #include<vector>
 #include<BWAPI.h>
 #include"Object.h"
-#include"BWEM 1.3.1/src/bwem.h"
+#include"BWEM 1.4.1/src/bwem.h"
 #include"GameState.h"
 #include<ctime>
 
