@@ -57,7 +57,7 @@ enum class BlockType
 class GameState
 {
 public:
-	GameState();
+	GameState(BWAPI::Game * game);
 
 	void addAIBase(AIBase new_base);
 	void addBuilding(Object new_building);
@@ -267,6 +267,7 @@ private:
 	std::vector<BWAPI::TilePosition> two_by_two_positions;
 	std::vector<BWAPI::TilePosition> three_by_two_defense_positions;
 	std::vector<std::pair<double, int>> defense_grid;
+  BWAPI::Game * Broodwar;
 	
 	double supply_used_terran;
 	double supply_used_protoss;

@@ -1,9 +1,12 @@
 #include"Object.h"
 #include"FAP.h"
 
-Object::Object(BWAPI::Unit new_unit, AIBase *new_base)
+Object::Object(BWAPI::Unit new_unit, AIBase *new_base) :
+  my_unit(new_unit),
+  my_resource(nullptr),
+  my_player(new_unit->getPlayer()),
+  my_repair_target(nullptr)
 {
-	my_unit = new_unit;
 	my_base = new_base;
 	build_type = BWAPI::UnitTypes::Unknown;
 	base_class = 0;
@@ -11,7 +14,6 @@ Object::Object(BWAPI::Unit new_unit, AIBase *new_base)
 	is_building = false;
 	elapsed_time_order_given = 0;
 	target_base = nullptr;
-	my_resource = nullptr;
 	my_type = new_unit->getType();
 	current_hit_points = new_unit->getHitPoints();
 	max_hit_points = my_type.maxHitPoints();
@@ -19,12 +21,14 @@ Object::Object(BWAPI::Unit new_unit, AIBase *new_base)
 	current_shields = new_unit->getShields();
 	max_shields = my_type.maxShields();
 	remaining_attack_cooldown = new_unit->getGroundWeaponCooldown();
-	my_player = new_unit->getPlayer();
 }
 
-Object::Object(BWAPI::Unit new_unit)
+Object::Object(BWAPI::Unit new_unit) :
+  my_unit(new_unit),
+  my_resource(nullptr),
+  my_player(new_unit->getPlayer()),
+  my_repair_target(nullptr)
 {
-	my_unit = new_unit;
 	my_base = nullptr;
 	build_type = BWAPI::UnitTypes::Unknown;
 	base_class = 0;
@@ -32,7 +36,6 @@ Object::Object(BWAPI::Unit new_unit)
 	is_building = false;
 	elapsed_time_order_given = 0;
 	target_base = nullptr;
-	my_resource = nullptr;
 	my_type = new_unit->getType();
 	current_hit_points = new_unit->getHitPoints();
 	max_hit_points = my_type.maxHitPoints();
@@ -40,12 +43,14 @@ Object::Object(BWAPI::Unit new_unit)
 	current_shields = new_unit->getShields();
 	max_shields = my_type.maxShields();
 	remaining_attack_cooldown = new_unit->getGroundWeaponCooldown();
-	my_player = new_unit->getPlayer();
 }
 
-Object::Object(const Neolib::FAPUnit &fu)
+Object::Object(const Neolib::FAPUnit &fu) :
+  my_unit(nullptr),
+  my_resource(nullptr),
+  my_player(fu.player),
+  my_repair_target(nullptr)
 {
-	my_unit = nullptr;
 	my_base = nullptr;
 	build_type = BWAPI::UnitTypes::Unknown;
 	base_class = 0;
@@ -53,7 +58,6 @@ Object::Object(const Neolib::FAPUnit &fu)
 	is_building = false;
 	elapsed_time_order_given = 0;
 	target_base = nullptr;
-	my_resource = nullptr;
 	my_type = fu.unitType;
 	current_hit_points = fu.health;
 	max_hit_points = fu.maxHealth;
@@ -61,12 +65,14 @@ Object::Object(const Neolib::FAPUnit &fu)
 	current_shields = fu.shields;
 	max_shields = fu.maxShields;
 	remaining_attack_cooldown = fu.groundCooldown;
-	my_player = fu.player;
 }
 
-Object::Object()
+Object::Object() :
+  my_unit(nullptr),
+  my_resource(nullptr),
+  my_player(nullptr),
+  my_repair_target(nullptr)
 {
-	my_unit = nullptr;
 	my_base = nullptr;
 	build_type = BWAPI::UnitTypes::Unknown;
 	base_class = 0;
@@ -74,7 +80,6 @@ Object::Object()
 	is_building = false;
 	elapsed_time_order_given = 0;
 	target_base = nullptr;
-	my_resource = nullptr;
 	my_type = BWAPI::UnitTypes::None;
 	current_hit_points = 0;
 	max_hit_points = 0;
@@ -82,7 +87,6 @@ Object::Object()
 	current_shields = 0;
 	max_shields = 0;
 	remaining_attack_cooldown = 0;
-	my_player = nullptr;
 }
 
 void Object::setBuildType(BWAPI::UnitType new_build_type)
@@ -266,7 +270,7 @@ int Object::getRemainingAttackCooldown()
 
 bool Object::expired()
 {
-	if (BWAPI::Broodwar->getFrameCount() - last_frame_seen >= 1920)
+	if (my_unit.getGame()->getFrameCount() - last_frame_seen >= 1920)
 		return true;
 	else
 		return false;
@@ -283,11 +287,11 @@ void Object::updateObject()
 		max_shields = my_type.maxShields();
 		remaining_attack_cooldown = my_unit->getGroundWeaponCooldown();
 		my_player = my_unit->getPlayer();
-		last_frame_seen = BWAPI::Broodwar->getFrameCount();
+		last_frame_seen = my_unit.getGame()->getFrameCount();
 	}
 	else
 	{
-		if (BWAPI::Broodwar->isVisible((BWAPI::TilePosition)current_position))
+		if (my_unit.getGame()->isVisible((BWAPI::TilePosition)current_position))
 		{
 			current_position = BWAPI::Positions::Unknown;
 		}

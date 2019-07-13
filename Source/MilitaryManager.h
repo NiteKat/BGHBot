@@ -13,16 +13,18 @@
 class MilitaryManager
 {
 public:
-	MilitaryManager();
+	MilitaryManager(BWAPI::Game * game);
 
-	void checkMilitary(WorkerManager &worker_manager, GameState &game_state);
-	void scout(WorkerManager &worker_manager, GameState &game_state);
-	void scout(Object intended_scout, GameState &game_state);
+	void checkMilitary(std::unique_ptr<WorkerManager> &worker_manager, std::unique_ptr<GameState> &game_state);
+	void scout(std::unique_ptr<WorkerManager> &worker_manager, std::unique_ptr<GameState> &game_state);
+	void scout(Object intended_scout, std::unique_ptr<GameState> &game_state);
 
 private:
 	Object scout_unit;
 	BWAPI::Position scout_target;
 	int global_strategy;
+  BWAPI::Game * Broodwar;
+  Neolib::FastAPproximation fap;
 };
 
 #endif

@@ -14,6 +14,8 @@ namespace Neolib {
 
 		int id = 0;
 
+    BWAPI::Game * Broodwar;
+
 		mutable int x = 0, y = 0;
 
 		mutable int health = 0;
@@ -55,7 +57,7 @@ namespace Neolib {
 
 	struct FastAPproximation {
 
-		FastAPproximation();
+		FastAPproximation(BWAPI::Game * game);
 
 		void addUnitPlayer1(FAPUnit fu);
 		void addIfCombatUnitPlayer1(FAPUnit fu);
@@ -85,6 +87,7 @@ namespace Neolib {
 		void isimulate();
 		void unitDeath(const FAPUnit &fu, std::vector<FAPUnit> &itsFriendlies);
 		void convertToUnitType(const FAPUnit &fu, BWAPI::UnitType ut);
+    BWAPI::Game * Broodwar;
 	};
 
 } // namespace Neolib

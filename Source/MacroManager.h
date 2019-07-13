@@ -12,11 +12,12 @@
 class MacroManager
 {
 public:
-	MacroManager();
+	MacroManager(BWAPI::Game * game);
 
-	void checkMacro(WorkerManager* worker_manager, GameState &game_statem);
+	void checkMacro(std::unique_ptr<WorkerManager> &worker_manager, std::unique_ptr<GameState> &game_state);
 
 private:
+  BWAPI::Game * Broodwar;
 };
 
 #endif

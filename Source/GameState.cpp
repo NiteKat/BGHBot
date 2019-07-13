@@ -1,16 +1,17 @@
 #include"GameState.h"
 
-GameState::GameState()
+GameState::GameState(BWAPI::Game * game)
 {
+  Broodwar = game;
 	supply_total_terran = 0;
 	supply_total_protoss = 0;
 	supply_total_zerg = 0;
 	supply_used_terran = 0;
 	supply_used_protoss = 0;
 	supply_used_zerg = 0;
-	if (BWAPI::Broodwar->self()->getRace() != BWAPI::Races::Zerg)
+	if (Broodwar->self()->getRace() != BWAPI::Races::Zerg)
 	{
-		switch (BWAPI::Broodwar->self()->getRace())
+		switch (Broodwar->self()->getRace())
 		{
 		case BWAPI::Races::Terran:
 			supply_expected_terran = 10;
@@ -61,7 +62,7 @@ GameState::GameState()
 	forge = 0;
 	citadel_of_adun = 0;
 	spawning_pool = 0;
-	if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Zerg)
+	if (Broodwar->self()->getRace() == BWAPI::Races::Zerg)
 		hatchery = 1;
 	else
 		hatchery = 0;
@@ -88,7 +89,7 @@ void GameState::addBuilding(Object new_building)
 
 void GameState::addSupplyUsed(double new_supply)
 {
-	switch (BWAPI::Broodwar->self()->getRace())
+	switch (Broodwar->self()->getRace())
 	{
 	case BWAPI::Races::Terran:
 		supply_used_terran += new_supply;
@@ -118,7 +119,7 @@ void GameState::addSupplyUsed(double new_supply, BWAPI::Race race)
 
 void GameState::addSupplyTotal(int new_supply)
 {
-	switch (BWAPI::Broodwar->self()->getRace())
+	switch (Broodwar->self()->getRace())
 	{
 	case BWAPI::Races::Terran:
 		supply_total_terran += new_supply;
@@ -153,7 +154,7 @@ void GameState::addMineralsCommitted(int new_minerals)
 
 void GameState::addSupplyExpected(int new_supply)
 {
-	switch (BWAPI::Broodwar->self()->getRace())
+	switch (Broodwar->self()->getRace())
 	{
 	case BWAPI::Races::Terran:
 		supply_expected_terran += new_supply;
@@ -249,7 +250,7 @@ std::vector<AIBase>* GameState::getBaseList()
 
 double GameState::getSupplyUsed()
 {
-	switch (BWAPI::Broodwar->self()->getRace())
+	switch (Broodwar->self()->getRace())
 	{
 	case BWAPI::Races::Terran:
 		return supply_used_terran;
@@ -316,7 +317,7 @@ int GameState::getMineralsCommitted()
 
 double GameState::getSupplyTotal()
 {
-	switch (BWAPI::Broodwar->self()->getRace())
+	switch (Broodwar->self()->getRace())
 	{
 	case BWAPI::Races::Terran:
 		return supply_total_terran;
@@ -347,7 +348,7 @@ int GameState::getBarracks()
 
 double GameState::getSupplyExpected()
 {
-	switch (BWAPI::Broodwar->self()->getRace())
+	switch (Broodwar->self()->getRace())
 	{
 	case BWAPI::Races::Terran:
 		return supply_expected_terran;
@@ -405,7 +406,7 @@ int GameState::getGas()
 
 void GameState::initializeGasLocations()
 {
-	BWAPI::Unitset geyser_list = BWAPI::Broodwar->getStaticGeysers();
+	BWAPI::Unitset geyser_list = Broodwar->getStaticGeysers();
 	auto geyser_list_iterator = geyser_list.begin();
 	while (geyser_list_iterator != geyser_list.end())
 	{
@@ -625,7 +626,7 @@ void GameState::checkBaseOwnership()
 			}
 			if (base_list_iterator->getBaseClass() == 1)
 			{
-				for (auto unit : BWAPI::Broodwar->allies().getUnits())
+				for (auto unit : Broodwar->allies().getUnits())
 				{
 					if (unit->exists())
 					{
@@ -742,14 +743,14 @@ Object* GameState::getAvailableDetector()
 		{
 			if (!detector_iterator->getUnit()->isIdle())
 			{
-				BWAPI::Unitset units_in_range_of_target = BWAPI::Broodwar->getUnitsInRadius(detector_iterator->getUnit()->getTargetPosition(), detector_iterator->getUnit()->getType().sightRange(), (BWAPI::Filter::IsEnemy && BWAPI::Filter::IsCloaked) || (BWAPI::Filter::IsEnemy && BWAPI::Filter::IsBurrowed));
+				BWAPI::Unitset units_in_range_of_target = Broodwar->getUnitsInRadius(detector_iterator->getUnit()->getTargetPosition(), detector_iterator->getUnit()->getType().sightRange(), (BWAPI::Filter::IsEnemy && BWAPI::Filter::IsCloaked) || (BWAPI::Filter::IsEnemy && BWAPI::Filter::IsBurrowed));
 				if (units_in_range_of_target.size() > 0)
 					detector_free = false;
 			}
 			if (detector_free == true &&
 				detector_iterator->getUnit()->getPosition() != BWAPI::Positions::Invalid)
 			{
-				BWAPI::Unitset units_in_range_of_detector = BWAPI::Broodwar->getUnitsInRadius(detector_iterator->getUnit()->getPosition(), detector_iterator->getUnit()->getType().sightRange(), (BWAPI::Filter::IsEnemy && BWAPI::Filter::IsCloaked) || (BWAPI::Filter::IsEnemy && BWAPI::Filter::IsBurrowed));
+				BWAPI::Unitset units_in_range_of_detector = Broodwar->getUnitsInRadius(detector_iterator->getUnit()->getPosition(), detector_iterator->getUnit()->getType().sightRange(), (BWAPI::Filter::IsEnemy && BWAPI::Filter::IsCloaked) || (BWAPI::Filter::IsEnemy && BWAPI::Filter::IsBurrowed));
 				if (units_in_range_of_detector.size() == 0)
 					return &(*detector_iterator);
 				else
@@ -769,8 +770,8 @@ BWAPI::Position GameState::getRandomUncontrolledPosition()
 	BWAPI::Position random_position;
 	while (true)
 	{
-		random_position.x = rand() % BWAPI::Broodwar->mapWidth() * 32;
-		random_position.y = rand() % BWAPI::Broodwar->mapHeight() * 32;
+		random_position.x = rand() % Broodwar->mapWidth() * 32;
+		random_position.y = rand() % Broodwar->mapHeight() * 32;
 		auto base_list_iterator = base_list.begin();
 		const BWEM::Area* area_to_check = BWEM::Map::Instance().GetArea((BWAPI::TilePosition)random_position);
 		if (area_to_check != nullptr)
@@ -862,13 +863,13 @@ void GameState::assessGame()
 		build_order = BuildOrder::Default;
 	}
 	checkBaseOwnership();
-	if (BWAPI::Broodwar->getFrameCount() == 0)
+	if (Broodwar->getFrameCount() == 0)
 	{
-		if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
+		if (Broodwar->self()->getRace() == BWAPI::Races::Terran)
 		{
-			BWAPI::TilePosition search_center = BWAPI::Broodwar->self()->getStartLocation();
-			if (BWAPI::Broodwar->enemies().size() == 1 &&
-				BWAPI::Broodwar->enemy()->getRace() == BWAPI::Races::Zerg)
+			BWAPI::TilePosition search_center = Broodwar->self()->getStartLocation();
+			if (Broodwar->enemies().size() == 1 &&
+				Broodwar->enemy()->getRace() == BWAPI::Races::Zerg)
 			{
 				
 				BWAPI::TilePosition direction = search_center - (BWAPI::TilePosition)(*BWEM::Map::Instance().GetArea(search_center)->ChokePoints().begin())->Center();
@@ -890,12 +891,12 @@ void GameState::assessGame()
 					else
 						search_center -= BWAPI::TilePosition(0, 4);
 				}
-				placeBlock(BWEM::Map::Instance().GetArea(BWAPI::Broodwar->self()->getStartLocation()), std::make_pair<int, int>(8, 6), BlockType::TTvZBunkerStart, search_center);
+				placeBlock(BWEM::Map::Instance().GetArea(Broodwar->self()->getStartLocation()), std::make_pair<int, int>(8, 6), BlockType::TTvZBunkerStart, search_center);
 			}
 		}
 	}
-	if ((BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran ||
-		BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss ) &&
+	if ((Broodwar->self()->getRace() == BWAPI::Races::Terran ||
+		Broodwar->self()->getRace() == BWAPI::Races::Protoss ) &&
 		!scouted &&
 		!assign_scout &&
 		(supply_used_terran == 10 || supply_used_protoss == 10))
@@ -989,7 +990,7 @@ void GameState::assessGame()
 			build_order = BuildOrder::P4GateGoonLate;
 		}
 		if (objective_list.size() > 1 &&
-			BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran &&
+			Broodwar->self()->getRace() == BWAPI::Races::Terran &&
 			build_order == BuildOrder::BGHMech &&
 			barracks >= 1)
 		{
@@ -1036,50 +1037,50 @@ void GameState::assessGame()
 					lift_barracks == false)
 				{
 					BWAPI::TilePosition position_to_land;
-					if (BWAPI::Broodwar->self()->getStartLocation().x == 114 &&
-						BWAPI::Broodwar->self()->getStartLocation().y == 116)
+					if (Broodwar->self()->getStartLocation().x == 114 &&
+						Broodwar->self()->getStartLocation().y == 116)
 					{
 						position_to_land.x = 90;
 						position_to_land.y = 97;
 					}
-					else if (BWAPI::Broodwar->self()->getStartLocation().x == 114 &&
-						BWAPI::Broodwar->self()->getStartLocation().y == 80)
+					else if (Broodwar->self()->getStartLocation().x == 114 &&
+						Broodwar->self()->getStartLocation().y == 80)
 					{
 						position_to_land.x = 101;
 						position_to_land.y = 63;
 					}
-					else if (BWAPI::Broodwar->self()->getStartLocation().x == 113 &&
-						BWAPI::Broodwar->self()->getStartLocation().y == 8)
+					else if (Broodwar->self()->getStartLocation().x == 113 &&
+						Broodwar->self()->getStartLocation().y == 8)
 					{
 						position_to_land.x = 96;
 						position_to_land.y = 24;
 					}
-					else if (BWAPI::Broodwar->self()->getStartLocation().x == 72 &&
-						BWAPI::Broodwar->self()->getStartLocation().y == 8)
+					else if (Broodwar->self()->getStartLocation().x == 72 &&
+						Broodwar->self()->getStartLocation().y == 8)
 					{
 						position_to_land.x = 54;
 						position_to_land.y = 25;
 					}
-					else if (BWAPI::Broodwar->self()->getStartLocation().x == 10 &&
-						BWAPI::Broodwar->self()->getStartLocation().y == 6)
+					else if (Broodwar->self()->getStartLocation().x == 10 &&
+						Broodwar->self()->getStartLocation().y == 6)
 					{
 						position_to_land.x = 30;
 						position_to_land.y = 23;
 					}
-					else if (BWAPI::Broodwar->self()->getStartLocation().x == 8 &&
-						BWAPI::Broodwar->self()->getStartLocation().y == 47)
+					else if (Broodwar->self()->getStartLocation().x == 8 &&
+						Broodwar->self()->getStartLocation().y == 47)
 					{
 						position_to_land.x = 22;
 						position_to_land.y = 57;
 					}
-					else if (BWAPI::Broodwar->self()->getStartLocation().x == 10 &&
-						BWAPI::Broodwar->self()->getStartLocation().y == 114)
+					else if (Broodwar->self()->getStartLocation().x == 10 &&
+						Broodwar->self()->getStartLocation().y == 114)
 					{
 						position_to_land.x = 17;
 						position_to_land.y = 95;
 					}
-					else if (BWAPI::Broodwar->self()->getStartLocation().x == 63 &&
-						BWAPI::Broodwar->self()->getStartLocation().y == 117)
+					else if (Broodwar->self()->getStartLocation().x == 63 &&
+						Broodwar->self()->getStartLocation().y == 117)
 					{
 						position_to_land.x = 52;
 						position_to_land.y = 96;
@@ -1112,7 +1113,7 @@ void GameState::assessGame()
 				}
 			}
 		}
-		else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Terran)
+		else if (Broodwar->self()->getRace() == BWAPI::Races::Terran)
 		{
 			if (build_order == BuildOrder::Default &&
 				objective_list.begin()->getUnits()->size() > 50)
@@ -1143,7 +1144,7 @@ void GameState::assessGame()
 				objective_list.push_back(new_objective);
 			}
 		}
-		else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Protoss)
+		else if (Broodwar->self()->getRace() == BWAPI::Races::Protoss)
 		{
 			if ((build_order == BuildOrder::Default ||
 				build_order == BuildOrder::P4GateGoonMid ||
@@ -1162,7 +1163,7 @@ void GameState::assessGame()
 				objective_list.push_back(new_objective);
 			}
 		}
-		else if (BWAPI::Broodwar->self()->getRace() == BWAPI::Races::Zerg)
+		else if (Broodwar->self()->getRace() == BWAPI::Races::Zerg)
 		{
 			if (build_order == BuildOrder::Default &&
 				objective_list.begin()->getUnits()->size() > 100)
@@ -1241,7 +1242,7 @@ void GameState::assessGame()
 							}
 							double main_distance = getGroundDistance(main_top_position, (BWAPI::Position)current_chokepoint->Center());
 							double main_distance_score = (1 / (main_distance / 10));
-							defense_grid[position_to_add_score.y * BWAPI::Broodwar->mapWidth() + position_to_add_score.x].first += 9 + unit_distance_score + main_distance_score;
+							defense_grid[position_to_add_score.y * Broodwar->mapWidth() + position_to_add_score.x].first += 9 + unit_distance_score + main_distance_score;
 						}
 					}
 				}
@@ -1252,14 +1253,14 @@ void GameState::assessGame()
 
 void GameState::initializeBuildMap()
 {
-	for (int y = 0; y < BWAPI::Broodwar->mapHeight(); y++)
+	for (int y = 0; y < Broodwar->mapHeight(); y++)
 	{
-		for (int x = 0; x < BWAPI::Broodwar->mapWidth(); x++)
+		for (int x = 0; x < Broodwar->mapWidth(); x++)
 		{
 			BWAPI::TilePosition position_to_check;
 			position_to_check.x = x;
 			position_to_check.y = y;
-			if (BWAPI::Broodwar->isBuildable(position_to_check))
+			if (Broodwar->isBuildable(position_to_check))
 			{
 				std::pair<TileFlags, int> new_coordinate;
 				new_coordinate.first.unobstructed = true;
@@ -1296,13 +1297,13 @@ void GameState::updateBuildMap(int x, int y, BWAPI::UnitType building_type, bool
 	{
 		if (build_or_remove)
 		{
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + (y * Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 1].first.unobstructed = false;
 		}
 		else
 		{
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + (y * Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 1].first.unobstructed = true;
 		}
 	}
 	//2x2
@@ -1310,22 +1311,22 @@ void GameState::updateBuildMap(int x, int y, BWAPI::UnitType building_type, bool
 		building_type == BWAPI::UnitTypes::Protoss_Photon_Cannon ||
 		building_type == BWAPI::UnitTypes::Protoss_Pylon)
 	{
-		if (x + 2 > BWAPI::Broodwar->mapWidth() ||
-			y + 2 > BWAPI::Broodwar->mapHeight())
+		if (x + 2 > Broodwar->mapWidth() ||
+			y + 2 > Broodwar->mapHeight())
 			return;
 		if (build_or_remove)
 		{
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + (y * Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 1].first.unobstructed = false;
 		}
 		else
 		{
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + (y * Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 1].first.unobstructed = true;
 		}
 	}
 	//3x2
@@ -1344,55 +1345,55 @@ void GameState::updateBuildMap(int x, int y, BWAPI::UnitType building_type, bool
 		building_type == BWAPI::UnitTypes::Protoss_Shield_Battery ||
 		building_type == BWAPI::UnitTypes::Protoss_Templar_Archives)
 	{
-		if (x + 3 > BWAPI::Broodwar->mapWidth() ||
-			y + 2 > BWAPI::Broodwar->mapHeight())
+		if (x + 3 > Broodwar->mapWidth() ||
+			y + 2 > Broodwar->mapHeight())
 			return;
 		if (build_or_remove)
 		{
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = false;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = false;
+			build_position_map[x + (y * Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 2].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 2].first.unobstructed = false;
 		}
 		else
 		{
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = true;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = true;
+			build_position_map[x + (y * Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 2].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 2].first.unobstructed = true;
 		}
 	}
 	//4x2
 	else if (building_type == BWAPI::UnitTypes::Resource_Vespene_Geyser)
 	{
-		if (x + 4 > BWAPI::Broodwar->mapWidth() ||
-			y + 2 > BWAPI::Broodwar->mapHeight())
+		if (x + 4 > Broodwar->mapWidth() ||
+			y + 2 > Broodwar->mapHeight())
 			return;
 		if (build_or_remove)
 		{
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = false;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = false;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = false;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = false;
+			build_position_map[x + (y * Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 2].first.unobstructed = false;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 3].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 2].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 3].first.unobstructed = false;
 		}
 		else
 		{
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = true;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = true;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = true;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = true;
+			build_position_map[x + (y * Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 2].first.unobstructed = true;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 3].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 2].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 3].first.unobstructed = true;
 		}
 	}
 	//4x3
@@ -1402,38 +1403,38 @@ void GameState::updateBuildMap(int x, int y, BWAPI::UnitType building_type, bool
 		building_type == BWAPI::UnitTypes::Protoss_Nexus ||
 		building_type == BWAPI::UnitTypes::Protoss_Stargate)
 	{
-		if (x + 4 > BWAPI::Broodwar->mapWidth() ||
-			y + 3 > BWAPI::Broodwar->mapHeight())
+		if (x + 4 > Broodwar->mapWidth() ||
+			y + 3 > Broodwar->mapHeight())
 			return;
 		if (build_or_remove)
 		{
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = false;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = false;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = false;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = false;
-			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
-			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
-			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = false;
-			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = false;
+			build_position_map[x + (y * Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 2].first.unobstructed = false;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 3].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 2].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 3].first.unobstructed = false;
+			build_position_map[x + ((y + 2) * Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + ((y + 2) * Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + ((y + 2) * Broodwar->mapWidth()) + 2].first.unobstructed = false;
+			build_position_map[x + ((y + 2) * Broodwar->mapWidth()) + 3].first.unobstructed = false;
 		}
 		else
 		{
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = true;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = true;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = true;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = true;
-			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
-			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
-			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = true;
-			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = true;
+			build_position_map[x + (y * Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 2].first.unobstructed = true;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 3].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 2].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 3].first.unobstructed = true;
+			build_position_map[x + ((y + 2) * Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + ((y + 2) * Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + ((y + 2) * Broodwar->mapWidth()) + 2].first.unobstructed = true;
+			build_position_map[x + ((y + 2) * Broodwar->mapWidth()) + 3].first.unobstructed = true;
 		}
 	}
 	//4x3 with addon.
@@ -1442,46 +1443,46 @@ void GameState::updateBuildMap(int x, int y, BWAPI::UnitType building_type, bool
 		building_type == BWAPI::UnitTypes::Terran_Science_Facility ||
 		building_type == BWAPI::UnitTypes::Terran_Starport)
 	{
-		if (x + 4 > BWAPI::Broodwar->mapWidth() ||
-			y + 3 > BWAPI::Broodwar->mapHeight())
+		if (x + 4 > Broodwar->mapWidth() ||
+			y + 3 > Broodwar->mapHeight())
 			return;
 		if (build_or_remove)
 		{
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = false;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = false;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = false;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = false;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 4].first.unobstructed = false;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 5].first.unobstructed = false;
-			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth())].first.unobstructed = false;
-			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = false;
-			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = false;
-			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = false;
-			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 4].first.unobstructed = false;
-			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 5].first.unobstructed = false;
+			build_position_map[x + (y * Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 2].first.unobstructed = false;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 3].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 2].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 3].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 4].first.unobstructed = false;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 5].first.unobstructed = false;
+			build_position_map[x + ((y + 2) * Broodwar->mapWidth())].first.unobstructed = false;
+			build_position_map[x + ((y + 2) * Broodwar->mapWidth()) + 1].first.unobstructed = false;
+			build_position_map[x + ((y + 2) * Broodwar->mapWidth()) + 2].first.unobstructed = false;
+			build_position_map[x + ((y + 2) * Broodwar->mapWidth()) + 3].first.unobstructed = false;
+			build_position_map[x + ((y + 2) * Broodwar->mapWidth()) + 4].first.unobstructed = false;
+			build_position_map[x + ((y + 2) * Broodwar->mapWidth()) + 5].first.unobstructed = false;
 		}
 		else
 		{
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = true;
-			build_position_map[x + (y * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = true;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = true;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = true;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 4].first.unobstructed = true;
-			build_position_map[x + ((y + 1) * BWAPI::Broodwar->mapWidth()) + 5].first.unobstructed = true;
-			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth())].first.unobstructed = true;
-			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 1].first.unobstructed = true;
-			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 2].first.unobstructed = true;
-			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 3].first.unobstructed = true;
-			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 4].first.unobstructed = true;
-			build_position_map[x + ((y + 2) * BWAPI::Broodwar->mapWidth()) + 5].first.unobstructed = true;
+			build_position_map[x + (y * Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 2].first.unobstructed = true;
+			build_position_map[x + (y * Broodwar->mapWidth()) + 3].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 2].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 3].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 4].first.unobstructed = true;
+			build_position_map[x + ((y + 1) * Broodwar->mapWidth()) + 5].first.unobstructed = true;
+			build_position_map[x + ((y + 2) * Broodwar->mapWidth())].first.unobstructed = true;
+			build_position_map[x + ((y + 2) * Broodwar->mapWidth()) + 1].first.unobstructed = true;
+			build_position_map[x + ((y + 2) * Broodwar->mapWidth()) + 2].first.unobstructed = true;
+			build_position_map[x + ((y + 2) * Broodwar->mapWidth()) + 3].first.unobstructed = true;
+			build_position_map[x + ((y + 2) * Broodwar->mapWidth()) + 4].first.unobstructed = true;
+			build_position_map[x + ((y + 2) * Broodwar->mapWidth()) + 5].first.unobstructed = true;
 		}
 	}
 	
@@ -1738,7 +1739,7 @@ AIBase* GameState::getClosestEmptyStartLocationNotSecondaryScouted()
 
 void GameState::setLastTimeExpanded()
 {
-	last_time_expanded = BWAPI::Broodwar->elapsedTime();
+	last_time_expanded = Broodwar->elapsedTime();
 }
 
 int GameState::getLastTimeExpanded()
@@ -1847,14 +1848,14 @@ double GameState::getLocalStrength(Object my_unit)
 {
 	double my_strength = 0;
 	double enemy_strength = 0;
-	if (BWAPI::Broodwar->getUnitsInRadius(my_unit.getUnit()->getPosition(), my_unit.getUnit()->getType().sightRange(), BWAPI::Filter::IsEnemy).size() > 0)
+	if (Broodwar->getUnitsInRadius(my_unit.getUnit()->getPosition(), my_unit.getUnit()->getType().sightRange(), BWAPI::Filter::IsEnemy).size() > 0)
 	{
 		1;
 	}
-	for (auto current_unit : BWAPI::Broodwar->getUnitsInRadius(my_unit.getUnit()->getPosition(), my_unit.getUnit()->getType().sightRange()))
+	for (auto current_unit : Broodwar->getUnitsInRadius(my_unit.getUnit()->getPosition(), my_unit.getUnit()->getType().sightRange()))
 	{
-		if (current_unit->getPlayer() == BWAPI::Broodwar->self() ||
-			current_unit->getPlayer()->isAlly(BWAPI::Broodwar->self()))
+		if (current_unit->getPlayer() == Broodwar->self() ||
+			current_unit->getPlayer()->isAlly(Broodwar->self()))
 		{
 			if (current_unit->getType().groundWeapon() != BWAPI::WeaponTypes::None &&
 				current_unit->getType().groundWeapon() != BWAPI::WeaponTypes::Unknown &&
@@ -2152,7 +2153,7 @@ void GameState::loadBunker(Object* bunker_to_load)
 double GameState::getEnemyLocalStrength(Object my_unit)
 {
 	double enemy_strength = 0;
-	for (auto current_unit : BWAPI::Broodwar->getUnitsInRadius(my_unit.getUnit()->getPosition(), my_unit.getUnit()->getType().sightRange(), BWAPI::Filter::IsEnemy))
+	for (auto current_unit : Broodwar->getUnitsInRadius(my_unit.getUnit()->getPosition(), my_unit.getUnit()->getType().sightRange(), BWAPI::Filter::IsEnemy))
 	{
 		if (current_unit->getType().groundWeapon() != BWAPI::WeaponTypes::None &&
 			current_unit->getType().groundWeapon() != BWAPI::WeaponTypes::Unknown &&
@@ -2377,7 +2378,7 @@ void GameState::drawMineralLockLines()
 		{
 			for (auto worker : mineral.getAssignedWorkers())
 			{
-				BWAPI::Broodwar->drawLineMap(worker->getPosition(), mineral.getUnit()->getPosition(), BWAPI::Colors::Yellow);
+				Broodwar->drawLineMap(worker->getPosition(), mineral.getUnit()->getPosition(), BWAPI::Colors::Yellow);
 			}
 		}
 	}
@@ -2653,7 +2654,7 @@ void GameState::readConfigFile()
 
 void GameState::initDefenseGrid()
 {
-	int map_cell_count = BWAPI::Broodwar->mapHeight() * BWAPI::Broodwar->mapWidth();
+	int map_cell_count = Broodwar->mapHeight() * Broodwar->mapWidth();
 	std::pair<int, int> data = std::make_pair(0, 0);
 	bool empty = true;
 	if (defense_grid.size() > 0)
@@ -2681,20 +2682,20 @@ AIBase* GameState::getBaseforArea(const BWEM::Area* area)
 
 void GameState::printDefenseGrid()
 {
-	for (int x = 0; x < BWAPI::Broodwar->mapWidth(); x++)
+	for (int x = 0; x < Broodwar->mapWidth(); x++)
 	{
-		for (int y = 0; y < BWAPI::Broodwar->mapHeight(); y++)
+		for (int y = 0; y < Broodwar->mapHeight(); y++)
 		{
-			BWAPI::Broodwar->drawBoxMap(x * 32, y * 32, x * 32 + 32, y * 32 + 32, BWAPI::Colors::Blue);
-			BWAPI::Broodwar->drawTextMap(x * 32 + 16, y * 32 + 16, "%.1f", defense_grid[y * BWAPI::Broodwar->mapWidth() + x].first);
+			Broodwar->drawBoxMap(x * 32, y * 32, x * 32 + 32, y * 32 + 32, BWAPI::Colors::Blue);
+			Broodwar->drawTextMap(x * 32 + 16, y * 32 + 16, "%.1f", defense_grid[y * Broodwar->mapWidth() + x].first);
 		}
 	}
 }
 
 int GameState::getDefenseGroundScore(BWAPI::TilePosition position_score)
 {
-	if (position_score.isValid())
-		return defense_grid[position_score.y * BWAPI::Broodwar->mapWidth() + position_score.x].first;
+	if (Broodwar->isValid(position_score))
+		return defense_grid[position_score.y * Broodwar->mapWidth() + position_score.x].first;
 	else
 		return -9000;
 }
@@ -3073,16 +3074,16 @@ bool GameState::checkRegionBuildable(BWAPI::TilePosition top_left, std::pair<int
 	//check that the region defined in the parameters is clear in the buildmap.
 	for (int x = top_left.x - 1; x < top_left.x + size.first + 1; x++)
 	{
-		if (x >= BWAPI::Broodwar->mapWidth())
+		if (x >= Broodwar->mapWidth())
 			return false;
 		for (int y = top_left.y - 1; y < top_left.y + size.second + 1; y++)
 		{
-			if (y >= BWAPI::Broodwar->mapHeight())
+			if (y >= Broodwar->mapHeight())
 				return false;
-			if (y * BWAPI::Broodwar->mapWidth() + x < build_position_map.size())
+			if (y * Broodwar->mapWidth() + x < build_position_map.size())
 			{
-				if (!build_position_map.at(y * BWAPI::Broodwar->mapWidth() + x).first.unobstructed ||
-					BWAPI::Broodwar->hasCreep(x, y))
+				if (!build_position_map.at(y * Broodwar->mapWidth() + x).first.unobstructed ||
+					Broodwar->hasCreep(x, y))
 				{
 					return false;
 				}
@@ -3411,7 +3412,7 @@ bool GameState::placeBlock(const BWEM::Area* area, std::pair<int, int> block_siz
 				//This region is not clear, pick a new position and try again.
 				position_to_check.x += getRandomInteger(-3, 3);
 				position_to_check.y += getRandomInteger(-3, 3);
-				if (position_to_check.x < 0 || position_to_check.y < 0 || position_to_check.x >= BWAPI::Broodwar->mapWidth() || position_to_check.y >= BWAPI::Broodwar->mapHeight())
+				if (position_to_check.x < 0 || position_to_check.y < 0 || position_to_check.x >= Broodwar->mapWidth() || position_to_check.y >= Broodwar->mapHeight())
 				{
 					position_to_check = search_center;
 				}
@@ -3433,7 +3434,7 @@ BWAPI::TilePosition GameState::getPositionFromVector(const BWEM::Area* area, std
 			if (position_area == area)
 			{
 				if (is_resource_center &&
-					BWAPI::Broodwar->canBuildHere(*position_iterator, BWAPI::UnitTypes::Terran_Command_Center))
+					Broodwar->canBuildHere(*position_iterator, BWAPI::UnitTypes::Terran_Command_Center))
 				{
 					BWAPI::TilePosition return_position = *position_iterator;
 					*position_iterator = position_vector->back();
@@ -3634,7 +3635,7 @@ void GameState::printReservedTilePositions()
 		BWAPI::Position bottom_right;
 		bottom_right.x = top_left.x + 6 * 32;
 		bottom_right.y = top_left.y + 3 * 32;
-		BWAPI::Broodwar->drawBoxMap(top_left, bottom_right, BWAPI::Broodwar->self()->getColor());
+		Broodwar->drawBoxMap(top_left, bottom_right, Broodwar->self()->getColor());
 	}
 	for (auto &current_position : four_by_three_positions)
 	{
@@ -3642,7 +3643,7 @@ void GameState::printReservedTilePositions()
 		BWAPI::Position bottom_right;
 		bottom_right.x = top_left.x + 4 * 32;
 		bottom_right.y = top_left.y + 3 * 32;
-		BWAPI::Broodwar->drawBoxMap(top_left, bottom_right, BWAPI::Broodwar->self()->getColor());
+		Broodwar->drawBoxMap(top_left, bottom_right, Broodwar->self()->getColor());
 	}
 	for (auto &current_position : three_by_two_positions)
 	{
@@ -3650,7 +3651,7 @@ void GameState::printReservedTilePositions()
 		BWAPI::Position bottom_right;
 		bottom_right.x = top_left.x + 3 * 32;
 		bottom_right.y = top_left.y + 2 * 32;
-		BWAPI::Broodwar->drawBoxMap(top_left, bottom_right, BWAPI::Broodwar->self()->getColor());
+		Broodwar->drawBoxMap(top_left, bottom_right, Broodwar->self()->getColor());
 	}
 	for (auto &current_position : two_by_two_positions)
 	{
@@ -3658,7 +3659,7 @@ void GameState::printReservedTilePositions()
 		BWAPI::Position bottom_right;
 		bottom_right.x = top_left.x + 2 * 32;
 		bottom_right.y = top_left.y + 2 * 32;
-		BWAPI::Broodwar->drawBoxMap(top_left, bottom_right, BWAPI::Broodwar->self()->getColor());
+		Broodwar->drawBoxMap(top_left, bottom_right, Broodwar->self()->getColor());
 	}
 	for (auto &current_position : three_by_two_defense_positions)
 	{
@@ -3666,7 +3667,7 @@ void GameState::printReservedTilePositions()
 		BWAPI::Position bottom_right;
 		bottom_right.x = top_left.x + 3 * 32;
 		bottom_right.y = top_left.y + 2 * 32;
-		BWAPI::Broodwar->drawBoxMap(top_left, bottom_right, BWAPI::Broodwar->self()->getColor());
+		Broodwar->drawBoxMap(top_left, bottom_right, Broodwar->self()->getColor());
 	}
 }
 
@@ -3706,7 +3707,7 @@ BWAPI::TilePosition GameState::getPositionFromVectorWithPower(const BWEM::Area* 
 	auto position_iterator = position_vector->begin();
 	while (position_iterator != position_vector->end())
 	{
-		if (BWAPI::Broodwar->hasPower(*position_iterator, build_type))
+		if (Broodwar->hasPower(*position_iterator, build_type))
 		{
 			const BWEM::Area* position_area = BWEM::Map::Instance().GetArea(*position_iterator);
 			if (position_area)
@@ -3900,7 +3901,7 @@ AIBase* GameState::getBaseForExpansion()
 			base.getArea()->Bases().size() > 0 &&
 			base.getArea()->ChokePoints().size() > 0)
 		{
-			BWAPI::Position middle_position((BWAPI::Broodwar->mapWidth() / 2) - 1, (BWAPI::Broodwar->mapHeight() / 2) - 1);
+			BWAPI::Position middle_position((Broodwar->mapWidth() / 2) - 1, (Broodwar->mapHeight() / 2) - 1);
 			double middle_distance_score = 2 * middle_position.getApproxDistance((BWAPI::Position)base.getArea()->Top()) / 100;
 			double geyser_score = 0;
 			for (auto& geyser : base.getArea()->Bases().begin()->Geysers())
@@ -3935,7 +3936,7 @@ void GameState::printExpansionScores()
 			base.getArea()->Bases().size() > 0 &&
 			base.getArea()->ChokePoints().size() > 0)
 		{
-			BWAPI::Position middle_position((BWAPI::Broodwar->mapWidth() / 2) - 1, (BWAPI::Broodwar->mapHeight() / 2) - 1);
+			BWAPI::Position middle_position((Broodwar->mapWidth() / 2) - 1, (Broodwar->mapHeight() / 2) - 1);
 			double middle_distance_score = 2 * middle_position.getApproxDistance((BWAPI::Position)base.getArea()->Top()) / 100;
 			double geyser_score = 0;
 			for (auto& geyser : base.getArea()->Bases().begin()->Geysers())
@@ -3951,7 +3952,7 @@ void GameState::printExpansionScores()
 			double choke_score = -1 * (double)base.getArea()->ChokePoints().size();
 			double main_distance_score = -1 * getGroundDistance((BWAPI::Position)main->getArea()->Top(), (BWAPI::Position)base.getArea()->Top()) / 50;
 			double score = middle_distance_score + geyser_score + mineral_score + choke_score + main_distance_score;
-			BWAPI::Broodwar->drawTextMap((BWAPI::Position)base.getArea()->Top(), "%.2f", score);
+			Broodwar->drawTextMap((BWAPI::Position)base.getArea()->Top(), "%.2f", score);
 		}
 	}
 }

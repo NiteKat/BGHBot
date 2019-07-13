@@ -1,6 +1,6 @@
 #include"AIBase.h"
 
-AIBase::AIBase()
+AIBase::AIBase(BWAPI::Game * game)
 {
 	my_area = nullptr;
 	base_class = -1;
@@ -10,20 +10,22 @@ AIBase::AIBase()
 	number_tile_positions = 0;
 	times_searched = 0;
 	can_search = true;
+  Broodwar = game;
 }
 
-AIBase::AIBase(const BWEM::Area *new_area, int new_base_class)
+AIBase::AIBase(const BWEM::Area *new_area, int new_base_class, BWAPI::Game * game)
 {
+  Broodwar = game;
 	my_area = new_area;
 	base_class = new_base_class;
 	scouted = false;
 	secondary_scouted = false;
 	BWAPI::TilePosition current_position;
 	number_tile_positions = 0;
-	for (int x = 0; x < BWAPI::Broodwar->mapWidth(); x++)
+	for (int x = 0; x < Broodwar->mapWidth(); x++)
 	{
 		current_position.x = x;
-		for (int y = 0; y < BWAPI::Broodwar->mapHeight(); y++)
+		for (int y = 0; y < Broodwar->mapHeight(); y++)
 		{
 			current_position.y = y;
 			const BWEM::Area* area_to_check = BWEM::Map::Instance().GetArea(current_position);

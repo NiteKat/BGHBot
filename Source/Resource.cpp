@@ -1,8 +1,8 @@
 #include "Resource.h"
 
-Resource::Resource(BWAPI::Unit unit)
+Resource::Resource(BWAPI::Unit unit) : 
+  my_unit(unit)
 {
-	my_unit = unit;
 }
 
 void Resource::addWorker(BWAPI::Unit unit)

@@ -2,11 +2,11 @@
 
 #define MAX(a, b) (((a) < (b) ? (b) : (a)))
 
-Neolib::FastAPproximation fap;
-
 namespace Neolib {
 
-	FastAPproximation::FastAPproximation() {}
+	FastAPproximation::FastAPproximation(BWAPI::Game * game) {
+    Broodwar = game;
+  }
 
 	void FastAPproximation::addUnitPlayer1(FAPUnit fu) { player1.push_back(fu); }
 
@@ -441,7 +441,7 @@ namespace Neolib {
 
 		unitType(ed.getType()), isOrganic(ed.getType().isOrganic()),
 		score(ed.getType().destroyScore()), player(ed.getPlayer()) {
-
+    Broodwar = &ed.getUnit().getGame();
 		static int nextId = 0;
 		id = nextId++;
 
@@ -507,7 +507,7 @@ namespace Neolib {
 		}
 
 		if (ed.getUnit() && ed.getUnit()->isVisible() && !ed.getUnit()->isFlying())
-			elevation = BWAPI::Broodwar->getGroundHeight(ed.getUnit()->getTilePosition());
+			elevation = Broodwar->getGroundHeight(ed.getUnit()->getTilePosition());
 
 		groundMaxRange *= groundMaxRange;
 		groundMinRange *= groundMinRange;
