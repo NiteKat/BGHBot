@@ -72,7 +72,7 @@
       <SubSystem>Console</SubSystem>
       <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
-      <AdditionalDependencies>BWAPILib.lib;BWAPICore.lib;Messages.lib;libprotobuf-lite.lib;BWAPIFrontEndClient.lib;BWAPIBackendCore.lib;sfml-network-s-d.lib;sfml-system-s-d.lib;ws2_32.lib;winmm.lib;BWEM-Debug.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>BWAPILib.lib;BWAPICore.lib;Messages.lib;libprotobuf-lite.lib;BWAPIFrontEndClient.lib;BWAPIBackendCore.lib;ws2_32.lib;winmm.lib;BWEM-Debug.lib;SFML.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(BWAPI_DIR)\Debug;$(BWAPI_DIR)\contrib\SFML-2.5.1\lib;..\BWEM-community\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -100,7 +100,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
-      <AdditionalDependencies>BWAPILib.lib;BWAPICore.lib;Messages.lib;libprotobuf-lite.lib;BWAPIFrontEndClient.lib;BWAPIBackendCore.lib;sfml-network-s.lib;sfml-system-s.lib;ws2_32.lib;winmm.lib;BWEM-Release.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>BWAPIBackendCore.lib;BWAPIFrontendClient.lib;BWAPILib.lib;libprotobuf-lite.lib;SFML.lib;Messages.lib;BWEM-Release.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateMapFile>true</GenerateMapFile>
       <MapFileName>NiteKatMap</MapFileName>
       <MapExports>true</MapExports>

@@ -95,6 +95,7 @@ void NiteKat::onStart()
 			for (const auto &area : BWEM::Map::Instance().Areas())
 			{
 				int base_region = 0;
+        auto test = BWEM::Map::Instance().GetArea(Broodwar->self()->getStartLocation());
 				if (BWEM::Map::Instance().GetArea(Broodwar->self()->getStartLocation())->BottomRight() == area.BottomRight())
 					base_region = 3;
 				else if (area.Minerals().size() > 0)
