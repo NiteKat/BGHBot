@@ -72,8 +72,8 @@
       <SubSystem>Console</SubSystem>
       <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
-      <AdditionalDependencies>BWAPILib.lib;BWAPICore.lib;Messages.lib;libprotobuf-lite.lib;BWAPIFrontEndClient.lib;BWAPIBackendCore.lib;ws2_32.lib;winmm.lib;BWEM-Debug.lib;SFML.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(BWAPI_DIR)\Debug;$(BWAPI_DIR)\contrib\SFML-2.5.1\lib;..\BWEM-community\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>BWAPIBackendCore.lib;BWAPIFrontendClient.lib;BWAPILib.lib;libprotobuf-lite.lib;SFML.lib;Messages.lib;BWEM-Debug.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(BWAPI_DIR)\Debug;..\BWEM-community\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

@@ -6,3 +6,5 @@ Release/
 *.user
 *.sdf
 .vs/
+*.db
+NiteKatMap

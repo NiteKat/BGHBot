@@ -86,6 +86,7 @@ int main(int argc, const char* argv[])
       bot.onFrame();
       bot.BWAPIClient.update(bot.Broodwar);
     }
+    bot.Broodwar.initGameData();
   }
   return 0;
 }
